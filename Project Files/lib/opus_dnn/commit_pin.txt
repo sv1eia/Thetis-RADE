@@ -1,0 +1,51 @@
+upstream:    https://github.com/xiph/opus
+commit_sha:  940d4e5af64351ca8ba8390df3f555484c567fbb
+license:     BSD 3-Clause (see COPYING)
+notes:       Same Opus commit pinned by peterbmarks/radae_nopy/cmake/BuildOpus.cmake
+             and by FreeDV-GUI's cmake/BuildRADE.cmake. Provides FARGAN vocoder
+             and LPCNet feature extractor required by librade (V1).
+
+required_features:
+  -DOPUS_DEEP_PLC=ON   (compiles dnn/burg.c, dnn/freq.c, dnn/fargan.c, dnn/fargan_data.c,
+                        dnn/lpcnet_enc.c, dnn/lpcnet_plc.c, dnn/lpcnet_tables.c,
+                        dnn/nnet.c, dnn/nnet_default.c, dnn/plc_data.c,
+                        dnn/parse_lpcnet_weights.c, dnn/pitchdnn.c, dnn/pitchdnn_data.c)
+  -DOPUS_DRED=ON       (DRED encoder/decoder; pulls in dred_*.c files)
+  -DOPUS_OSCE=ON       (Open Source Coder Enhancement; required by FARGAN inference)
+  preprocessor: ENABLE_DEEP_PLC ENABLE_DRED ENABLE_OSCE
+
+build_outstanding:
+  Opus at this commit ships CMake only (no MSVC win32/*.vcxproj).
+  Three viable paths to produce libopus.lib for the Thetis MSVC v145 build:
+
+  (a) Run CMake on Windows host once, ingest the generated opus.vcxproj into
+      Thetis_VS2026.sln. Requires `winget install Kitware.CMake` first.
+
+  (b) Author build/opus_dnn.vcxproj from scratch listing the files in:
+        celt_sources.mk        + CELT_SOURCES from cmake/OpusSources.cmake
+        silk_sources.mk        + SILK_SOURCES (float ones for Opus encoder/decoder)
+        opus_sources.mk        + OPUS_SOURCES
+        lpcnet_sources.mk      + DEEP_PLC_SOURCES + DRED_SOURCES + OSCE_SOURCES
+        + dnn/x86/x86_dnn_map.c, dnn/x86/nnet_avx2.c, dnn/x86/nnet_sse4_1.c, dnn/x86/nnet_sse2.c
+      Compile defines: ENABLE_DEEP_PLC ENABLE_DRED ENABLE_OSCE OPUS_BUILD HAVE_LRINT HAVE_LRINTF
+      Include paths:   include/, celt/, silk/, silk/float/, dnn/, .
+
+  (c) Cross-compile from WSL with mingw-llvm (FreeDV-GUI does this via
+      cmake-windows.yml). Commit resulting libopus.a/lib as a vendored prebuilt.
+      Trades reproducibility for setup simplicity.
+
+  Decision deferred to a follow-up step in the implementation.
+
+vendored_subset:
+  celt/                 entire directory (CELT-internal MDCT/window/pitch)
+  silk/                 entire directory (SILK pitch analysis used by LPCNet)
+  silk/float/           float-precision SILK (the variant LPCNet uses)
+  dnn/                  entire directory (FARGAN, LPCNet, OSCE, DRED)
+  dnn/x86/              x86 DNN intrinsics
+  dnn/arm/              ARM DNN intrinsics (kept for cross-platform option)
+  src/                  Opus encoder/decoder top-level (entry points)
+  include/              public Opus headers
+  cmake/                CMake helpers (read-only reference)
+  Makefile.am           autotools (read-only reference)
+  configure.ac          (read-only reference)
+  *.mk                  source manifests (read-only reference)

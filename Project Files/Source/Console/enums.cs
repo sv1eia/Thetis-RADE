@@ -1,0 +1,508 @@
+﻿/*  enums.cs
+
+This file is part of a program that implements a Software-Defined Radio.
+
+This code/file can be found on GitHub : https://github.com/ramdor/Thetis
+
+Copyright (C) 2000-2025 Original authors
+Copyright (C) 2020-2026 Richard Samphire MW0LGE
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+The author can be reached by email at
+
+mw0lge@grange-lane.co.uk
+*/
+//
+//============================================================================================//
+// Dual-Licensing Statement (Applies Only to Author's Contributions, Richard Samphire MW0LGE) //
+// ------------------------------------------------------------------------------------------ //
+// For any code originally written by Richard Samphire MW0LGE, or for any modifications       //
+// made by him, the copyright holder for those portions (Richard Samphire) reserves the       //
+// right to use, license, and distribute such code under different terms, including           //
+// closed-source and proprietary licences, in addition to the GNU General Public License      //
+// granted above. Nothing in this statement restricts any rights granted to recipients under  //
+// the GNU GPL. Code contributed by others (not Richard Samphire) remains licensed under      //
+// its original terms and is not affected by this dual-licensing statement in any way.        //
+// Richard Samphire can be reached by email at :  mw0lge@grange-lane.co.uk                    //
+//============================================================================================//
+//
+//============================================================================================//
+// Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork                       //
+// Christos Nikolaou can be reached by email at : sv1eia@gmail.com                            //
+//============================================================================================//
+
+namespace Thetis
+{
+    using System; //for [Flags] attribute
+
+    #region Enums
+
+    public enum FocusMasterMode
+    {
+        None = 0,
+        Logger,
+        Click,
+        Title,
+    }
+
+    public enum FWCAnt
+    {
+        NC = 0,
+        ANT1,
+        ANT2,
+        ANT3,
+        RX1IN,
+        RX2IN,
+        RX1TAP,
+        SIG_GEN,
+    }
+
+    public enum ColorScheme
+    {
+        original = 0,
+        enhanced,
+        SPECTRAN,
+        BLACKWHITE,
+        LinLog,
+        LinRad,
+        LinAuto,
+        off,
+        Custom,
+    }
+
+    public enum MultiMeterDisplayMode
+    {
+        Original = 0,
+        Edge,
+        Analog,
+    }
+    public enum MultiMeterMeasureMode
+    {
+        FIRST = -1,
+        SMeter,
+        DBM,
+        UV,
+        LAST
+    }
+
+    public enum FilterWidthMode
+    {
+        Linear = 0,
+        Log,
+        Log10,
+    }
+
+    public enum DisplayEngine
+    {
+        GDI_PLUS = 0,
+        DIRECT_X,
+    }
+
+    public enum HPSDRModel
+    {
+        //IMPORTANT: Please keep the int value order on these enums, ie add new items before LAST,
+        //otherwise 'bad' things might happen
+        FIRST = -1,
+        HPSDR,
+        HERMES,
+        ANAN10,
+        ANAN10E,
+        ANAN100,
+        ANAN100B,
+        ANAN100D,
+        ANAN200D,
+        ORIONMKII,
+        ANAN7000D,
+        ANAN8000D,
+        ANAN_G2,        //G8NJJ
+        ANAN_G2_1K,     //G8NJJ
+        ANVELINAPRO3,
+        HERMESLITE,     //MI0BOT
+        REDPITAYA,      //DH1KLM
+        ANAN_G2E,       //N1GP G2E added
+        LAST
+    }
+
+    public enum DisplayMode
+    {
+        FIRST = -1,
+        SPECTRUM,
+        PANADAPTER,
+        SCOPE,
+        SCOPE2,
+        PHASE,
+        PHASE2,
+        WATERFALL,
+        HISTOGRAM,
+        PANAFALL,
+        PANASCOPE,
+        SPECTRASCOPE,
+        OFF,
+        LAST,
+    }
+
+    public enum AGCMode
+    {
+        FIRST = -1,
+        FIXD,
+        LONG,
+        SLOW,
+        MED,
+        FAST,
+        CUSTOM,
+        LAST,
+    }
+
+    public enum MeterRXMode
+    {
+        FIRST = -1,
+        SIGNAL_STRENGTH,
+        SIGNAL_AVERAGE,
+        ADC_L,
+        ADC_R,
+        ADC2_L,
+        ADC2_R,
+        OFF,
+        LAST,
+    }
+
+    public enum MeterTXMode
+    {
+        FIRST = -1,
+        FORWARD_POWER,
+        REVERSE_POWER,
+        SWR_POWER,
+        MIC,
+        EQ,
+        LEVELER,
+        LVL_G,
+        CFC_PK,
+        CFC_G,
+        COMP,
+        ALC,
+        ALC_G,
+        ALC_GROUP,
+        SWR,
+        OFF,
+        LAST,
+    }
+
+    public enum KeyerLine
+    {
+        None = 0,
+        DTR,
+        RTS,
+    }
+
+    public enum FRSRegion
+    {
+        FIRST = -1,
+        US = 0,
+        Spain = 1,
+        Europe = 2,
+        UK = 3,
+        Italy_Plus = 4,
+        Japan = 5,
+        Australia = 6,
+        Norway = 7,
+        Denmark = 8,
+        Latvia = 9,
+        Slovakia = 10,
+        Bulgaria = 11,
+        Greece = 12,
+        Hungary = 13,
+        Netherlands = 14,
+        France = 15,
+        Russia = 16,
+        Israel = 17,
+        Extended = 18,
+        India = 19,
+        Sweden = 20,
+        Region1 = 21,
+        Region2 = 22,
+        Region3 = 23,
+        Germany = 24,
+        LAST,
+    }
+
+    public enum PreampMode
+    {
+        FIRST = -1,
+        HPSDR_OFF,
+        HPSDR_ON,
+        HPSDR_MINUS10,
+        HPSDR_MINUS20,
+        HPSDR_MINUS30,
+        HPSDR_MINUS40,
+        HPSDR_MINUS50,
+        SA_MINUS10,
+        SA_MINUS20,  //MW0LGE_21d
+        SA_MINUS30,
+        // STEP_ATTEN,
+        LAST,
+    }
+
+    public enum DSPMode
+    {
+        FIRST = -1,
+        LSB,
+        USB,
+        DSB,
+        CWL,
+        CWU,
+        FM,
+        AM,
+        DIGU,
+        SPEC,
+        DIGL,
+        SAM,
+        DRM,
+        AM_LSB,
+        AM_USB,
+        LAST,
+    }
+
+    public enum Band
+    {
+        FIRST = -1,
+        GEN,
+
+        //B2200M, //MW0LGE_21k8 need fix this
+        //B600M,
+
+        B160M,
+        B80M,
+        B60M,
+        B40M,
+        B30M,
+        B20M,
+        B17M,
+        B15M,
+        B12M,
+        B10M,
+        B6M,
+        B2M,
+        WWV,
+
+        VHF0,
+        VHF1,
+        VHF2,
+        VHF3,
+        VHF4,
+        VHF5,
+        VHF6,
+        VHF7,
+        VHF8,
+        VHF9,
+        VHF10,
+        VHF11,
+        VHF12,
+        VHF13,
+
+        BLMF, // ke9ns move down below vhf
+        B120M,
+        B90M,
+        B61M,
+        B49M,
+        B41M,
+        B31M,
+        B25M,
+        B22M,
+        B19M,
+        B16M,
+        B14M,
+        B13M,
+        B11M,
+
+        LAST,
+    }
+
+    public enum Filter
+    {
+        FIRST = -1,
+        F1,
+        F2,
+        F3,
+        F4,
+        F5,
+        F6,
+        F7,
+        F8,
+        F9,
+        F10,
+        VAR1,
+        VAR2,
+        NONE,
+        LAST,
+    }
+
+    public enum PTTMode
+    {
+        FIRST = -1,
+        NONE,
+        MANUAL,
+        MIC,
+        CW,
+        X2,
+        CAT,
+        VOX,
+        SPACE,
+        TCI,
+        LAST,
+    }
+
+    public enum DisplayLabelAlignment
+    {
+        FIRST = -1,
+        LEFT,
+        CENTER,
+        RIGHT,
+        AUTO,
+        OFF,
+        LAST,
+    }
+
+    public enum ClickTuneMode
+    {
+        Off = 0,
+        VFOA,
+        VFOB,
+        //VFOAC,
+    }
+
+    public enum FMTXMode
+    {
+        // Order is chosen carefully here for memory form -- take care before rearranging
+        High = 0,   // +
+        Simplex,    // S
+        Low,        // -     
+    }
+
+    public enum HPSDRHW
+    {
+        Atlas = 0,          // Metis in PowerSDR, but Atlas in Thetis
+        Hermes = 1,         // ANAN-10 ANAN100
+        HermesII = 2,       // ANAN-10E ANAN-100B HeremesII
+        Angelia = 3,        // ANAN-100D
+        Orion = 4,          // ANAN-200D
+        OrionMKII = 5,      // AMAM-7000DLE 7000DLEMkII ANAN-8000DLE OrionMkII Anvelina-Pro3 RedPitaya
+        HermesLite = 6,     // MI0BOT
+        Saturn = 10,        // ANAN-G2: added G8NJJ
+        SaturnMKII = 11,    // ANAN-G2: MKII board?
+        HermesC10 = 20,     // ANAN-G2E //N1GP G2E added (HermesC10)
+        Unknown = 999,      // MW0LGE
+    }
+
+    public enum DSPFilterType
+    {
+        Linear_Phase = 0,
+        Low_Latency = 1,
+    }
+
+    public enum DisplayRegion
+    {
+        freqScalePanadapterRegion,
+        panadapterRegion,
+        dBmScalePanadapterRegion,
+        waterfallRegion,
+        filterRegion,
+        filterRegionLow,
+        filterRegionHigh,
+        agcButtonRegion,
+        agcThresholdLine,
+        agcHangLine,
+        agcFixedGainLine,
+        //lockedPanButtonRegion,
+        //vfoToMidButtonRegion,
+        //midToVfoButtonRegion,
+        //clickVfoButtonRegion,
+        elsewhere
+    }
+
+    public enum BreakIn
+    {
+        Manual,
+        Semi,
+        QSK
+    }
+
+    public enum RadioProtocol
+    {
+        USB = 0,  // Protocol USB (P1)
+        ETH,      // Protocol ETH (P2)
+        Auto,
+        None
+    }
+
+    public enum TXPinActions
+    {
+        FIRST = -1,
+        MOX,
+        TUNE,
+        TWOTONE,
+        MOX_TUNE,
+        MOX_TWOTONE,
+        TUNE_TWOTONE,
+        MOX_TUNE_TWOTONE,
+        LAST
+    }
+
+    public enum DrivePowerSource
+    {
+        DRIVE_SLIDER = 0,
+        TUNE_SLIDER = 1,
+        FIXED = 2
+    }
+
+    public enum SquelchState
+    {
+        OFF = 0,
+        SQL = 1,
+        VSQL = 2,
+        LAST
+    }
+
+    public enum StatusBarIconGroup
+    {
+        All = 0,
+        CMAsio,
+        N1MM,
+        TCPIPCat,
+        SerialCat,
+        TCI
+    }
+
+    public enum VFOSYNCinit
+    {
+        Nothing = 0,
+        VFO_A_to_B,
+        VFO_B_to_A
+    }
+
+    [Flags]
+    public enum PAstatusIndicatorState
+    {
+        NotUsed = 0,
+        OK = 1 << 0,
+        PSUVoltage = 1 << 1,
+        DrainCurrent = 1 << 2,
+        ReversePower = 1 << 3,
+        HeatsinkTemperature = 1 << 4,
+        ForwardPower = 1 << 5,
+        Resettable = 1 << 6
+    }
+    #endregion
+}

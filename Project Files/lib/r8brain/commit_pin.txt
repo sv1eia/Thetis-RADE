@@ -1,0 +1,30 @@
+upstream:    https://github.com/avaneev/r8brain-free-src
+license:     MIT (see LICENSE)
+notes:       High-quality professional audio sample rate converter, 24-bit
+             precision, ~140 dB stopband, linear-phase.  Used by FreeDV-GUI
+             on the RADE TX path for 48 kHz <-> 16 kHz mic-side and
+             8 kHz -> 48 kHz modem-side rate conversions.  Vendored into
+             Thetis to mirror the same TX-path resampler architecture for
+             the built-in radae integration.
+
+vendored_files (full library):
+  *.h            top-level headers (CDSPResampler*, CDSPFIRFilter,
+                 CDSPProcessor, etc.)  Header-only / template-class style.
+  *.inc          template specialisations.
+  fft/pffft.c              single-precision PFFFT
+  fft/pffft_double.c       double-precision PFFFT (used by r8brain)
+  fft/pffft_common.c       PFFFT shared helpers
+  fft/*.h                  PFFFT public headers
+  fft/simd/*.h             PFFFT SIMD intrinsics
+
+build:
+  Three .c files compile into ChannelMaster.dll under MSVC v145.
+  Compile defines: PFFFT_STATIC_DEFINE.
+
+api:
+  Used via Source/ChannelMaster/r8brain_wrap.cpp -- a thin C-callable shim
+  that exposes r8b_create / r8b_destroy / r8b_process_ff so radae.c
+  (pure C) can call CDSPResampler24 (C++).
+
+excluded:
+  CMakeLists.txt           we use the MSVC vcxproj instead

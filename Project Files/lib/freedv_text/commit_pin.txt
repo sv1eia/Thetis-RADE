@@ -1,0 +1,61 @@
+FreeDV-GUI rade_text.c LDPC reliable-text codec, vendored slice
+================================================================
+
+Purpose
+-------
+Decode the EOO (end-of-over) callsign frame using the SAME wire format
+that FreeDV-GUI 2.3.0 stations transmit.  Replaces the simple 7-bit-MSB
+codec built into radae_nopy (rade_rx_get_eoo_callsign /
+rade_tx_set_eoo_callsign) which is *not* the FreeDV-GUI on-air format.
+
+Wire format
+-----------
+8-byte payload  =  1-byte CRC8 (poly 0x1D)  +  7 chars * 6 bits = 48 bits
+                                            (custom 6-bit charset:
+                                             '0'-'9'->10-19, 'A'-'Z'->20-46,
+                                             ' '->47, ASCII 38-47->1-9)
+                                            zero-padded to 56 information bits
+LDPC encode     =  56 -> 112 coded bits using "HRA_56_56" code
+Interleave      =  Gray-coded interleaver (gp_interleaver)
+Modulation      =  56 QPSK symbols (= 112 floats, IQ pairs)
+Wire delivery   =  rade_tx_set_eoo_bits / rade_rx returns soft floats
+
+Sources
+-------
+rade_text.c/h:
+    https://github.com/drowe67/freedv-gui
+    src/pipeline/rade_text.c at master  (commit pinned at vendor time)
+
+codec2 minimal slice (vendored under codec2/):
+    https://github.com/drowe67/codec2  v1.2.0 release
+    Files taken verbatim:  comp.h, mpdecode_core.{h,c}, phi0.h,
+                           debug_alloc.h, machdep.h,
+                           gp_interleaver.{h,c},
+                           HRA_56_56.{h,c}
+    Files slimmed:         ldpc_codes.{h,c}    (kept only HRA_56_56 entry,
+                                               dropped ldpc_codes_setup
+                                               which depends on
+                                               interldpc.h)
+
+Local modifications
+-------------------
+src/rade_text.c
+    - replaced  #include "ofdm_internal.h"
+        with    -- nothing -- (struct LDPC comes via mpdecode_core.h
+                                which is already included transitively
+                                from ldpc_codes.h)
+    - replaced  #include "../util/logging/ulog.h"
+        with    #include "ulog_stub.h"     (local no-op stub)
+
+src/ulog_stub.h  (new file, Thetis local)
+    No-op replacement for FreeDV-GUI's wxWidgets-coupled logger.
+
+License
+-------
+rade_text.c/h:                BSD 2-clause  (Mooneer Salem, FreeDV-GUI)
+codec2 slice:                 LGPL-2.1      (David Rowe et al., codec2)
+
+The LGPL of codec2 means the vendored slice must remain available under
+LGPL.  ChannelMaster.dll links against it as a static library; the
+LGPL "library exception" applies as long as users can substitute their
+own codec2 build.

@@ -1,0 +1,60 @@
+/*  cmcomm.h
+
+This file is part of a program that implements a Software-Defined Radio.
+
+Copyright (C) 2014, 2024 Warren Pratt, NR0V
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+The author can be reached by email at
+
+warren@pratt.one
+
+----------------------------------------------------------------------------------------------
+Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+Adds RADE V1 digital-voice integration.
+Christos Nikolaou can be reached by email at : sv1eia@gmail.com
+----------------------------------------------------------------------------------------------
+*/
+
+#include <Windows.h>
+#include <process.h>
+#include <intrin.h>
+#include <math.h>
+#include <time.h>
+#include <avrt.h>
+
+#include "aamix.h"
+#include "amix.h"
+#include "analyzers.h"
+#include "bandwidth_monitor.h"
+#include "cmasio.h"
+#include "cmaster.h"
+#include "cmbuffs.h"
+#include "cmsetup.h"
+#include "ilv.h"
+#include "ivac.h"
+#include "pipe.h"
+#include "radae.h"
+#include "tci.h"
+#include "ring.h"
+#include "router.h"
+#include "sidetone.h"
+#include "sync.h"
+#include "txgain.h"
+#include "cmUtilities.h"
+#include "vox.h"
+#include "znob.h"
+#include "znobII.h"

@@ -1,0 +1,545 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <metadata name="tpAlexAntCtrl.GenerateMember" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>False</value>
+  </metadata>
+  <metadata name="toolTip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>176, 19</value>
+  </metadata>
+  <metadata name="numericUpDownTS3.GenerateMember" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>False</value>
+  </metadata>
+  <metadata name="numericUpDownTS4.GenerateMember" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>False</value>
+  </metadata>
+  <metadata name="numericUpDownTS6.GenerateMember" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>False</value>
+  </metadata>
+  <metadata name="numericUpDownTS9.GenerateMember" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>False</value>
+  </metadata>
+  <metadata name="numericUpDownTS10.GenerateMember" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>False</value>
+  </metadata>
+  <metadata name="numericUpDownTS12.GenerateMember" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>False</value>
+  </metadata>
+  <data name="chkNetworkProtocolMustMatch.ToolTip" xml:space="preserve">
+    <value>The radio's protocol must match the stored entry. (default checked)
+Unchecked, a stored entry will allow that radio to have any protocol version.
+The added entry will be update accordingly once connected.</value>
+  </data>
+  <data name="chkInformHardwareP2Ports.ToolTip" xml:space="preserve">
+    <value>Default P2 UDP ports on the radio are:
+a) Port 1024 into the radio - discovery and general port, this can not be changed
+b) Others into the radio 1025-1029 - these can be changed
+c) The radio will also use its own output ports 1024-1041 which direct data to the single PC listen port - these can be changed
+
+If the [inform hardware of ports to use] is unchecked, on a router/modem you would port forward as follows
+    WANip:1024-1029 &gt; radioip:1024-1029
+    you would connect to a specific radio in this case using Thetis as WANip:1024
+
+    you may want to use different external ports, this would also work
+    WAN:51000-51005 &gt; radioip:1024-1029
+    you would connect to a specific radio in this case using Thetis as WANip:51000
+    
+    and the radio would also direct everything form its own ports 1025-1041 to the listen port
+
+If the [inform hardware of ports to use] is checked you could do the following
+    WANip:6000 &gt; radioip:1024   (as 1024 can no be changed on the radio)
+    WANip:6001-6005 &gt; radioip:6001-6005   (the radio is told of the 6000 base and now offsets its port expectation)
+    you would connect to a specific radio in this case using Thetis as WANip:6000
+    
+    and the radio would also direct everything form its own ports 6001-6018 to the listen port
+
+In all cases, if the client Thetis is behind another modem/router, then the listen port should be port forwarded back directly to the PC ip.</value>
+  </data>
+  <data name="chkNetworkThrottleIndexTweak.ToolTip" xml:space="preserve">
+    <value>When enabled NetworkThrottlingIndex is set to 0xffffffff to prevent windows from throttling the network connection.
+Thetis needs to be run as administrator for this to work.
+Reboot after the change is made.</value>
+  </data>
+  <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+  <data name="picModelBoardWarning.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAAQCAYAAAAbBi9cAAAABGdBTUEAALGPC/xhBQAAAWZJREFUOE+l
+        kc8rRGEYhZ+yQaREksZ/YKtIZKvs2MxfwMLKgoWyVsQCWwvKzlLJLHTHj9gMQ9e4QxQ7Gr9jDHN17o25
+        8ykzxqmn3t73nNPtu/CLFmchEWU+EWVOc8mKrcN1jIzQXJJGh8C2iL47vAnbwtLuT6qsgP0IpA64d09x
+        hWbtdCtK1ZVldLV5X3OXcUgvTuEuTOBqti1udZOnoDrb4Gyb0F2cC30J+Gh+OORSN3kKKrFRjrNJNpsk
+        axZpp9vaMvR115vRnDpavd/dk07w9PU2wSKhmzwr0yEznpMTqeV8h/RXSDTU+QR38sjb3lJjVkBTo/fA
+        o882qWBoIIw7GM4vkse2GJkZbjZrILkFl3vcBgMim/Qx91d73CuTp8lxOI6y9OGQMQPVVT7mXl5llP3W
+        7irc7PNimoX52EGUUdZTf6/3NvHMCa+mUcyM+Zh7oYxtcaAOlfB49NNULMqqQ0Ua/s0n0OWyxKRb9V4A
+        AAAASUVORK5CYII=
+</value>
+  </data>
+  <data name="pbVAC1FFAlphaInfo.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="pbVAC1FFMaxInfo.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="pbVAC1FFMinInfo.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="pbVAC1PropFeedbackMaxInfo.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="pbVAC1PropFeedbackMinInfo.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="pbVAC1SlewTimeInfo.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="pbVAC1FeedbackGainInfo.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="pbCMasio_InOut_Info.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="labelTS295.Text" xml:space="preserve">
+    <value>- Any changes made here will only apply after Thetis is restarted
+- If VAC is enabled input will be taken from the VAC and not cmASIO
+- If a red cmASIO icon is shown in the status bar there is an issue
+- The ASIO device will not be available to VAC if in use by cmASIO
+- 48,000 sa/s sampling rate
+- sample buffer size is fixed at 64
+- Int32LSB sample format (24 bit samples, left aligned in 32 bit little-endian integers)
+
+- Protocol 1 is supported but performance may be degraded compared to Protocol 2
+- Remove any previous cmASIO settings from HKEY_LOCAL_MACHINE\SOFTWARE\OpenHPSDR\Thetis-x64
+- This now uses HKEY_CURRENT_USER\SOFTWARE\OpenHPSDR\Thetis-x64</value>
+  </data>
+  <data name="chkPurgeBuffers.ToolTip" xml:space="preserve">
+    <value>On a mox transition there are times where you get a 'pulse' of energy in the display.
+This is not spurious RF but a side effect of the FFT bins and averages.
+This setting will reset the WDSP analyzer pixel/average buffers.
+They will take a time to 're-fill' and is determined by sample rate and bin size.</value>
+  </data>
+  <data name="chkFilter_high_resolution_characteristics.ToolTip" xml:space="preserve">
+    <value>Generates additional data (x8) for the filter item to enhance the display of filter characteristics.
+Enabling this option will slightly increase processing time for filter Size/Window changes and alter
+the appearance of the filter passband display.</value>
+  </data>
+  <data name="pbWarningBufferType.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAAQCAYAAAAbBi9cAAAABGdBTUEAALGPC/xhBQAAAWZJREFUOE+l
+        kc8rRGEYhZ+yQaREksZ/YKtIZKvs2MxfwMLKgoWyVsQCWwvKzlLJLHTHj9gMQ9e4QxQ7Gr9jDHN17o25
+        8ykzxqmn3t73nNPtu/CLFmchEWU+EWVOc8mKrcN1jIzQXJJGh8C2iL47vAnbwtLuT6qsgP0IpA64d09x
+        hWbtdCtK1ZVldLV5X3OXcUgvTuEuTOBqti1udZOnoDrb4Gyb0F2cC30J+Gh+OORSN3kKKrFRjrNJNpsk
+        axZpp9vaMvR115vRnDpavd/dk07w9PU2wSKhmzwr0yEznpMTqeV8h/RXSDTU+QR38sjb3lJjVkBTo/fA
+        o882qWBoIIw7GM4vkse2GJkZbjZrILkFl3vcBgMim/Qx91d73CuTp8lxOI6y9OGQMQPVVT7mXl5llP3W
+        7irc7PNimoX52EGUUdZTf6/3NvHMCa+mUcyM+Zh7oYxtcaAOlfB49NNULMqqQ0Ua/s0n0OWyxKRb9V4A
+        AAAASUVORK5CYII=
+</value>
+  </data>
+  <data name="pbWarningFilterSize.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAAQCAYAAAAbBi9cAAAABGdBTUEAALGPC/xhBQAAAWZJREFUOE+l
+        kc8rRGEYhZ+yQaREksZ/YKtIZKvs2MxfwMLKgoWyVsQCWwvKzlLJLHTHj9gMQ9e4QxQ7Gr9jDHN17o25
+        8ykzxqmn3t73nNPtu/CLFmchEWU+EWVOc8mKrcN1jIzQXJJGh8C2iL47vAnbwtLuT6qsgP0IpA64d09x
+        hWbtdCtK1ZVldLV5X3OXcUgvTuEuTOBqti1udZOnoDrb4Gyb0F2cC30J+Gh+OORSN3kKKrFRjrNJNpsk
+        axZpp9vaMvR115vRnDpavd/dk07w9PU2wSKhmzwr0yEznpMTqeV8h/RXSDTU+QR38sjb3lJjVkBTo/fA
+        o882qWBoIIw7GM4vkse2GJkZbjZrILkFl3vcBgMim/Qx91d73CuTp8lxOI6y9OGQMQPVVT7mXl5llP3W
+        7irc7PNimoX52EGUUdZTf6/3NvHMCa+mUcyM+Zh7oYxtcaAOlfB49NNULMqqQ0Ua/s0n0OWyxKRb9V4A
+        AAAASUVORK5CYII=
+</value>
+  </data>
+  <data name="pbWarningBufferSize.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAAQCAYAAAAbBi9cAAAABGdBTUEAALGPC/xhBQAAAWZJREFUOE+l
+        kc8rRGEYhZ+yQaREksZ/YKtIZKvs2MxfwMLKgoWyVsQCWwvKzlLJLHTHj9gMQ9e4QxQ7Gr9jDHN17o25
+        8ykzxqmn3t73nNPtu/CLFmchEWU+EWVOc8mKrcN1jIzQXJJGh8C2iL47vAnbwtLuT6qsgP0IpA64d09x
+        hWbtdCtK1ZVldLV5X3OXcUgvTuEuTOBqti1udZOnoDrb4Gyb0F2cC30J+Gh+OORSN3kKKrFRjrNJNpsk
+        axZpp9vaMvR115vRnDpavd/dk07w9PU2wSKhmzwr0yEznpMTqeV8h/RXSDTU+QR38sjb3lJjVkBTo/fA
+        o882qWBoIIw7GM4vkse2GJkZbjZrILkFl3vcBgMim/Qx91d73CuTp8lxOI6y9OGQMQPVVT7mXl5llP3W
+        7irc7PNimoX52EGUUdZTf6/3NvHMCa+mUcyM+Zh7oYxtcaAOlfB49NNULMqqQ0Ua/s0n0OWyxKRb9V4A
+        AAAASUVORK5CYII=
+</value>
+  </data>
+  <data name="comboDSPNOBmode.ToolTip" xml:space="preserve">
+    <value>NB2 mode: Set mode in which NB2 deals with impulses
+Zero:  Go to zero amplitude during the impulse(s)
+Sample &amp; Hold:  Sample beginning signal amplitude and hold during impulse(s)
+Mean-Hold:  Hold during impulse(s) at mean of beginning and ending signal values
+Hold &amp; Sample:  Hold ending signal value throughout the impulse(s)
+Linear Interpolate:  Linearly interpolate output value across the impulse(s)</value>
+  </data>
+  <data name="pbPAProfileWarning.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAAQCAYAAAAbBi9cAAAABGdBTUEAALGPC/xhBQAAAWZJREFUOE+l
+        kc8rRGEYhZ+yQaREksZ/YKtIZKvs2MxfwMLKgoWyVsQCWwvKzlLJLHTHj9gMQ9e4QxQ7Gr9jDHN17o25
+        8ykzxqmn3t73nNPtu/CLFmchEWU+EWVOc8mKrcN1jIzQXJJGh8C2iL47vAnbwtLuT6qsgP0IpA64d09x
+        hWbtdCtK1ZVldLV5X3OXcUgvTuEuTOBqti1udZOnoDrb4Gyb0F2cC30J+Gh+OORSN3kKKrFRjrNJNpsk
+        axZpp9vaMvR115vRnDpavd/dk07w9PU2wSKhmzwr0yEznpMTqeV8h/RXSDTU+QR38sjb3lJjVkBTo/fA
+        o882qWBoIIw7GM4vkse2GJkZbjZrILkFl3vcBgMim/Qx91d73CuTp8lxOI6y9OGQMQPVVT7mXl5llP3W
+        7irc7PNimoX52EGUUdZTf6/3NvHMCa+mUcyM+Zh7oYxtcaAOlfB49NNULMqqQ0Ua/s0n0OWyxKRb9V4A
+        AAAASUVORK5CYII=
+</value>
+  </data>
+  <data name="richTextBox1.Text" xml:space="preserve">
+    <value>Begin with all spinners set equal to their labelled value.
+For each spinner, from minimum to maximum, adjust the output power
+such that your CALIBRATED EXTERNAL METER is equal to the spinner
+value.  Record the values appearing in the Thetis 'Fwd Pwr' meter.
+After completing measurements for all spinners, enter your
+recorded values into the respective spinners.  DO NOT USE
+POWER EXCEEDING THE RATING OF YOUR RADIO!
+</value>
+  </data>
+  <data name="lgLinearGradientTX_waterfall.EncodedText" xml:space="preserve">
+    <value>OXwxfDAuMDAwfC0xNjc3NzIxNnwwfDEyNTAwMDAwMDAwMDAwMDAwMC4wMDB8LTE0NzM3NjMzfDB8MjUwMDAwMDAwMDAwMDAwMDAwLjAwMHwtMTI2OTgwNTB8MHwzNzUwMDAwMDAwMDAwMDAwMDAuMDAwfC0xMDY1ODQ2N3wwfDUwMDAwMDAwMDAwMDAwMDAwMC4wMDB8LTg2MTg4ODR8MHw2MjUwMDAwMDAwMDAwMDAwMDAuMDAwfC02NTc5MzAxfDB8NzUwMDAwMDAwMDAwMDAwMDAwLjAwMHwtNDUzOTcxOHwwfDg3NTAwMDAwMDAwMDAwMDAwMC4wMDB8LTI1MDAxMzV8MXwxMDAwMDAwMDAwMDAwMDAwMDAwLjAwMHwtMXw=</value>
+  </data>
+  <data name="lgLinearGradientTX.EncodedText" xml:space="preserve">
+    <value>OXwxfDAuMDAwfC0xNjc3NzIxNnwwfDEyNTAwMDAwMDAwMDAwMDAwMC4wMDB8LTE0NzM3NjMzfDB8MjUwMDAwMDAwMDAwMDAwMDAwLjAwMHwtMTI2OTgwNTB8MHwzNzUwMDAwMDAwMDAwMDAwMDAuMDAwfC0xMDY1ODQ2N3wwfDUwMDAwMDAwMDAwMDAwMDAwMC4wMDB8LTg2MTg4ODR8MHw2MjUwMDAwMDAwMDAwMDAwMDAuMDAwfC02NTc5MzAxfDB8NzUwMDAwMDAwMDAwMDAwMDAwLjAwMHwtNDUzOTcxOHwwfDg3NTAwMDAwMDAwMDAwMDAwMC4wMDB8LTI1MDAxMzV8MXwxMDAwMDAwMDAwMDAwMDAwMDAwLjAwMHwtMXw=</value>
+  </data>
+  <data name="lgLinearGradientRX1.EncodedText" xml:space="preserve">
+    <value>OXwxfDAuMDAwfC0xNjc3NzIxNnwwfDEyNTAwMDAwMDAwMDAwMDAwMC4wMDB8LTE0NzM3NjMzfDB8MjUwMDAwMDAwMDAwMDAwMDAwLjAwMHwtMTI2OTgwNTB8MHwzNzUwMDAwMDAwMDAwMDAwMDAuMDAwfC0xMDY1ODQ2N3wwfDUwMDAwMDAwMDAwMDAwMDAwMC4wMDB8LTg2MTg4ODR8MHw2MjUwMDAwMDAwMDAwMDAwMDAuMDAwfC02NTc5MzAxfDB8NzUwMDAwMDAwMDAwMDAwMDAwLjAwMHwtNDUzOTcxOHwwfDg3NTAwMDAwMDAwMDAwMDAwMC4wMDB8LTI1MDAxMzV8MXwxMDAwMDAwMDAwMDAwMDAwMDAwLjAwMHwtMXw=</value>
+  </data>
+  <data name="lgLinearGradient_waterfall.EncodedText" xml:space="preserve">
+    <value>OXwxfDAuMDAwfC0xNjc3NzIxNnwwfDEyNTAwMDAwMDAwMDAwMDAwMC4wMDB8LTE0NzM3NjMzfDB8MjUwMDAwMDAwMDAwMDAwMDAwLjAwMHwtMTI2OTgwNTB8MHwzNzUwMDAwMDAwMDAwMDAwMDAuMDAwfC0xMDY1ODQ2N3wwfDUwMDAwMDAwMDAwMDAwMDAwMC4wMDB8LTg2MTg4ODR8MHw2MjUwMDAwMDAwMDAwMDAwMDAuMDAwfC02NTc5MzAxfDB8NzUwMDAwMDAwMDAwMDAwMDAwLjAwMHwtNDUzOTcxOHwwfDg3NTAwMDAwMDAwMDAwMDAwMC4wMDB8LTI1MDAxMzV8MXwxMDAwMDAwMDAwMDAwMDAwMDAwLjAwMHwtMXw=</value>
+  </data>
+  <data name="chkReplaceCurrentMeterInSelectedSkin.ToolTip" xml:space="preserve">
+    <value>If this is checked, the downloaded meter skins
+will be added to the current selected skin. Unchecked
+and the default MultiMeter skins will be updated and
+only used if a selected skin does not provide its own.</value>
+  </data>
+  <data name="btnDownloadSkin.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAO
+        vAAADrwBlbxySQAAAiNJREFUWEfNl8FLVUEUxn9ERIsIFxESIhEuonWEiIi4ClcSEhEhESIuWriOCCLE
+        VYhIq5YRIi5bi4S0jugviBAJidYtJPku58hwmHfvvHffi/fB9x4zc+ac782cmTkPhgyXgCvAVWDEvp2X
+        o3E/MQd8BU6Bfx34F9gBrsfJbTFpzmPATvxmK9U3HGSCNPFRdNIGx5kATdwH1oDnwCqwYlw2PjM+TbgE
+        PAEeArfbCmhL5do2cEECfmUM/he1gucClFx3gDHgBjBqVNZH+liOmlvHCTtxivk9FfA23ZcB443FPFLD
+        BWxEqxpctCR7YVTiqa8ULkD5dy5gPVrV4HFmP5XhpXhtcxSbE2tIVSmUPFFAlVCFcAGKPTwC1FmKtgJe
+        9SLgFrBpF8jnjAD1aUw2sq2DC/ithj5KBOjW+pAJHPnRb7gaZAWoswk6anqSY1DnXuFx7FmA0ElEaXCh
+        lQBBgbTUHlyCSoMLL23eHzX0USdgCtg1qjRzaJ+VcO/Cnqukc/vppD9FVwIeJL/0ZhzMYDyxX4yDhq4E
+        3E0cvrf6sY6ycft70ZnBc6ASUHIMeynbDqOTBFkBdVfxNeBTQ9XslI1sNacT/CquBHTzGqqgUBU9A8wG
+        qk9jsmmCP8fVMfxhja1oNUDo9ChmVZBor1yNKlxVrcpeZb+40JLuRz7lWzH8/fkiAfcL97bfVMx5XxIp
+        /JkxGhS19Nk7QreY/pQOkooxPDgDtCN/1xoLOREAAAAASUVORK5CYII=
+</value>
+  </data>
+  <data name="chkMidiControlIDincludesChannel.ToolTip" xml:space="preserve">
+    <value>Some devices use the same control ID for multiple buttons/knobs etc.
+Use this option to combine the midi channel value with the control id, this
+should then uniquely identify each control. Note: the control ID will now
+be made as follows : controlIDmapped = ((controlId &amp; 0xFF) &lt;&lt; 8) | (channel &amp; 0xFF)</value>
+  </data>
+  <data name="chkIgnore14bitMidiMessages.ToolTip" xml:space="preserve">
+    <value>Some devices also send messages that are used for 14 bit values.
+This causes issues for Thetis which can be seen when the midi capture
+is flickering when a knob is turned for example. Eventually 14 bit messages
+will be handled, but as a stop gap they can be ignored.</value>
+  </data>
+  <data name="picMutliMeterIO_udp_out_warning.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAAQCAYAAAAbBi9cAAAABGdBTUEAALGPC/xhBQAAAWZJREFUOE+l
+        kc8rRGEYhZ+yQaREksZ/YKtIZKvs2MxfwMLKgoWyVsQCWwvKzlLJLHTHj9gMQ9e4QxQ7Gr9jDHN17o25
+        8ykzxqmn3t73nNPtu/CLFmchEWU+EWVOc8mKrcN1jIzQXJJGh8C2iL47vAnbwtLuT6qsgP0IpA64d09x
+        hWbtdCtK1ZVldLV5X3OXcUgvTuEuTOBqti1udZOnoDrb4Gyb0F2cC30J+Gh+OORSN3kKKrFRjrNJNpsk
+        axZpp9vaMvR115vRnDpavd/dk07w9PU2wSKhmzwr0yEznpMTqeV8h/RXSDTU+QR38sjb3lJjVkBTo/fA
+        o882qWBoIIw7GM4vkse2GJkZbjZrILkFl3vcBgMim/Qx91d73CuTp8lxOI6y9OGQMQPVVT7mXl5llP3W
+        7irc7PNimoX52EGUUdZTf6/3NvHMCa+mUcyM+Zh7oYxtcaAOlfB49NNULMqqQ0Ua/s0n0OWyxKRb9V4A
+        AAAASUVORK5CYII=
+</value>
+  </data>
+  <data name="pbDiscordInfo_filter.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="pbDiscordInfo_ignore.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="pbDiscordInfo_tag.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="lblDiscordNotesText.Text" xml:space="preserve">
+    <value>Enabling this will allow you to use the Discord button box to let others know your activity.
+You will also be able to use %discord_general% and %discord_bot% to view the activity in
+textoverlay and ledindicitaor meter items. You can use %discord_general=N% and
+%discord_bot=N% to view the history, where 0 is newest, 1 is the previous etc.
+
+You do not need to be a member of discord to use this functionality but there are lots
+of us there and you can interact with many channels and actively view the
+#thetis-bot channel to see what is going on.</value>
+  </data>
+  <data name="picMultiMeterRotatorControlInfo.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="lblTXProfileWarning.ToolTip" xml:space="preserve">
+    <value>One or more settings have been changed that are
+only stored in a TX profile. This can include things
+like TX EQ, CFC, buffer sizes, VAC state (on/off) and
+many others. You need to save the TX profile so that
+these settings are stored. Use the Transmit-&gt;Profile Save
+button, or use the Auto Save TX Profile options on the
+Transmit tab</value>
+  </data>
+  <data name="picButtonBoxInfo.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAABGdBTUEAALGPC/xhBQAAAINJREFUOE+d
+        0QEKgDAMA0D/6rN8hQ/xTZMNCjHJ1tVAEGx7CB7HOo1azjg8r/ZpBbQANwPlIOsMk8Xo/bSR/swgOcZi
+        eMaYLGBnX8SQDKOzr+AGJgNEMLyzBTmU35egDEFoiWXQ1l/LEAdZLIMc0iOLf6GeMeQDbuzxsYsFKwAH
+        j5fAC6Qphu9tstV5AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <metadata name="timer_VAC_Monitor.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>325, 19</value>
+  </metadata>
+  <metadata name="timer_LED_Mirror.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>17, 17</value>
+  </metadata>
+  <metadata name="timer_RawInputMouseWheel.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>510, 18</value>
+  </metadata>
+  <metadata name="tmrCFCOMPGain.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>776, 16</value>
+  </metadata>
+  <metadata name="tmrCheckProfile.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>963, 21</value>
+  </metadata>
+  <metadata name="tmrLedValid.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>1120, 21</value>
+  </metadata>
+  <metadata name="tmrCheckStorageSpace.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>17, 58</value>
+  </metadata>
+  <metadata name="$this.TrayHeight" type="System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>120</value>
+  </metadata>
+  <data name="$this.Icon" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        AAABAAEAICAAAAEAGACoDAAAFgAAACgAAAAgAAAAQAAAAAEAGAAAAAAAqAwAAAAAAAAAAAAAAAAAAAAA
+        AAA6LV8sHT9BM0c3K0dDN0paTFReUllSVH1eZJkkITY/SGl3cnpDQGErO5g3TMwraP85fv88be4vPn53
+        VT/t0Y6DZ2MZGR8eHjVeVGldT2Bkc68zV9IZGWxFQGFOUpUtNHo4YOMeLZkWCz1qUUF2YEtPQkp2cHhp
+        ZYU9PoNGVZR2YkY/P2ESKJQcKoMBAFUMOLwYYv4AA5YiL21rXFqymmhsUU5ZRUsoH0wqJ2c2K1hJR4Qg
+        ImUuHyh0WkN3W0lBP1c7XMg2b/8jJnrPq1fvzHFKLjtYTl56fJVLZrE6UKoyOW0IGHcVJHgFBCcAABQA
+        AFYibf8mWsYBAEAcJGU3MF9UOz11XmxVed0uRqY5Po0rNZNOQFlZRT2CaT92WDtlUlQ5Q44/TJE/SIc5
+        OXJmSkuPa1ZZPzwoMno/uf8BN7kQD2A+OTwRHXoCFYkAAAAEAykDFHwNJ5chWuUEJqIMD1JAQHNIVawy
+        XdsjZuJMZ71acb08LU5aSlRGNjk+Li1zYV5MW44JBiMJCU4WLJdFRXVuV00uHiEBCVEMQbEpT69MXKUY
+        F08ABlcTGlMODA0AAA4LABcGAEsVTe4eO5cBAB8BBWQ5au5Wj/guRLZAQH46OV9COE9CLEhJN09rXVZq
+        XmMyKEEhGioeKGhNU41iVloYDiQODjIrOHQuO489QHcaOrkCML0KBgg2KhINDhgIBwwPDhk4MEcCAC4R
+        ABUUKWskWcYCCHEeR7pVo/5LYLUXCzshHkdFPGNkWnNXS1lUQllxW1B/blRyY2BfU14iIDULDDY9TZM5
+        W8Q3UbEAABEABksmO4wAAAoPDBJgRjGRYz9MNiwAAAsAAAgNGm4KLqcmfvcMEkwGACojSa9HatVDQodD
+        TJNReMwsM4E7KEpSPkxpX399Z1xCNUE2Lj0zN0o+P1sWHVsECkAAAAMGCiIFBicGAhAiHypnUjdHNiMp
+        GxF9VjN1VDMODhYAEU4IFHwFDm4ODB8mIzUMBzwGCWJUiPJSkvw4beMiKntGL05DOEVLT4tHP18dF0Qh
+        IDlAQEceITcQEC8MBRYECB0HETgABy1EMB98YD8kHxcOCwkjGxMGBwllRiSbbkMrGxIAABkLDDcJDkEE
+        BR8MEzUFAikIEmw4b+k2XNNHQndKU5peYp9ncZ9SZK06a9wXHUkVEh4SEyAUHFAVKocAF3MCCiVmRx55
+        VjEXEQorHxVgSzJUNyRIMyQAAggzIxGrdkFiRzAAAA0cITwLChwBABkWFSANDCkAAD0fNJFZiOg7U79d
+        acg7ZeEaNsA2aL8BAiELCyESEysIDSUHGloZFCGFY0ZdQyYHBQY4KRmWiGeknYBROSaCWi17XDsKDRYL
+        BweHXi+db0EdFRAECyArKUUAAAYPDxYZER0FAjAiQLJOevRSYLgzQpskJ1sHDlkFCSECAQQZGycAAhJD
+        Lhmac0A1JxUEAgFIMBqlnICYh2lxVTOuonlgSTGNaDqSYjA1IRoAAAdmRCGuekdPQDMBBgskGxAiKFkD
+        F3gbGiwHATIZLJxSbs1eVWEEAA0NHmgIDjITFg4GCBFbQi6GXjMjGw8OBgJpUzV6aE13Y0xgQyCNgmWK
+        elxhRi9QMBp8TR2YcEVZQC0GCRQtHhKrdD97VzQOBwQVKWEqYuEEBBAMDCIJG4tZT3lyZ4IJCywAAAEC
+        CBYQExpuUjZxTSUHBQQqGg58YUajmn2JdlaDcVCekHRTPypTNx5LJhJQMx/R0aHEqnNeLgh5UjMyKB8M
+        CAaPYjWccEIrJiIIEDALDCoLDyIAAy9hUGuKjLsrNnoAABMkHxt2UzM5JxYLCQhVRjKLfmZ0YElaQylj
+        TzOlmoBUPSR6XTe/soZ4YjVLLRT//sGoil05HxNlNw6DVSpZQjEAAAVcQSS1fkRGKhMABSESFB8SETuG
+        eaNeZaUFIbA5MTVyUSUhFw8aFQ5TPSWgmYBmVD5qVT1wXD9rWT9VOiJ1Uy62n23Cr4Tw8dm4qoDJt4fg
+        1Jzaz6a8sZRyTC+eZCald0AgGBcjFwuseEGJY0EAAAoTFz2bjJhBOXAsK2uAYUYYFAofGRNnUjq4rZx/
+        bVGUh3Kvp5ZrWEFSNyA+FgC/rof+/NFwTCyrjGnm4M3XzZqhkGOBZTj///+YfGJ9RAuqbB5oQCJHNywN
+        CgyBWSyZbEQVESNJOVVUaLx3STdnRS4wIxxfQiRdSDJnTTSEdVqVjHRfSjZmQCGMbUjQx5jg1qbZ1a/W
+        0ruCZlKIYUD9/efg16ja07O7pnFxSR1zUzWPeWKDaEdbOCBMMB8QDQuUaT2welVOVZ5ghPZLTHt0RyaL
+        XzRUQCtTOiRRMSBROiRZQiplNhmHYjT//+agimOrnXXs47Z6VTHZ0amqkmXy68GhgU7PvZiAWyuNckuy
+        oHv8/OLg1rVTNRxGKxZ/Wy6cay9yUFJUdd9nYYVgdclhe8d2VkeibTeCYTlNOSZjQihlPyVkPSGTcD6t
+        l2hGHAfRypT68Lm8oWnGrXTYy6DOwJh7Sxp+TBCSdFWvlnLezrW1nXaEa0dqTSineDq4kHNTR1w1N2lo
+        ZIw3NlJPUoZqgtZOZqZoUk6lbzq8i0dzWTlDKRpsSSl3UixeNRCZbz2ceE3Bom3/8LPUsXdZKABvRh2j
+        g1awlW3Gr4n37t/GrpGUeleTd0rMmlqfiJNHWbhDS4ZaWHZkWm8ZGSgDFY9ANmZyYW1oea5UW4x+Wk/P
+        mE+uiUxoTjNeMBTu1KjGuouNdFpwRy1kORqJXS+FXy6umG7SxJ/w8NrHrn+PaUVvTCXCm1PWpFtyZIM9
+        VMBbVYRyYnFURV5FQWBeVFVVS2x9ZmtwSU8uOqZgjv9Wa7ZmTlvAiE7To0qBYDCffWLgyJf74paZbzRi
+        PiJ5VCW6oXnl3r7x7NzKr4d/UiiOcDToxHS+mnk7LEI1Ll5raLJzd9ZALmuFaFGvmoBodK++k1f42adI
+        ctMbSs0oTelTXrF4fbFMZMaDe6TftnGrhDl2RR6zdirjqUm5k12yoHnXxqD79/G0k2iGXzLOsWXjvW91
+        W1E3K1RqV1VUO0FwbMObtf82KYlFOFKMgo9tX3RwVGNpXKhCa95+g5tlU3s9MVlmTnuDjupUhv9VWbfM
+        nmDfvmGbhVaWZjapczrz48Hbuo98SxWjhkbs1XK5pYBXO1c4HS1/YkyWbkh3WFFZRYBRQ5pSYrkvWNYn
+        N6RaQ0VeQFBSZctdZb9jQTqLZUORdHRocqt4drCEb4poZZ5RRI+LbGLauWXEsWqYeU6YZzqTZzPFs2Hf
+        zneDYEw7IDc8JzJFNUQ4LFKEYWHkt4dtV2BGOERXXp1YdelRad5iT0toSUdQTplaU5N1VlppX5NyhNhy
+        idxeapgvEhNWS2Z2dqpfU4J6XlPBqGPj0H++rWXp2HXPtHBqSkZSMkdNOFRrVGilk5J3cJpYX7mihoWA
+        XkGHb1mJZFJ3U1x6bp5sUUJYPTdkREJqQD5mbqN0r/94db1mT10AABIdDww+OnNkif+Wm8SAbmVsVVCi
+        f1PEsXOwjl94WlFEND9mU1uGld3O2P7RxMHPy8+NfY9wUUFLIwqtm5S5sKh2TjB9VktdRj9cPShsSil0
+        SzduX3dtfblzYXxgRjdgUDysjlypjGhrXpNnWY9xWFuGa2F8VEJzQTBkRUE3LzcNBiNJN0CnlqWjl7OR
+        eouTdmime0ClgVF9XT9+WD6HY0WFXzq3jGVdQjdkPydhOyZgOiN3SiuJX0qNeGh6amejhGLFq36QdlRK
+        LzY/K147KlVnS1F4Zntvc7E+OlsnHTZBMU4TDzpILzJ/WlFWRU1+Wju4hFCVa0huTzltSiVpPSdfPThp
+        TDpOLhtPKRRdNRtlPihbNSt4VUaQZ0q7lG+aeVyFXkFeNiF/bnHG3/mniXhZMy10cJ6An/BGQWN4W1Dy
+        3qJ/cXYnHUBoWVFMQkYiFSZHMitWNSRULhhoX3FkdbtFKTFAHQxpUD5UMh9dOSdwSzR6WUmBYEx4TDGE
+        VTCyhlaidlGMZESmjHLv3bLMo3eAYFqVhYOTd2aZel65nXPXwo26on5/a19vW1iKbWBzXFMrJTJhSz+E
+        cXuAnOFkZ4lXNCVkRTQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+</value>
+  </data>
+</root>

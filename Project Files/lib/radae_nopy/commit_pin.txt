@@ -1,0 +1,52 @@
+upstream:    https://github.com/peterbmarks/radae_nopy
+branch:      main
+commit_sha:  4da110afd6de3bb2de8800d67c6d82a292a42e77
+commit_date: 2026-04-30T09:53:27+10:00
+commit_msg:  Merge pull request #12 from drowe67/fix-rx-buf-off-by-one
+license:     BSD 2-Clause (see LICENSE)
+notes:       Pure C implementation of RADE V1 with all Python code removed.
+             Used by FreeDV-GUI v2.3.0 via cmake/BuildRADE.cmake (GIT_TAG main).
+             Vendored at the specific SHA above to keep Thetis builds reproducible.
+             This is the SAME modem version (RADEV1) that FreeDV-GUI ships today.
+
+             Vendor refresh history:
+               2026-04-19  9f0e2c12  initial vendor (Merge PR #10 ms-arm-crosscompile)
+               2026-04-30  4da110af  refresh -- pulls rade_rx.c off-by-one fix,
+                                     rade_ofdm.c SNR-estimator calibration update,
+                                     rade_bpf.c per-sample-cexp -> incremental phase
+                                     perf optimisation.
+
+local_modifications:
+  src/rade_api.h  -- added "#if defined(RADE_STATIC) || defined(_MSC_VER)" guard
+                     so RADE_EXPORT expands to nothing on MSVC.  Required for the
+                     static-link build into ChannelMaster.dll (avoids __stdcall +
+                     dllimport decoration that the upstream cmake/dll path uses).
+                     Re-apply after every vendor refresh.
+
+vendored_files (library only - tests/standalone-executables excluded):
+  src/rade_api_nopy.c          src/rade_api.h
+  src/rade_enc.c               src/rade_enc.h        src/rade_enc_data.c   src/rade_enc_data.h
+  src/rade_dec.c               src/rade_dec.h        src/rade_dec_data.c   src/rade_dec_data.h
+  src/rade_dsp.c               src/rade_dsp.h
+  src/rade_ofdm.c              src/rade_ofdm.h
+  src/rade_bpf.c               src/rade_bpf.h
+  src/rade_acq.c               src/rade_acq.h
+  src/rade_tx.c                src/rade_tx.h
+  src/rade_rx.c                src/rade_rx.h
+  src/rade_constants.h         src/rade_core.h
+
+excluded:
+  src/radae_tx_nopy.c          standalone Linux executables
+  src/radae_rx_nopy.c
+  src/lpcnet_demo.c
+  src/rade_demod_wav.c         test/utility programs
+  src/rade_modulate_wav.c
+  src/rade_bpf_test.c          src/rade_ber_test.c          src/rade_callsign_test.c
+  src/real2iq.c
+  src/kiss_fft*.c              FFT helpers used only by tests
+  src/_kiss_fft_guts.h
+  src/CMakeLists.txt           replaced by build/radae_nopy.vcxproj for MSVC v145
+  cmake/BuildOpus.cmake        replaced by Project Files/lib/opus_dnn/build/opus_dnn.vcxproj
+  src/opus-nnet.h.diff         applied to vendored Opus tree at vendor time
+  radae/                       Python reference implementation (not used)
+  FDV_offair.wav               31 MB test recording (not needed at runtime)
