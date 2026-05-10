@@ -199,6 +199,8 @@ namespace Thetis
         public static extern void SetRadaeMicScale(double scale);
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeRxScale", CallingConvention = CallingConvention.Cdecl)]
         public static extern void SetRadaeRxScale(double scale);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeRxDialScale", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeRxDialScale(double scale);
         // end radae
 
         // router

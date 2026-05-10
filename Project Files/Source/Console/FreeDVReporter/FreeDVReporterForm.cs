@@ -80,7 +80,7 @@ namespace Thetis.FreeDVReporter
         private const int COL_KM   = 2;
         private const int COL_HDG  = 3;
         private const int COL_VER  = 4;
-        private const int COL_KHZ  = 5;
+        private const int COL_MHZ  = 5;
         private const int COL_MODE = 6;
         private const int COL_STAT = 7;
         private const int COL_MSG  = 8;
@@ -93,7 +93,7 @@ namespace Thetis.FreeDVReporter
         private static readonly string[] COL_HEADERS =
         {
             "Callsign", "Locator", "km", "Hdg", "Version",
-            "kHz", "Mode", "Status", "Msg", "Last TX",
+            "MHz", "Mode", "Status", "Msg", "Last TX",
             "RX Call", "RX Mode", "SNR", "Updated"
         };
 
@@ -346,6 +346,40 @@ namespace Thetis.FreeDVReporter
                 if (st.FrequencyHz == 0) return;
                 FreeDVReporterManager.TuneToFrequency(st.FrequencyHz);
             };
+
+            /* Right-click on the Msg cell -> "Copy Message" context menu.
+             * Reads the full Message string from StationInfo (not the
+             * truncated cell text) and pushes it to the clipboard.  The
+             * Copy item is disabled when the message is empty so the
+             * menu still surfaces the affordance but doesn't no-op. */
+            grid.CellMouseDown += (s, e) =>
+            {
+                if (e.Button != MouseButtons.Right) return;
+                if (e.RowIndex < 0 || e.RowIndex >= grid.Rows.Count) return;
+                if (e.ColumnIndex != COL_MSG) return;
+
+                string sid = grid.Rows[e.RowIndex].Tag as string;
+                StationInfo st = null;
+                if (!string.IsNullOrEmpty(sid))
+                    _client.Stations.TryGetValue(sid, out st);
+                string msg = st?.Message ?? "";
+
+                var menu = new ContextMenuStrip();
+                var item = new ToolStripMenuItem("Copy Message")
+                {
+                    Enabled = !string.IsNullOrEmpty(msg),
+                };
+                item.Click += (ms, me) =>
+                {
+                    try { Clipboard.SetText(msg); } catch { }
+                };
+                menu.Items.Add(item);
+
+                /* Show at the cursor.  Cell rectangle would also work
+                 * but cursor placement matches WinForms convention and
+                 * what users expect from a right-click. */
+                menu.Show(Cursor.Position);
+            };
         }
 
         private void BuildColumns()
@@ -353,18 +387,25 @@ namespace Thetis.FreeDVReporter
             int[] widths = { 90, 70, 60, 50, 90, 90, 60, 70, 220, 80, 80, 70, 50, 80 };
             for (int i = 0; i < COL_HEADERS.Length; i++)
             {
-                bool numeric = (i == COL_KM || i == COL_HDG || i == COL_KHZ || i == COL_SNR);
+                bool numeric = (i == COL_KM || i == COL_HDG || i == COL_MHZ || i == COL_SNR);
+                var style = new DataGridViewCellStyle
+                {
+                    Alignment = numeric ? DataGridViewContentAlignment.MiddleRight
+                                        : DataGridViewContentAlignment.MiddleLeft,
+                };
+                /* MHz: render with 4 fixed decimals (pad with trailing
+                 * zeros, e.g. 7.177 -> "7.1770", 14.236 -> "14.2360").
+                 * Format runs only when CellFormatting hasn't already
+                 * substituted the UNKNOWN_NUMBER sentinel with "", so
+                 * blank cells stay blank and sorting remains numeric. */
+                if (i == COL_MHZ) style.Format = "F4";
                 var col = new DataGridViewTextBoxColumn
                 {
                     HeaderText = COL_HEADERS[i],
                     Name = "col" + i,
                     Width = widths[i],
                     SortMode = DataGridViewColumnSortMode.Automatic,
-                    DefaultCellStyle = new DataGridViewCellStyle
-                    {
-                        Alignment = numeric ? DataGridViewContentAlignment.MiddleRight
-                                            : DataGridViewContentAlignment.MiddleLeft,
-                    },
+                    DefaultCellStyle = style,
                 };
                 /* Use Numeric value type for the columns we want to sort numerically. */
                 if (numeric) col.ValueType = typeof(double);
@@ -518,7 +559,10 @@ namespace Thetis.FreeDVReporter
                     SetCell(row, COL_KM,  km.HasValue  ? Math.Round(km.Value)  : UNKNOWN_NUMBER);
                     SetCell(row, COL_HDG, hdg.HasValue ? Math.Round(hdg.Value) : UNKNOWN_NUMBER);
                     SetCell(row, COL_VER, st.Version);
-                    SetCell(row, COL_KHZ, st.FrequencyHz > 0 ? (st.FrequencyHz / 1000.0) : UNKNOWN_NUMBER);
+                    /* MHz with up to 4 decimals: kHz/1000 then round.
+                     * Sorting stays numeric because the cell holds the
+                     * rounded double, not a pre-formatted string. */
+                    SetCell(row, COL_MHZ, st.FrequencyHz > 0 ? Math.Round(st.FrequencyHz / 1.0e6, 4) : UNKNOWN_NUMBER);
                     SetCell(row, COL_MODE, st.Mode);
                     SetCell(row, COL_STAT, st.RxOnly ? "RX Only" : (st.Transmitting ? "TX" : ""));
                     SetCell(row, COL_MSG,  st.Message);

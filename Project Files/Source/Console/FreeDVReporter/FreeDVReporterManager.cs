@@ -41,20 +41,50 @@ namespace Thetis.FreeDVReporter
          * MOX && !TUN && !TwoTone whenever any of those flips. */
         private static bool _lastReportedTransmitting;
 
-        /* RADAE rx-poll: fires every tick (1 Hz) while sync==1.  Polled
-         * from a Timer so we don't add another hot subscription to the
-         * audio thread.  The decoded RX callsign is now reliable
-         * (FreeDV-GUI rade_text codec, LDPC + CRC-validated), so we
-         * surface it both on the wire (rx_report.callsign) and in the
-         * self-row mirror.  Cleared on sync 1->0 so a stale callsign
-         * from a previous over isn't broadcast at the start of a new
-         * sync session. */
+        /* RADAE rx-poll: fires every tick (1 Hz).  Polled from a Timer
+         * so we don't add another hot subscription to the audio thread.
+         * The decoded RX callsign is reliable (FreeDV-GUI rade_text
+         * codec, LDPC + CRC-validated), so we surface it both on the
+         * wire (rx_report.callsign) and in the self-row mirror.
+         * Two emit triggers:
+         *   - sync==1 ticks  -> periodic refresh while receiving;
+         *   - seq counter rising edge -> one shot per validated EOO
+         *     decode regardless of sync (the EOO frame arrives just
+         *     before sync drops to 0 at end-of-over, so the periodic
+         *     emit alone misses it).
+         * Cached callsign is cleared at the START of a new sync
+         * session (sync 0->1 edge) rather than at the end of the
+         * previous one, so the just-decoded call survives across the
+         * 1 Hz poll cadence and the reporter form's RX Call column
+         * keeps showing the last call between overs. */
         private static System.Windows.Forms.Timer _radaePollTimer;
         private static int    _lastSync          = 0;
         private static int    _lastCallsignSeq   = 0;
         private static string _lastDecodedCall   = "";
 
         private const string MODE_TAG = "RADEV1";
+
+        /* Reported "version" / client-name string, e.g. "Thetis-RADE
+         * 2.10.3.16".  Pulled once from the entry assembly so an
+         * AssemblyVersion bump is automatically reflected without a
+         * manual edit here.  Falls back to the executing assembly and
+         * finally a literal "Thetis-RADE" if both are unavailable
+         * (shouldn't happen in a normal launch). */
+        private static readonly string CLIENT_NAME = BuildClientName();
+
+        private static string BuildClientName()
+        {
+            try
+            {
+                var asm = System.Reflection.Assembly.GetEntryAssembly()
+                          ?? System.Reflection.Assembly.GetExecutingAssembly();
+                var v = asm?.GetName().Version;
+                if (v != null)
+                    return "Thetis-RADE " + v.Major + "." + v.Minor + "." + v.Build + "." + v.Revision;
+            }
+            catch { }
+            return "Thetis-RADE";
+        }
 
         /* When true, Thetis publishes its own data (callsign, freq, TX,
          * RX SNR) to qso.freedv.org as a "report" client.  When false,
@@ -93,7 +123,7 @@ namespace Thetis.FreeDVReporter
             {
                 Callsign   = (callsign ?? "").Trim().ToUpperInvariant(),
                 GridSquare = (grid     ?? "").Trim().ToUpperInvariant(),
-                ClientName = "Thetis-rade 2.10.3.16",
+                ClientName = CLIENT_NAME,
                 RxOnly     = false,
                 Role       = _reportingEnabled ? "report" : "view",
             };
@@ -192,8 +222,12 @@ namespace Thetis.FreeDVReporter
         }
 
         /* Double-click a station row in the reporter dialog -> tune
-         * VFOA there and snap the operating mode to DIGL (<12 MHz) or
-         * DIGU (>=12 MHz), matching the chkRADAE-enable mode rule. */
+         * VFOA there and snap the operating mode, matching the
+         * chkRADAE-enable rule:
+         *   5.0 - 5.5 MHz (60 m) -> DIGU (regulatory USB convention)
+         *   <12 MHz              -> DIGL
+         *   >=12 MHz             -> DIGU
+         */
         public static void TuneToFrequency(ulong hz)
         {
             if (_console == null || hz == 0) return;
@@ -201,7 +235,10 @@ namespace Thetis.FreeDVReporter
             {
                 double mhz = hz / 1e6;
                 _console.VFOAFreq = mhz;
-                DSPMode want = mhz < 12.0 ? DSPMode.DIGL : DSPMode.DIGU;
+                DSPMode want;
+                if (mhz >= 5.0 && mhz < 5.5)   want = DSPMode.DIGU;
+                else if (mhz < 12.0)           want = DSPMode.DIGL;
+                else                           want = DSPMode.DIGU;
                 if (_console.RX1DSPMode != want) _console.RX1DSPMode = want;
                 Log("TuneToFrequency " + mhz.ToString("0.000000") + " MHz mode=" + want);
             }
@@ -303,10 +340,13 @@ namespace Thetis.FreeDVReporter
                 /* Track the decoded callsign across the sync session.
                  * The rade_text codec only fires on validated decodes
                  * (LDPC parity + CRC8), so the seq counter ticks once
-                 * per successful EOO frame.  Refresh our cache on each
-                 * tick so future periodic emits carry the latest call. */
+                 * per successful EOO frame.  A change between polls
+                 * means a fresh EOO has just been decoded -- we use
+                 * that edge below to drive the canonical "I received
+                 * <callsign>" rx_report independent of the sync gate. */
                 int seq = cmaster.GetRadaeRemoteCallsignSeq();
-                if (seq != _lastCallsignSeq)
+                bool freshDecode = seq != _lastCallsignSeq;
+                if (freshDecode)
                 {
                     var sb = new System.Text.StringBuilder(16);
                     cmaster.GetRadaeRemoteCallsign(sb, sb.Capacity);
@@ -314,28 +354,42 @@ namespace Thetis.FreeDVReporter
                     _lastCallsignSeq = seq;
                 }
 
-                /* On sync 1->0 transition, drop the cached call so a
-                 * stale value from a previous over does not leak into
-                 * the next sync session's pre-EOO rx_reports. */
-                if (sync == 0 && _lastSync != 0)
+                /* Clear the cached callsign at the START of a new sync
+                 * session (0->1 edge), not at the end of the previous
+                 * one (1->0).  Two reasons:
+                 *  - the EOO frame arrives just before sync drops to
+                 *    0, so a 1->0 clear would erase the decoded call
+                 *    before the next 1 Hz poll can ship it on the
+                 *    wire / mirror it into the self-row;
+                 *  - keeps the reporter form's RX Call column
+                 *    populated with the last decoded call between
+                 *    overs, which is the user-visible behaviour we
+                 *    want.  A new session overwrites it as soon as
+                 *    that session's first EOO decodes. */
+                if (sync != 0 && _lastSync == 0)
                     _lastDecodedCall = "";
                 _lastSync = sync;
 
-                /* Periodic rx_report while in sync.  Fires every poll
-                 * tick (1 Hz) so qso.freedv.org sees us as actively
-                 * receiving, and so the local mirror's LastRxUtc keeps
-                 * refreshing -- self-row stays continuously green
-                 * rather than only flashing on each EOO frame.
+                /* Emit rx_report whenever either:
+                 *   - we are currently in sync (periodic refresh so
+                 *     qso.freedv.org sees us actively receiving and
+                 *     the self-row LimeGreen tail keeps re-arming), or
+                 *   - we just decoded a fresh EOO callsign (the
+                 *     canonical "I received <call>" event -- must
+                 *     reach the server even when sync has already
+                 *     dropped at the EOO boundary, which is the
+                 *     normal case at end-of-over).
                  *
                  * Callsign field is the most-recent EOO-decoded value
                  * (or empty before the first EOO of the current sync
-                 * session).  Now reliable -- backed by the FreeDV-GUI
-                 * rade_text LDPC + CRC8 codec, so we report it both on
-                 * the wire and in the self-row mirror.
+                 * session).  Backed by the FreeDV-GUI rade_text LDPC
+                 * + CRC8 codec, so we report it both on the wire and
+                 * in the self-row mirror.
                  *
                  * Client.FireAndForget suppresses the wire send when
-                 * role=="view", so we can call unconditionally. */
-                if (sync != 0)
+                 * role=="view"; we still locally mirror only when
+                 * reporting is enabled. */
+                if (sync != 0 || freshDecode)
                 {
                     _client.EmitRxReport(_lastDecodedCall, MODE_TAG, snr);
                     if (_reportingEnabled)

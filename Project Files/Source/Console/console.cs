@@ -1254,6 +1254,12 @@ namespace Thetis
         public System.Windows.Forms.CheckBoxTS chkRADEMirror { get { return chkRADE; } }
         public System.Windows.Forms.CheckBoxTS chkREPRMirror { get { return chkREPR; } }
         public System.Windows.Forms.CheckBoxTS chkVISMirror  { get { return chkVIS;  } }
+        // Console-face VAC1 TX/RX Gain trackbar mirrors.  Enabled
+        // state is independent from the Setup-side spinners (the
+        // value-mirror only flows through the VAC*Gain property
+        // setters); chkRADAE_CheckedChanged greys these directly.
+        public PrettyTrackBar ptbVACRXGainMirror { get { return ptbVACRXGain; } }
+        public PrettyTrackBar ptbVACTXGainMirror { get { return ptbVACTXGain; } }
         private void chkRADE_CheckedChanged(object sender, EventArgs e)
         {
             try
@@ -2844,6 +2850,15 @@ namespace Thetis
             always_save.Add(chkVFOLock.Name);
             always_save.Add(chkVFOBLock.Name);
             always_save.Add(chkVFOSync.Name);
+            // chkVIS is greyed out whenever chkREPR is unchecked.  Without
+            // this addition, addControlState skips it when disabled and the
+            // value never makes it to the DB, so on next launch the
+            // Setup-side mirror (chkRADAEReporting -> chkVIS) sets it to
+            // whatever chkRADAEReporting last persisted -- typically true
+            // -- regardless of what the user actually wanted.  Forcing
+            // save here lets GetState restore the user's chosen value even
+            // when REPR is off across restarts.
+            always_save.Add(chkVIS.Name);
 
             List<string> a = new List<string>();
 

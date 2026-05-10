@@ -75,12 +75,37 @@ static volatile long g_radae_sync             = 0;
 static volatile long g_radae_snr_db           = 0;
 static          float g_radae_freq_off   = 0.0f;
 
-/* Linear gain factors driven by VAC1 TXGain / RXGain spinners.
+/* Linear gain factors at the RADE encoder input / decoder input.
+ *   g_radae_rx_scale       -- driven by VAC1 RXGain spinner; existing
+ *                             original wiring.  Forced to 1.0 (0 dB)
+ *                             while chkRADAE is checked because the
+ *                             VAC1 RXGain spinner is greyed and zeroed
+ *                             on RADE enable, so this path is neutral
+ *                             whenever the new dial is in use.
+ *   g_radae_mic_scale      -- driven by the dedicated "RADE Mic level"
+ *                             spinner in Setup -> Audio -> Options
+ *                             (FreeDV-GUI's "Mic level" equivalent).
+ *                             Applied at the encoder INPUT.
+ *   g_radae_rx_dial_scale  -- driven by the dedicated "RADE Rx level"
+ *                             spinner in Setup -> Audio -> Options.
+ *                             Applied at the decoder INPUT, in series
+ *                             with g_radae_rx_scale (deliberately
+ *                             separate code -- the two multiplications
+ *                             collapse to a single combined multiply
+ *                             pre-loop for cache friendliness).
+ *
+ * Independent of VAC1 TXGain, which scales the modem audio at the
+ * encoder OUTPUT via WDSP xpanel.  The RADE-specific dials and the
+ * VAC1 spinners are now mutually exclusive at the UI level: enabling
+ * RADE greys VAC1 TX/RX gains and zeroes them, so the dials are the
+ * only knobs in play during RADE operation.
+ *
  * Aligned 32-bit float reads/writes compile to a single MOV on x86 and
  * are torn-free at the hardware level for UI-rate updates -- a plain
- * volatile is sufficient for this knob. */
+ * volatile is sufficient. */
 static volatile float g_radae_mic_scale      = 1.0f;
 static volatile float g_radae_rx_scale       = 1.0f;
+static volatile float g_radae_rx_dial_scale  = 1.0f;
 
 /* Per-second peak |sample| of the radae decoder input (post-rx scale).
  * Reset after each rx_diag print so the line shows the last second's
@@ -680,6 +705,18 @@ PORT void SetRadaeRxScale(double scale)
     g_radae_rx_scale = (float)scale;
 }
 
+/* Dedicated "RADE Rx level" dial (separate from VAC1 RXGain).
+ * Applied as a second linear multiplier in xradae_rx step 1, in
+ * series with g_radae_rx_scale.  Both writes are torn-free on x86,
+ * the audio thread takes a snapshot of each volatile once per block
+ * and combines them before the per-sample loop. */
+PORT void SetRadaeRxDialScale(double scale)
+{
+    if (!(scale > 0.0))      scale = 1.0;
+    if (scale > 100.0)       scale = 100.0;
+    g_radae_rx_dial_scale = (float)scale;
+}
+
 /* Cache the user's callsign for EOO transmission.  The actual encode
  * (rade_text_generate_tx_string + rade_tx_set_eoo_bits) happens just
  * before each rade_tx_eoo() in xradae_tx so the callsign always
@@ -730,12 +767,20 @@ void xradae_rx(int rx, double* rbuff_io)
      *    so the decoder sees the same modem audio the encoder produced.
      *    Pad short reads with zeros (decoder treats as "no signal" until
      *    the bridge fills, then re-syncs).
-     *    After deswizzle, multiply by g_radae_rx_scale (VAC1 RXGain) and
-     *    track per-second peak |sample| for the rx_diag print. */
+     *    After deswizzle, multiply by g_radae_rx_scale (VAC1 RXGain) AND
+     *    g_radae_rx_dial_scale (the dedicated "RADE Rx level" spinner)
+     *    and track per-second peak |sample| for the rx_diag print.
+     *    Two volatile snapshots, combined into one multiplier so the
+     *    per-sample loop is the same MUL count as before.  When chkRADAE
+     *    is on, the UI greys the VAC1 RXGain spinner and forces it to
+     *    0 dB so g_radae_rx_scale = 1.0; the dial then carries the
+     *    full effective gain.  When chkRADAE is off, both volatiles
+     *    are still read but the surrounding xradae_rx return-early
+     *    on !g_radae_rx_enabled means this code does not execute. */
     {
         int i;
         const int loopback_on = (int)_InterlockedAnd(&g_radae_loopback_enabled, 0xffffffff);
-        const float rx_scale  = g_radae_rx_scale;
+        const float rx_scale  = g_radae_rx_scale * g_radae_rx_dial_scale;
         float blk_peak = 0.0f;
         if (loopback_on)
         {
@@ -961,11 +1006,12 @@ void xradae_tx(double* mic_io)
         rebuild_tx_resamplers(outrate, outsize);
     }
 
-    /* 1) deswizzle L into mono float, apply VAC1 TXGain (g_radae_mic_scale)
-     *    so the user can drive the encoder mic input level the same way
-     *    FreeDV-GUI's Mic level slider drives its mic stream.  Also
-     *    publish per-block peak as dBFS + clip flag for the TX mic
-     *    meters -- this is the natural "Frm Mic" scope tap. */
+    /* 1) deswizzle L into mono float, apply g_radae_mic_scale (driven
+     *    by the "RADE Mic level" spinner in Setup -> Audio -> Options;
+     *    independent of VAC1 TXGain which scales the encoder OUTPUT
+     *    via xpanel).  Also publish per-block peak as dBFS + clip flag
+     *    for the TX mic meters -- this is the natural "Frm Mic" scope
+     *    tap. */
     {
         const float mic_scale = g_radae_mic_scale;
         float blk_peak = 0.0f;

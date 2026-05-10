@@ -2288,6 +2288,8 @@ namespace Thetis
             chkVAC2WillMute_CheckedChanged(this, e);
             chkRADAE_CheckedChanged(this, e);
             chkRADAELoopback_CheckedChanged(this, e);
+            udRadaeMicLevel_ValueChanged(this, e);
+            udRadaeRxLevel_ValueChanged(this, e);
             chkRADAEReporter_CheckedChanged(this, e);
             chkRADAEReporting_CheckedChanged(this, e);
 
@@ -7569,7 +7571,16 @@ namespace Thetis
             console.VACTXGain = (int)udAudioVACGainTX.Value;
             if (console.sliderForm != null)
                 console.sliderForm.RX1VACTX = (int)udAudioVACGainTX.Value;
-            cmaster.SetRadaeMicScale(Audio.VACPreamp);
+            // VAC1 TXGain is intentionally NOT pushed into the RADE
+            // encoder's pre-encoder mic scale.  In DIGL/DIGU with
+            // VAC1 disabled, CMSetTXAPanelGain1 already routes the
+            // same VACPreamp to the WDSP xpanel multiplier, which
+            // operates on the modem audio at the encoder OUTPUT --
+            // so wiring it to the encoder INPUT as well would apply
+            // the gain twice.  The C-side g_radae_mic_scale stays at
+            // its 1.0 default; SetRadaeMicScale remains exported so
+            // a future dedicated RADE mic level control can drive
+            // it without colliding with VAC1 TXGain.
         }
 
         private void udVAC2GainTX_ValueChanged(object sender, System.EventArgs e)
@@ -21971,18 +21982,59 @@ namespace Thetis
             cmaster.SetRadaeTxEnabled(active);
 
             // [v2.10.3.16] When RADE is being enabled, force-disable VAC1
-            // and snap the operating mode to DIGL (VFOA<12 MHz) or DIGU
-            // (>=12 MHz).  Done after the RX/TX flags so the mode change
-            // does not race the audio thread's RADAE state read.
+            // and snap the operating mode by frequency:
+            //   5.0 - 5.5 MHz (60 m) -> DIGU  (regulatory upper-sideband
+            //                                   convention on 60 m even
+            //                                   though it sits below the
+            //                                   normal 10 MHz LSB/USB
+            //                                   crossover)
+            //   <12 MHz                -> DIGL
+            //   >=12 MHz               -> DIGU
+            // Done after the RX/TX flags so the mode change does not
+            // race the audio thread's RADAE state read.
+            //
+            // Also zero + grey the VAC1 TX/RX gain spinners while RADE
+            // is on, so the dedicated "RADE Mic level" / "RADE Rx
+            // level" dials are the only level controls in play.  Their
+            // ValueChanged handlers run as a side effect of setting
+            // .Value = 0 and push 0 dB (= linear 1.0) into the
+            // corresponding C-side scales -- making the VAC1 path
+            // effectively a unity pass-through.  On RADE disable the
+            // spinners are re-enabled (values left as last set; user
+            // can adjust manually).
             if (chkRADAE.Checked)
             {
                 if (chkAudioEnableVAC.Checked) chkAudioEnableVAC.Checked = false;
+                try { if (udAudioVACGainTX.Value != 0) udAudioVACGainTX.Value = 0; } catch { }
+                try { if (udAudioVACGainRX.Value != 0) udAudioVACGainRX.Value = 0; } catch { }
+                // Setup-side spinners (Setup -> VAC tab).
+                udAudioVACGainTX.Enabled = false;
+                udAudioVACGainRX.Enabled = false;
+                // Console-face PrettyTrackBar mirrors -- Enabled is
+                // independent from the Setup spinners; grey them so
+                // the user can't drag them while RADE is the active
+                // path.  Values track via the VAC*Gain property
+                // setters (already triggered by setting Value=0
+                // above), so no separate Value reset is needed here.
+                try { if (console.ptbVACTXGainMirror != null) console.ptbVACTXGainMirror.Enabled = false; } catch { }
+                try { if (console.ptbVACRXGainMirror != null) console.ptbVACRXGainMirror.Enabled = false; } catch { }
                 try
                 {
-                    DSPMode want = console.VFOAFreq < 12.0 ? DSPMode.DIGL : DSPMode.DIGU;
+                    double f = console.VFOAFreq;
+                    DSPMode want;
+                    if (f >= 5.0 && f < 5.5)   want = DSPMode.DIGU;
+                    else if (f < 12.0)         want = DSPMode.DIGL;
+                    else                       want = DSPMode.DIGU;
                     if (console.RX1DSPMode != want) console.RX1DSPMode = want;
                 }
                 catch { }
+            }
+            else
+            {
+                udAudioVACGainTX.Enabled = true;
+                udAudioVACGainRX.Enabled = true;
+                try { if (console.ptbVACTXGainMirror != null) console.ptbVACTXGainMirror.Enabled = true; } catch { }
+                try { if (console.ptbVACRXGainMirror != null) console.ptbVACRXGainMirror.Enabled = true; } catch { }
             }
 
             // [v2.10.3.16] Mirror to the console-side chkRADE so both
@@ -22029,6 +22081,36 @@ namespace Thetis
             int active = chkRADAELoopback.Checked ? 1 : 0;
             if (initializing) return;
             cmaster.SetRadaeLoopbackEnabled(active);
+        }
+
+        // RADE Mic level (dB) -> g_radae_mic_scale.  Dedicated mic-input
+        // gain at the RADE encoder.  Range -40..+40 dB, 1 dB step,
+        // default 0 dB (unity).  Has effect only while RADE is enabled
+        // (the multiply lives inside xradae_tx, which return-earlies
+        // when chkRADAE is off).  While RADE is enabled, VAC1 TXGain
+        // is greyed and forced to 0 dB so xpanel is unity and this
+        // dial is the only TX-side gain in play.
+        private void udRadaeMicLevel_ValueChanged(object sender, EventArgs e)
+        {
+            double db = (double)udRadaeMicLevel.Value;
+            double scale = Math.Pow(10.0, db / 20.0);
+            cmaster.SetRadaeMicScale(scale);
+        }
+
+        // RADE Rx level (dB) -> g_radae_rx_dial_scale.  Dedicated
+        // RX-input gain at the RADE decoder.  Functionally equivalent
+        // to VAC1 RXGain but on a separate code path (a second linear
+        // multiplier in xradae_rx step 1, in series with
+        // g_radae_rx_scale).  Range -40..+40 dB, 1 dB step, default 0
+        // dB (unity).  Has effect only while RADE is enabled.  While
+        // RADE is enabled, VAC1 RXGain is greyed and forced to 0 dB
+        // so g_radae_rx_scale = 1.0 and this dial carries the full
+        // RX-side gain.
+        private void udRadaeRxLevel_ValueChanged(object sender, EventArgs e)
+        {
+            double db = (double)udRadaeRxLevel.Value;
+            double scale = Math.Pow(10.0, db / 20.0);
+            cmaster.SetRadaeRxDialScale(scale);
         }
 
         // [v2.10.3.16] RADE Reporter (qso.freedv.org).  Connects to the

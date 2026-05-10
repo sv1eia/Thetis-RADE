@@ -80,9 +80,11 @@ PORT int   GetRadaeRemoteCallsignSeq(void);
  * Polled by the RADE EOO Decodes pulse meter. */
 PORT int   GetRadaeEooDecodePulse(void);
 
-/* TX-side mic level after VAC1 TXGain (g_radae_mic_scale).  Tap is at
- * the encoder input -- equivalent to FreeDV-GUI's "Frm Mic" scope tap.
- * Published per audio block during MOX; -120 dBFS = silent. */
+/* TX-side mic level after the g_radae_mic_scale multiplier (driven
+ * by the "RADE Mic level" spinner in Setup -> Audio -> Options).
+ * Tap is at the encoder input -- equivalent to FreeDV-GUI's "Frm Mic"
+ * scope tap.  Published per audio block during MOX;
+ * -120 dBFS = silent. */
 PORT int   GetRadaeTxMicLevelDb(void);
 
 /* 1 for ~500 ms after the TX mic peak crossed 0.8 of fullscale (the
@@ -128,6 +130,7 @@ PORT int   GetRadaeLoopbackEnabled(void);
  * mic stream.  Default 1.0 (0 dB) -- no change. */
 PORT void  SetRadaeMicScale(double scale);
 PORT void  SetRadaeRxScale(double scale);
+PORT void  SetRadaeRxDialScale(double scale);
 
 /* ============================================================
  * Hot-path entry points called from xpipe() in pipe.c.

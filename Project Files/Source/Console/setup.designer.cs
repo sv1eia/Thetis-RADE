@@ -1829,6 +1829,10 @@ namespace Thetis
             this.chkRADAELoopback = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReporter = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReporting = new System.Windows.Forms.CheckBoxTS();
+            this.lblRadaeMicLevel = new System.Windows.Forms.LabelTS();
+            this.udRadaeMicLevel = new System.Windows.Forms.NumericUpDownTS();
+            this.lblRadaeRxLevel = new System.Windows.Forms.LabelTS();
+            this.udRadaeRxLevel = new System.Windows.Forms.NumericUpDownTS();
             this.lblRadaeReporterCallsign = new System.Windows.Forms.LabelTS();
             this.lblRadaeReporterGrid = new System.Windows.Forms.LabelTS();
             this.lblRadaeReporterMsg = new System.Windows.Forms.LabelTS();
@@ -30043,6 +30047,10 @@ namespace Thetis
             this.tpAudioOptions.Controls.Add(this.chkAFSlidersMute);
             this.tpAudioOptions.Controls.Add(this.chkRADAE);
             this.tpAudioOptions.Controls.Add(this.chkRADAELoopback);
+            this.tpAudioOptions.Controls.Add(this.lblRadaeMicLevel);
+            this.tpAudioOptions.Controls.Add(this.udRadaeMicLevel);
+            this.tpAudioOptions.Controls.Add(this.lblRadaeRxLevel);
+            this.tpAudioOptions.Controls.Add(this.udRadaeRxLevel);
             this.tpAudioOptions.Controls.Add(this.chkRADAEReporter);
             this.tpAudioOptions.Controls.Add(this.chkRADAEReporting);
             this.tpAudioOptions.Controls.Add(this.lblRadaeReporterCallsign);
@@ -30095,6 +30103,50 @@ namespace Thetis
             this.toolTip1.SetToolTip(this.chkRADAELoopback, "Diagnostic loopback. When this AND 'RADE enable/disable' are both ON, the encoder's modem audio (post-rmatchV) is diverted into the decoder's xresampleFV input on its 48 kHz side, bypassing fexchange0/TXA/radio/RXA. mic_io is silenced so no RF is produced.");
             this.chkRADAELoopback.UseVisualStyleBackColor = true;
             this.chkRADAELoopback.CheckedChanged += new System.EventHandler(this.chkRADAELoopback_CheckedChanged);
+            //
+            // lblRadaeMicLevel
+            //
+            this.lblRadaeMicLevel.AutoSize = true;
+            this.lblRadaeMicLevel.Location = new System.Drawing.Point(455, 261);
+            this.lblRadaeMicLevel.Name = "lblRadaeMicLevel";
+            this.lblRadaeMicLevel.TabIndex = 107;
+            this.lblRadaeMicLevel.Text = "RADE Mic level (dB):";
+            //
+            // udRadaeMicLevel
+            //
+            this.udRadaeMicLevel.Location = new System.Drawing.Point(580, 258);
+            this.udRadaeMicLevel.Maximum = new decimal(new int[] { 40, 0, 0, 0 });
+            this.udRadaeMicLevel.Minimum = new decimal(new int[] { 40, 0, 0, System.Int32.MinValue });
+            this.udRadaeMicLevel.Increment = new decimal(new int[] { 1, 0, 0, 0 });
+            this.udRadaeMicLevel.DecimalPlaces = 0;
+            this.udRadaeMicLevel.Name = "udRadaeMicLevel";
+            this.udRadaeMicLevel.Size = new System.Drawing.Size(55, 20);
+            this.udRadaeMicLevel.TabIndex = 108;
+            this.udRadaeMicLevel.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udRadaeMicLevel, "Linear gain applied to mic samples at the RADE encoder INPUT (g_radae_mic_scale = 10^(dB/20)). Has effect only when RADE is enabled. Range -40..+40 dB, 1 dB step. 0 dB = unity (no scaling).");
+            this.udRadaeMicLevel.ValueChanged += new System.EventHandler(this.udRadaeMicLevel_ValueChanged);
+            //
+            // lblRadaeRxLevel
+            //
+            this.lblRadaeRxLevel.AutoSize = true;
+            this.lblRadaeRxLevel.Location = new System.Drawing.Point(455, 288);
+            this.lblRadaeRxLevel.Name = "lblRadaeRxLevel";
+            this.lblRadaeRxLevel.TabIndex = 109;
+            this.lblRadaeRxLevel.Text = "RADE Rx level (dB):";
+            //
+            // udRadaeRxLevel
+            //
+            this.udRadaeRxLevel.Location = new System.Drawing.Point(580, 285);
+            this.udRadaeRxLevel.Maximum = new decimal(new int[] { 40, 0, 0, 0 });
+            this.udRadaeRxLevel.Minimum = new decimal(new int[] { 40, 0, 0, System.Int32.MinValue });
+            this.udRadaeRxLevel.Increment = new decimal(new int[] { 1, 0, 0, 0 });
+            this.udRadaeRxLevel.DecimalPlaces = 0;
+            this.udRadaeRxLevel.Name = "udRadaeRxLevel";
+            this.udRadaeRxLevel.Size = new System.Drawing.Size(55, 20);
+            this.udRadaeRxLevel.TabIndex = 110;
+            this.udRadaeRxLevel.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udRadaeRxLevel, "Linear gain applied to RX1 audio at the RADE decoder INPUT (g_radae_rx_dial_scale = 10^(dB/20)). Equivalent in role to VAC1 RXGain but on a separate code path; while RADE is enabled, VAC1 RXGain is greyed and forced to 0 dB so this dial is the sole RX-side gain. Has effect only when RADE is enabled. Range -40..+40 dB, 1 dB step. 0 dB = unity.");
+            this.udRadaeRxLevel.ValueChanged += new System.EventHandler(this.udRadaeRxLevel_ValueChanged);
             //
             // chkRADAEReporter  [v2.10.3.16]
             //
@@ -75769,6 +75821,10 @@ namespace Thetis
         private CheckBoxTS chkRADAELoopback;
         private CheckBoxTS chkRADAEReporter;
         private CheckBoxTS chkRADAEReporting;
+        private LabelTS    lblRadaeMicLevel;
+        private NumericUpDownTS udRadaeMicLevel;
+        private LabelTS    lblRadaeRxLevel;
+        private NumericUpDownTS udRadaeRxLevel;
         private LabelTS    lblRadaeReporterCallsign;
         private LabelTS    lblRadaeReporterGrid;
         private LabelTS    lblRadaeReporterMsg;
