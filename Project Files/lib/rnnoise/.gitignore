@@ -1,0 +1,16 @@
+# RNNoise neural-network weights -- fetched at build time from
+# media.xiph.org (matches xiph upstream `download_model.sh` flow).
+# Files are large (~75 MB each); kept out of the repo to keep clone
+# size manageable.
+src/rnnoise_data.c
+src/rnnoise_data.h
+src/rnnoise_data_little.c
+src/rnnoise_data_little.h
+
+# MSBuild outputs
+build/x64/
+*.tar.gz
+
+# PyTorch model checkpoints (upstream retraining inputs only; not used
+# at runtime -- the runtime data lives in src/rnnoise_data*.c/h above).
+models/*.pth

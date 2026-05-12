@@ -2290,6 +2290,14 @@ namespace Thetis
             chkRADAELoopback_CheckedChanged(this, e);
             udRadaeMicLevel_ValueChanged(this, e);
             udRadaeRxLevel_ValueChanged(this, e);
+            chkRadaeMicRNNoise_CheckedChanged(this, e);
+            chkRadaeMicAGC_CheckedChanged(this, e);
+            udRadaeMicAGCTarget_ValueChanged(this, e);
+            chkRadaeMicEQ_CheckedChanged(this, e);
+            udRadaeMicEQBass_ValueChanged(this, e);
+            udRadaeMicEQMid_ValueChanged(this, e);
+            udRadaeMicEQTreble_ValueChanged(this, e);
+            udRadaeMicEQVol_ValueChanged(this, e);
             chkRADAEReporter_CheckedChanged(this, e);
             chkRADAEReporting_CheckedChanged(this, e);
 
@@ -22111,6 +22119,61 @@ namespace Thetis
             double db = (double)udRadaeRxLevel.Value;
             double scale = Math.Pow(10.0, db / 20.0);
             cmaster.SetRadaeRxDialScale(scale);
+        }
+
+        // ------------------------------------------------------------
+        // Pre-encoder mic-conditioning chain (FreeDV-GUI parity).
+        // RNNoise (xiph/rnnoise) -> ITU-R BS.1770 K-weighted AGC +
+        // peak limiter -> 3-band biquad EQ + master Vol.  All stages
+        // off by default; each stage has its own enable; chain runs
+        // inside xradae_tx (gated by g_radae_tx_enabled) so the
+        // controls have effect only while RADE is active.
+        // ------------------------------------------------------------
+        private void chkRadaeMicRNNoise_CheckedChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeMicRNNoiseEnabled(chkRadaeMicRNNoise.Checked ? 1 : 0);
+        }
+
+        private void chkRadaeMicAGC_CheckedChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeMicAGCEnabled(chkRadaeMicAGC.Checked ? 1 : 0);
+        }
+
+        private void udRadaeMicAGCTarget_ValueChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeMicAGCTargetLufs((double)udRadaeMicAGCTarget.Value);
+        }
+
+        private void chkRadaeMicEQ_CheckedChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeMicEQEnabled(chkRadaeMicEQ.Checked ? 1 : 0);
+        }
+
+        private void udRadaeMicEQBass_ValueChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeMicEQBass(
+                (double)udRadaeMicEQBassFreq.Value,
+                (double)udRadaeMicEQBassGain.Value);
+        }
+
+        private void udRadaeMicEQMid_ValueChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeMicEQMid(
+                (double)udRadaeMicEQMidFreq.Value,
+                (double)udRadaeMicEQMidGain.Value,
+                (double)udRadaeMicEQMidQ.Value);
+        }
+
+        private void udRadaeMicEQTreble_ValueChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeMicEQTreble(
+                (double)udRadaeMicEQTrebleFreq.Value,
+                (double)udRadaeMicEQTrebleGain.Value);
+        }
+
+        private void udRadaeMicEQVol_ValueChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeMicEQVol((double)udRadaeMicEQVol.Value);
         }
 
         // [v2.10.3.16] RADE Reporter (qso.freedv.org).  Connects to the

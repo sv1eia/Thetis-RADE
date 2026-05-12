@@ -40,6 +40,8 @@ namespace Thetis.FreeDVReporter
         private ToolStripComboBox cmbBand;
         private ToolStripLabel lblTrack;
         private ToolStripButton btnTrack;
+        private ToolStripButton btnTrackFreq;
+        private ToolStripButton btnTrackBandMode;
         private DataGridView grid;
         private StatusStrip status;
         private ToolStripStatusLabel lblConn;
@@ -104,6 +106,18 @@ namespace Thetis.FreeDVReporter
         private static HamBand _bandFilter = HamBand.All;       /* default: All */
         private static bool    _trackBand  = false;             /* default: don't track radio */
         private static int     _idleMinutes = 0;                /* 0 = disabled */
+
+        /* When _trackBand is on, _trackMode picks how the radio's
+         * VFOA frequency drives the row filter:
+         *   Band      -- show stations on the same ham band (legacy
+         *                behaviour, default).
+         *   Frequency -- show only stations whose reported FrequencyHz
+         *                is within +/- TRACK_FREQ_TOL_HZ of the
+         *                radio's current frequency.  Useful for
+         *                "everyone on this same channel right now". */
+        private enum TrackMode { Band, Frequency }
+        private static TrackMode _trackMode = TrackMode.Band;
+        private const long TRACK_FREQ_TOL_HZ = 100;             /* +/- 100 Hz */
 
         /* Window pos + size persisted via Common.SaveForm/RestoreForm
          * (writes to DB.SaveVars under "FreeDVReporterForm" tablename --
@@ -290,10 +304,47 @@ namespace Thetis.FreeDVReporter
             };
 
             btnTrack = new ToolStripButton("Track radio") { CheckOnClick = true, Checked = _trackBand };
+
+            /* Sub-mode radio buttons -- only meaningful while btnTrack
+             * is checked.  Mutually exclusive: clicking either one
+             * sets _trackMode and clears the other; clicking the
+             * already-checked one is a no-op (one mode must always be
+             * selected).  Use Click instead of CheckedChanged to
+             * avoid feedback loops while we set Checked
+             * programmatically. */
+            btnTrackFreq = new ToolStripButton("Frequency")
+            {
+                CheckOnClick = false,
+                Checked = (_trackMode == TrackMode.Frequency),
+                Enabled = _trackBand,
+            };
+            btnTrackBandMode = new ToolStripButton("Band")
+            {
+                CheckOnClick = false,
+                Checked = (_trackMode == TrackMode.Band),
+                Enabled = _trackBand,
+            };
+            btnTrackFreq.Click += (s, e) =>
+            {
+                if (!_trackBand) return;
+                _trackMode = TrackMode.Frequency;
+                btnTrackFreq.Checked = true;
+                btnTrackBandMode.Checked = false;
+            };
+            btnTrackBandMode.Click += (s, e) =>
+            {
+                if (!_trackBand) return;
+                _trackMode = TrackMode.Band;
+                btnTrackBandMode.Checked = true;
+                btnTrackFreq.Checked = false;
+            };
+
             btnTrack.CheckedChanged += (s, e) =>
             {
                 _trackBand = btnTrack.Checked;
                 cmbBand.Enabled = !_trackBand;
+                btnTrackFreq.Enabled = _trackBand;
+                btnTrackBandMode.Enabled = _trackBand;
             };
             cmbBand.Enabled = !_trackBand;
 
@@ -301,6 +352,8 @@ namespace Thetis.FreeDVReporter
             toolbar.Items.Add(cmbBand);
             toolbar.Items.Add(new ToolStripSeparator());
             toolbar.Items.Add(btnTrack);
+            toolbar.Items.Add(btnTrackFreq);
+            toolbar.Items.Add(btnTrackBandMode);
         }
 
         private void BuildGrid()
@@ -482,19 +535,20 @@ namespace Thetis.FreeDVReporter
         private void SyncRowsInner()
         {
 
-            /* "Track radio" mode: pull current band from the manager's
-             * last-pushed VFOA freq.  No-op if 0. */
-            if (_trackBand)
+            /* "Track radio" mode: pull the radio's current VFOA freq
+             * from the manager.  In TrackMode.Band, snap _bandFilter
+             * to the matching ham band so the existing band-filter
+             * code paths keep working.  In TrackMode.Frequency the
+             * band combo is irrelevant and is left alone -- visibility
+             * is decided per-row below by an exact-frequency match. */
+            ulong trackFreq = _trackBand ? FreeDVReporterManager.CurrentFrequencyHz : 0UL;
+            if (_trackBand && trackFreq > 0 && _trackMode == TrackMode.Band)
             {
-                ulong f = FreeDVReporterManager.CurrentFrequencyHz;
-                if (f > 0)
+                HamBand b = BandPlan.FromHz(trackFreq);
+                if (b != _bandFilter)
                 {
-                    HamBand b = BandPlan.FromHz(f);
-                    if (b != _bandFilter)
-                    {
-                        _bandFilter = b;
-                        ApplyBandToCombo();
-                    }
+                    _bandFilter = b;
+                    ApplyBandToCombo();
                 }
             }
 
@@ -530,11 +584,32 @@ namespace Thetis.FreeDVReporter
                         row.DefaultCellStyle.SelectionForeColor = SystemColors.ControlText;
                     }
 
-                    bool inBand = _bandFilter == HamBand.All ||
-                                  (st.FrequencyHz > 0 && BandPlan.FromHz(st.FrequencyHz) == _bandFilter);
+                    bool inFilter;
+                    if (_trackBand && _trackMode == TrackMode.Frequency)
+                    {
+                        /* Show only stations within +/- TRACK_FREQ_TOL_HZ
+                         * of the radio's current VFOA frequency.  When
+                         * the radio's freq is unknown (==0) hide all. */
+                        if (trackFreq == 0 || st.FrequencyHz == 0)
+                            inFilter = false;
+                        else
+                        {
+                            long delta = (long)st.FrequencyHz - (long)trackFreq;
+                            if (delta < 0) delta = -delta;
+                            inFilter = (delta <= TRACK_FREQ_TOL_HZ);
+                        }
+                    }
+                    else
+                    {
+                        /* Band filter -- existing behaviour, also used
+                         * by TrackMode.Band (which snaps _bandFilter
+                         * upstream). */
+                        inFilter = _bandFilter == HamBand.All ||
+                                   (st.FrequencyHz > 0 && BandPlan.FromHz(st.FrequencyHz) == _bandFilter);
+                    }
                     bool tooIdle = _idleMinutes > 0 && st.LastUpdateUtc != DateTime.MinValue &&
                                    (nowUtc - st.LastUpdateUtc).TotalSeconds > idleCutSec;
-                    bool visible = inBand && !tooIdle;
+                    bool visible = inFilter && !tooIdle;
 
                     if (row.Visible != visible) row.Visible = visible;
                     if (!visible) continue;

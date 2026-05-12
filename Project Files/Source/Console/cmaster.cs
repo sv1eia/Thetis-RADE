@@ -201,6 +201,25 @@ namespace Thetis
         public static extern void SetRadaeRxScale(double scale);
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeRxDialScale", CallingConvention = CallingConvention.Cdecl)]
         public static extern void SetRadaeRxDialScale(double scale);
+
+        // RADE pre-encoder mic conditioning (FreeDV-GUI parity):
+        // RNNoise + ITU-R BS.1770 K-weighted AGC + 3-band biquad EQ.
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicRNNoiseEnabled", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeMicRNNoiseEnabled(int enable);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicAGCEnabled", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeMicAGCEnabled(int enable);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicAGCTargetLufs", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeMicAGCTargetLufs(double target_lufs);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicEQEnabled", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeMicEQEnabled(int enable);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicEQBass", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeMicEQBass(double freq_hz, double gain_db);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicEQMid", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeMicEQMid(double freq_hz, double gain_db, double q);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicEQTreble", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeMicEQTreble(double freq_hz, double gain_db);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicEQVol", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeMicEQVol(double gain_db);
         // end radae
 
         // router

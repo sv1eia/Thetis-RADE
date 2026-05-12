@@ -122,7 +122,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;CHANNELMASTER_EXPORTS;PFFFT_STATIC_DEFINE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\wdsp;.;../../lib/portaudio-19.7.0/include;../../lib/radae_nopy/src;../../lib/opus_dnn/include;../../lib/opus_dnn/dnn;../../lib/opus_dnn/celt;../../lib/r8brain;../../lib/r8brain/fft;../../lib/freedv_text/src;../../lib/freedv_text/codec2;%(AdditionalIncludeDirectories);../../lib/NR_Algorithms_$(HPSDR_PLATFORM)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\wdsp;.;../../lib/portaudio-19.7.0/include;../../lib/radae_nopy/src;../../lib/opus_dnn/include;../../lib/opus_dnn/dnn;../../lib/opus_dnn/celt;../../lib/r8brain;../../lib/r8brain/fft;../../lib/freedv_text/src;../../lib/freedv_text/codec2;../../lib/rnnoise/include;../../lib/libebur128/ebur128;../../lib/libebur128/ebur128/queue;../../lib/WebRTC_AGC;%(AdditionalIncludeDirectories);../../lib/NR_Algorithms_$(HPSDR_PLATFORM)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <CompileAs>CompileAsC</CompileAs>
@@ -135,8 +135,8 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OutputFile>$(SolutionDir)..\bin\$(HPSDR_PLATFORM)\$(Configuration)\ChannelMaster.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\build\$(HPSDR_PLATFORM)\$(Configuration)\;$(SolutionDir)..\lib\radae_nopy\build\$(Platform)\$(Configuration)\;$(SolutionDir)..\lib\opus_dnn\build\$(Platform)\$(Configuration)\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>wdsp.lib;PA19.lib;cmASIO.lib;rade.lib;opus.lib;avrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\build\$(HPSDR_PLATFORM)\$(Configuration)\;$(SolutionDir)..\lib\radae_nopy\build\$(Platform)\$(Configuration)\;$(SolutionDir)..\lib\opus_dnn\build\$(Platform)\$(Configuration)\;$(SolutionDir)..\lib\rnnoise\build\$(Platform)\$(Configuration)\;$(SolutionDir)..\lib\libebur128\build\$(Platform)\$(Configuration)\;$(SolutionDir)..\lib\WebRTC_AGC\build\$(Platform)\$(Configuration)\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>wdsp.lib;PA19.lib;cmASIO.lib;rade.lib;opus.lib;rnnoise.lib;ebur128.lib;WebRTC_AGC.lib;avrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -179,7 +179,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;CHANNELMASTER_EXPORTS;PFFFT_STATIC_DEFINE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\wdsp;.;../../lib/portaudio-19.7.0/include;../../lib/radae_nopy/src;../../lib/opus_dnn/include;../../lib/opus_dnn/dnn;../../lib/opus_dnn/celt;../../lib/r8brain;../../lib/r8brain/fft;../../lib/freedv_text/src;../../lib/freedv_text/codec2;%(AdditionalIncludeDirectories);../../lib/NR_Algorithms_$(HPSDR_PLATFORM)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\wdsp;.;../../lib/portaudio-19.7.0/include;../../lib/radae_nopy/src;../../lib/opus_dnn/include;../../lib/opus_dnn/dnn;../../lib/opus_dnn/celt;../../lib/r8brain;../../lib/r8brain/fft;../../lib/freedv_text/src;../../lib/freedv_text/codec2;../../lib/rnnoise/include;../../lib/libebur128/ebur128;../../lib/libebur128/ebur128/queue;../../lib/WebRTC_AGC;%(AdditionalIncludeDirectories);../../lib/NR_Algorithms_$(HPSDR_PLATFORM)</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
@@ -195,8 +195,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <OutputFile>$(SolutionDir)..\bin\$(HPSDR_PLATFORM)\$(Configuration)\ChannelMaster.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\build\$(HPSDR_PLATFORM)\$(Configuration)\;$(SolutionDir)..\lib\radae_nopy\build\$(Platform)\$(Configuration)\;$(SolutionDir)..\lib\opus_dnn\build\$(Platform)\$(Configuration)\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>wdsp.lib;PA19.lib;cmASIO.lib;rade.lib;opus.lib;avrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\build\$(HPSDR_PLATFORM)\$(Configuration)\;$(SolutionDir)..\lib\radae_nopy\build\$(Platform)\$(Configuration)\;$(SolutionDir)..\lib\opus_dnn\build\$(Platform)\$(Configuration)\;$(SolutionDir)..\lib\rnnoise\build\$(Platform)\$(Configuration)\;$(SolutionDir)..\lib\libebur128\build\$(Platform)\$(Configuration)\;$(SolutionDir)..\lib\WebRTC_AGC\build\$(Platform)\$(Configuration)\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>wdsp.lib;PA19.lib;cmASIO.lib;rade.lib;opus.lib;rnnoise.lib;ebur128.lib;WebRTC_AGC.lib;avrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkErrorReporting>QueueForNextLogin</LinkErrorReporting>
       <Version>
       </Version>
@@ -226,6 +226,7 @@
     <ClInclude Include="pipe.h" />
     <ClInclude Include="pro.h" />
     <ClInclude Include="radae.h" />
+    <ClInclude Include="radae_micdsp.h" />
     <ClInclude Include="r8brain_wrap.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="resource1.h" />
@@ -260,6 +261,7 @@
     <ClCompile Include="pipe.c" />
     <ClCompile Include="pro.c" />
     <ClCompile Include="radae.c" />
+    <ClCompile Include="radae_micdsp.c" />
     <ClCompile Include="r8brain_wrap.cpp">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCpp</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCpp</CompileAs>

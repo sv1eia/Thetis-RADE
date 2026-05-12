@@ -1833,6 +1833,23 @@ namespace Thetis
             this.udRadaeMicLevel = new System.Windows.Forms.NumericUpDownTS();
             this.lblRadaeRxLevel = new System.Windows.Forms.LabelTS();
             this.udRadaeRxLevel = new System.Windows.Forms.NumericUpDownTS();
+            this.chkRadaeMicRNNoise = new System.Windows.Forms.CheckBoxTS();
+            this.chkRadaeMicAGC = new System.Windows.Forms.CheckBoxTS();
+            this.lblRadaeMicAGCTarget = new System.Windows.Forms.LabelTS();
+            this.udRadaeMicAGCTarget = new System.Windows.Forms.NumericUpDownTS();
+            this.chkRadaeMicEQ = new System.Windows.Forms.CheckBoxTS();
+            this.lblRadaeMicEQBass = new System.Windows.Forms.LabelTS();
+            this.udRadaeMicEQBassFreq = new System.Windows.Forms.NumericUpDownTS();
+            this.udRadaeMicEQBassGain = new System.Windows.Forms.NumericUpDownTS();
+            this.lblRadaeMicEQMid = new System.Windows.Forms.LabelTS();
+            this.udRadaeMicEQMidFreq = new System.Windows.Forms.NumericUpDownTS();
+            this.udRadaeMicEQMidGain = new System.Windows.Forms.NumericUpDownTS();
+            this.udRadaeMicEQMidQ = new System.Windows.Forms.NumericUpDownTS();
+            this.lblRadaeMicEQTreble = new System.Windows.Forms.LabelTS();
+            this.udRadaeMicEQTrebleFreq = new System.Windows.Forms.NumericUpDownTS();
+            this.udRadaeMicEQTrebleGain = new System.Windows.Forms.NumericUpDownTS();
+            this.lblRadaeMicEQVol = new System.Windows.Forms.LabelTS();
+            this.udRadaeMicEQVol = new System.Windows.Forms.NumericUpDownTS();
             this.lblRadaeReporterCallsign = new System.Windows.Forms.LabelTS();
             this.lblRadaeReporterGrid = new System.Windows.Forms.LabelTS();
             this.lblRadaeReporterMsg = new System.Windows.Forms.LabelTS();
@@ -2717,6 +2734,7 @@ namespace Thetis
             this.lblLMSNR2delay = new System.Windows.Forms.LabelTS();
             this.udLMSNR2taps = new System.Windows.Forms.NumericUpDownTS();
             this.lblLMSNR2taps = new System.Windows.Forms.LabelTS();
+            this.tpDSPRADE = new System.Windows.Forms.TabPage();
             this.tpDSPMNF = new System.Windows.Forms.TabPage();
             this.grpDSPMNF = new System.Windows.Forms.GroupBoxTS();
             this.chkVisualNotch = new System.Windows.Forms.CheckBoxTS();
@@ -5135,6 +5153,7 @@ namespace Thetis
             ((System.ComponentModel.ISupportInitialize)(this.udLMSNR2gain)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.udLMSNR2delay)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.udLMSNR2taps)).BeginInit();
+            this.tpDSPRADE.SuspendLayout();
             this.tpDSPMNF.SuspendLayout();
             this.grpDSPMNF.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.udMNFWidth)).BeginInit();
@@ -30045,20 +30064,6 @@ namespace Thetis
             this.tpAudioOptions.Controls.Add(this.chkVAC1WillMute);
             this.tpAudioOptions.Controls.Add(this.chkNoFadeOverUnderWarning);
             this.tpAudioOptions.Controls.Add(this.chkAFSlidersMute);
-            this.tpAudioOptions.Controls.Add(this.chkRADAE);
-            this.tpAudioOptions.Controls.Add(this.chkRADAELoopback);
-            this.tpAudioOptions.Controls.Add(this.lblRadaeMicLevel);
-            this.tpAudioOptions.Controls.Add(this.udRadaeMicLevel);
-            this.tpAudioOptions.Controls.Add(this.lblRadaeRxLevel);
-            this.tpAudioOptions.Controls.Add(this.udRadaeRxLevel);
-            this.tpAudioOptions.Controls.Add(this.chkRADAEReporter);
-            this.tpAudioOptions.Controls.Add(this.chkRADAEReporting);
-            this.tpAudioOptions.Controls.Add(this.lblRadaeReporterCallsign);
-            this.tpAudioOptions.Controls.Add(this.txtRadaeReporterCallsign);
-            this.tpAudioOptions.Controls.Add(this.lblRadaeReporterGrid);
-            this.tpAudioOptions.Controls.Add(this.txtRadaeReporterGrid);
-            this.tpAudioOptions.Controls.Add(this.lblRadaeReporterMsg);
-            this.tpAudioOptions.Controls.Add(this.txtRadaeReporterMsg);
             this.tpAudioOptions.Location = new System.Drawing.Point(4, 22);
             this.tpAudioOptions.Name = "tpAudioOptions";
             this.tpAudioOptions.Padding = new System.Windows.Forms.Padding(3);
@@ -30082,10 +30087,10 @@ namespace Thetis
             //
             this.chkRADAE.AutoSize = true;
             this.chkRADAE.Image = null;
-            this.chkRADAE.Location = new System.Drawing.Point(420, 122);
+            this.chkRADAE.Location = new System.Drawing.Point(10, 10);
             this.chkRADAE.Name = "chkRADAE";
             this.chkRADAE.Size = new System.Drawing.Size(140, 17);
-            this.chkRADAE.TabIndex = 97;
+            this.chkRADAE.TabIndex = 0;
             this.chkRADAE.Text = "RADE enable/disable";
             this.toolTip1.SetToolTip(this.chkRADAE, "Enable built-in FreeDV RADEV1 digital voice. RX audio is fed to the RADE decoder before reaching the speakers; mic audio is fed to the RADE encoder after the WDSP audio enhancements (TXEQ / Compander / CFC / Phase / Leveler) which remain under user control. Mode/filter selection are not changed automatically.");
             this.chkRADAE.UseVisualStyleBackColor = true;
@@ -30095,10 +30100,10 @@ namespace Thetis
             //
             this.chkRADAELoopback.AutoSize = true;
             this.chkRADAELoopback.Image = null;
-            this.chkRADAELoopback.Location = new System.Drawing.Point(455, 234);
+            this.chkRADAELoopback.Location = new System.Drawing.Point(10, 33);
             this.chkRADAELoopback.Name = "chkRADAELoopback";
             this.chkRADAELoopback.Size = new System.Drawing.Size(210, 17);
-            this.chkRADAELoopback.TabIndex = 98;
+            this.chkRADAELoopback.TabIndex = 1;
             this.chkRADAELoopback.Text = "RADE Loopback Test enable/disable";
             this.toolTip1.SetToolTip(this.chkRADAELoopback, "Diagnostic loopback. When this AND 'RADE enable/disable' are both ON, the encoder's modem audio (post-rmatchV) is diverted into the decoder's xresampleFV input on its 48 kHz side, bypassing fexchange0/TXA/radio/RXA. mic_io is silenced so no RF is produced.");
             this.chkRADAELoopback.UseVisualStyleBackColor = true;
@@ -30107,21 +30112,21 @@ namespace Thetis
             // lblRadaeMicLevel
             //
             this.lblRadaeMicLevel.AutoSize = true;
-            this.lblRadaeMicLevel.Location = new System.Drawing.Point(455, 261);
+            this.lblRadaeMicLevel.Location = new System.Drawing.Point(10, 69);
             this.lblRadaeMicLevel.Name = "lblRadaeMicLevel";
-            this.lblRadaeMicLevel.TabIndex = 107;
+            this.lblRadaeMicLevel.TabIndex = 2;
             this.lblRadaeMicLevel.Text = "RADE Mic level (dB):";
             //
             // udRadaeMicLevel
             //
-            this.udRadaeMicLevel.Location = new System.Drawing.Point(580, 258);
+            this.udRadaeMicLevel.Location = new System.Drawing.Point(135, 66);
             this.udRadaeMicLevel.Maximum = new decimal(new int[] { 40, 0, 0, 0 });
             this.udRadaeMicLevel.Minimum = new decimal(new int[] { 40, 0, 0, System.Int32.MinValue });
             this.udRadaeMicLevel.Increment = new decimal(new int[] { 1, 0, 0, 0 });
             this.udRadaeMicLevel.DecimalPlaces = 0;
             this.udRadaeMicLevel.Name = "udRadaeMicLevel";
             this.udRadaeMicLevel.Size = new System.Drawing.Size(55, 20);
-            this.udRadaeMicLevel.TabIndex = 108;
+            this.udRadaeMicLevel.TabIndex = 3;
             this.udRadaeMicLevel.Value = new decimal(new int[] { 0, 0, 0, 0 });
             this.toolTip1.SetToolTip(this.udRadaeMicLevel, "Linear gain applied to mic samples at the RADE encoder INPUT (g_radae_mic_scale = 10^(dB/20)). Has effect only when RADE is enabled. Range -40..+40 dB, 1 dB step. 0 dB = unity (no scaling).");
             this.udRadaeMicLevel.ValueChanged += new System.EventHandler(this.udRadaeMicLevel_ValueChanged);
@@ -30129,33 +30134,232 @@ namespace Thetis
             // lblRadaeRxLevel
             //
             this.lblRadaeRxLevel.AutoSize = true;
-            this.lblRadaeRxLevel.Location = new System.Drawing.Point(455, 288);
+            this.lblRadaeRxLevel.Location = new System.Drawing.Point(10, 92);
             this.lblRadaeRxLevel.Name = "lblRadaeRxLevel";
-            this.lblRadaeRxLevel.TabIndex = 109;
+            this.lblRadaeRxLevel.TabIndex = 4;
             this.lblRadaeRxLevel.Text = "RADE Rx level (dB):";
             //
             // udRadaeRxLevel
             //
-            this.udRadaeRxLevel.Location = new System.Drawing.Point(580, 285);
+            this.udRadaeRxLevel.Location = new System.Drawing.Point(135, 89);
             this.udRadaeRxLevel.Maximum = new decimal(new int[] { 40, 0, 0, 0 });
             this.udRadaeRxLevel.Minimum = new decimal(new int[] { 40, 0, 0, System.Int32.MinValue });
             this.udRadaeRxLevel.Increment = new decimal(new int[] { 1, 0, 0, 0 });
             this.udRadaeRxLevel.DecimalPlaces = 0;
             this.udRadaeRxLevel.Name = "udRadaeRxLevel";
             this.udRadaeRxLevel.Size = new System.Drawing.Size(55, 20);
-            this.udRadaeRxLevel.TabIndex = 110;
+            this.udRadaeRxLevel.TabIndex = 5;
             this.udRadaeRxLevel.Value = new decimal(new int[] { 0, 0, 0, 0 });
             this.toolTip1.SetToolTip(this.udRadaeRxLevel, "Linear gain applied to RX1 audio at the RADE decoder INPUT (g_radae_rx_dial_scale = 10^(dB/20)). Equivalent in role to VAC1 RXGain but on a separate code path; while RADE is enabled, VAC1 RXGain is greyed and forced to 0 dB so this dial is the sole RX-side gain. Has effect only when RADE is enabled. Range -40..+40 dB, 1 dB step. 0 dB = unity.");
             this.udRadaeRxLevel.ValueChanged += new System.EventHandler(this.udRadaeRxLevel_ValueChanged);
+            //
+            // chkRadaeMicRNNoise  -- RNNoise denoiser, 48 kHz only.
+            //
+            this.chkRadaeMicRNNoise.AutoSize = true;
+            this.chkRadaeMicRNNoise.Location = new System.Drawing.Point(10, 122);
+            this.chkRadaeMicRNNoise.Name = "chkRadaeMicRNNoise";
+            this.chkRadaeMicRNNoise.TabIndex = 6;
+            this.chkRadaeMicRNNoise.Text = "RADE Mic RNNoise enable";
+            this.toolTip1.SetToolTip(this.chkRadaeMicRNNoise, "RNNoise neural-net denoiser applied to the mic stream before the RADE encoder. 48 kHz fixed, 10 ms frames. Adds ~10 ms TX latency. Has effect only when RADE is enabled.");
+            this.chkRadaeMicRNNoise.UseVisualStyleBackColor = true;
+            this.chkRadaeMicRNNoise.CheckedChanged += new System.EventHandler(this.chkRadaeMicRNNoise_CheckedChanged);
+            //
+            // chkRadaeMicAGC  -- LUFS-targeted AGC + peak limiter.
+            //
+            this.chkRadaeMicAGC.AutoSize = true;
+            this.chkRadaeMicAGC.Location = new System.Drawing.Point(10, 145);
+            this.chkRadaeMicAGC.Name = "chkRadaeMicAGC";
+            this.chkRadaeMicAGC.TabIndex = 7;
+            this.chkRadaeMicAGC.Text = "RADE Mic AGC enable";
+            this.toolTip1.SetToolTip(this.chkRadaeMicAGC, "ITU-R BS.1770 K-weighted automatic gain control with soft peak limiter at -1 dBFS. Targets the LUFS value set by the spinner to the right (default -15 LUFS, range -30..0). Has effect only when RADE is enabled.");
+            this.chkRadaeMicAGC.UseVisualStyleBackColor = true;
+            this.chkRadaeMicAGC.CheckedChanged += new System.EventHandler(this.chkRadaeMicAGC_CheckedChanged);
+            //
+            // lblRadaeMicAGCTarget
+            //
+            this.lblRadaeMicAGCTarget.AutoSize = true;
+            this.lblRadaeMicAGCTarget.Location = new System.Drawing.Point(180, 147);
+            this.lblRadaeMicAGCTarget.Name = "lblRadaeMicAGCTarget";
+            this.lblRadaeMicAGCTarget.TabIndex = 8;
+            this.lblRadaeMicAGCTarget.Text = "LUFS:";
+            //
+            // udRadaeMicAGCTarget
+            //
+            this.udRadaeMicAGCTarget.Location = new System.Drawing.Point(220, 144);
+            this.udRadaeMicAGCTarget.Maximum = new decimal(new int[] { 0, 0, 0, 0 });
+            this.udRadaeMicAGCTarget.Minimum = new decimal(new int[] { 30, 0, 0, System.Int32.MinValue });
+            this.udRadaeMicAGCTarget.Increment = new decimal(new int[] { 1, 0, 0, 0 });
+            this.udRadaeMicAGCTarget.DecimalPlaces = 0;
+            this.udRadaeMicAGCTarget.Name = "udRadaeMicAGCTarget";
+            this.udRadaeMicAGCTarget.Size = new System.Drawing.Size(50, 20);
+            this.udRadaeMicAGCTarget.TabIndex = 9;
+            this.udRadaeMicAGCTarget.Value = new decimal(new int[] { 20, 0, 0, System.Int32.MinValue });
+            this.toolTip1.SetToolTip(this.udRadaeMicAGCTarget, "AGC loudness target (LUFS).  Default -20 dB; lower (more negative) = quieter target.  Range -30..0 LUFS.");
+            this.udRadaeMicAGCTarget.ValueChanged += new System.EventHandler(this.udRadaeMicAGCTarget_ValueChanged);
+            //
+            // chkRadaeMicEQ
+            //
+            this.chkRadaeMicEQ.AutoSize = true;
+            this.chkRadaeMicEQ.Location = new System.Drawing.Point(10, 168);
+            this.chkRadaeMicEQ.Name = "chkRadaeMicEQ";
+            this.chkRadaeMicEQ.TabIndex = 10;
+            this.chkRadaeMicEQ.Text = "RADE Mic EQ enable";
+            this.toolTip1.SetToolTip(this.chkRadaeMicEQ, "3-band biquad equaliser applied to the mic stream before the RADE encoder: bass shelf, mid peaking, treble shelf. Master Vol is independent and is active whenever its dB value is non-zero. Has effect only when RADE is enabled.");
+            this.chkRadaeMicEQ.UseVisualStyleBackColor = true;
+            this.chkRadaeMicEQ.CheckedChanged += new System.EventHandler(this.chkRadaeMicEQ_CheckedChanged);
+            //
+            // lblRadaeMicEQBass
+            //
+            this.lblRadaeMicEQBass.AutoSize = true;
+            this.lblRadaeMicEQBass.Location = new System.Drawing.Point(20, 194);
+            this.lblRadaeMicEQBass.Name = "lblRadaeMicEQBass";
+            this.lblRadaeMicEQBass.TabIndex = 11;
+            this.lblRadaeMicEQBass.Text = "Bass (Hz, dB):";
+            //
+            // udRadaeMicEQBassFreq
+            //
+            this.udRadaeMicEQBassFreq.Location = new System.Drawing.Point(120, 191);
+            this.udRadaeMicEQBassFreq.Maximum = new decimal(new int[] { 500, 0, 0, 0 });
+            this.udRadaeMicEQBassFreq.Minimum = new decimal(new int[] { 50, 0, 0, 0 });
+            this.udRadaeMicEQBassFreq.Increment = new decimal(new int[] { 10, 0, 0, 0 });
+            this.udRadaeMicEQBassFreq.DecimalPlaces = 0;
+            this.udRadaeMicEQBassFreq.Name = "udRadaeMicEQBassFreq";
+            this.udRadaeMicEQBassFreq.Size = new System.Drawing.Size(60, 20);
+            this.udRadaeMicEQBassFreq.TabIndex = 12;
+            this.udRadaeMicEQBassFreq.Value = new decimal(new int[] { 100, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udRadaeMicEQBassFreq, "Bass-shelf corner frequency (Hz).");
+            this.udRadaeMicEQBassFreq.ValueChanged += new System.EventHandler(this.udRadaeMicEQBass_ValueChanged);
+            //
+            // udRadaeMicEQBassGain
+            //
+            this.udRadaeMicEQBassGain.Location = new System.Drawing.Point(190, 191);
+            this.udRadaeMicEQBassGain.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
+            this.udRadaeMicEQBassGain.Minimum = new decimal(new int[] { 20, 0, 0, System.Int32.MinValue });
+            this.udRadaeMicEQBassGain.Increment = new decimal(new int[] { 1, 0, 0, 0x10000 });   // 0.1 dB
+            this.udRadaeMicEQBassGain.DecimalPlaces = 1;
+            this.udRadaeMicEQBassGain.Name = "udRadaeMicEQBassGain";
+            this.udRadaeMicEQBassGain.Size = new System.Drawing.Size(50, 20);
+            this.udRadaeMicEQBassGain.TabIndex = 13;
+            this.udRadaeMicEQBassGain.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udRadaeMicEQBassGain, "Bass-shelf gain (dB).  0 dB = band off.");
+            this.udRadaeMicEQBassGain.ValueChanged += new System.EventHandler(this.udRadaeMicEQBass_ValueChanged);
+            //
+            // lblRadaeMicEQMid
+            //
+            this.lblRadaeMicEQMid.AutoSize = true;
+            this.lblRadaeMicEQMid.Location = new System.Drawing.Point(20, 217);
+            this.lblRadaeMicEQMid.Name = "lblRadaeMicEQMid";
+            this.lblRadaeMicEQMid.TabIndex = 14;
+            this.lblRadaeMicEQMid.Text = "Mid (Hz, dB, Q):";
+            //
+            // udRadaeMicEQMidFreq
+            //
+            this.udRadaeMicEQMidFreq.Location = new System.Drawing.Point(120, 214);
+            this.udRadaeMicEQMidFreq.Maximum = new decimal(new int[] { 4000, 0, 0, 0 });
+            this.udRadaeMicEQMidFreq.Minimum = new decimal(new int[] { 200, 0, 0, 0 });
+            this.udRadaeMicEQMidFreq.Increment = new decimal(new int[] { 50, 0, 0, 0 });
+            this.udRadaeMicEQMidFreq.DecimalPlaces = 0;
+            this.udRadaeMicEQMidFreq.Name = "udRadaeMicEQMidFreq";
+            this.udRadaeMicEQMidFreq.Size = new System.Drawing.Size(60, 20);
+            this.udRadaeMicEQMidFreq.TabIndex = 15;
+            this.udRadaeMicEQMidFreq.Value = new decimal(new int[] { 1000, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udRadaeMicEQMidFreq, "Mid-band peaking-EQ centre frequency (Hz).");
+            this.udRadaeMicEQMidFreq.ValueChanged += new System.EventHandler(this.udRadaeMicEQMid_ValueChanged);
+            //
+            // udRadaeMicEQMidGain
+            //
+            this.udRadaeMicEQMidGain.Location = new System.Drawing.Point(190, 214);
+            this.udRadaeMicEQMidGain.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
+            this.udRadaeMicEQMidGain.Minimum = new decimal(new int[] { 20, 0, 0, System.Int32.MinValue });
+            this.udRadaeMicEQMidGain.Increment = new decimal(new int[] { 1, 0, 0, 0x10000 });   // 0.1 dB
+            this.udRadaeMicEQMidGain.DecimalPlaces = 1;
+            this.udRadaeMicEQMidGain.Name = "udRadaeMicEQMidGain";
+            this.udRadaeMicEQMidGain.Size = new System.Drawing.Size(50, 20);
+            this.udRadaeMicEQMidGain.TabIndex = 16;
+            this.udRadaeMicEQMidGain.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udRadaeMicEQMidGain, "Mid peaking-EQ gain (dB). 0 dB = band off.");
+            this.udRadaeMicEQMidGain.ValueChanged += new System.EventHandler(this.udRadaeMicEQMid_ValueChanged);
+            //
+            // udRadaeMicEQMidQ
+            //
+            this.udRadaeMicEQMidQ.Location = new System.Drawing.Point(250, 214);
+            this.udRadaeMicEQMidQ.Maximum = new decimal(new int[] { 50, 0, 0, 0x10000 });    // 5.0
+            this.udRadaeMicEQMidQ.Minimum = new decimal(new int[] { 1, 0, 0, 0x10000 });     // 0.1
+            this.udRadaeMicEQMidQ.Increment = new decimal(new int[] { 1, 0, 0, 0x10000 });   // 0.1
+            this.udRadaeMicEQMidQ.DecimalPlaces = 1;
+            this.udRadaeMicEQMidQ.Name = "udRadaeMicEQMidQ";
+            this.udRadaeMicEQMidQ.Size = new System.Drawing.Size(50, 20);
+            this.udRadaeMicEQMidQ.TabIndex = 17;
+            this.udRadaeMicEQMidQ.Value = new decimal(new int[] { 7, 0, 0, 0x10000 });       // 0.7
+            this.toolTip1.SetToolTip(this.udRadaeMicEQMidQ, "Mid peaking-EQ Q (bandwidth). Higher Q = narrower band.");
+            this.udRadaeMicEQMidQ.ValueChanged += new System.EventHandler(this.udRadaeMicEQMid_ValueChanged);
+            //
+            // lblRadaeMicEQTreble
+            //
+            this.lblRadaeMicEQTreble.AutoSize = true;
+            this.lblRadaeMicEQTreble.Location = new System.Drawing.Point(20, 240);
+            this.lblRadaeMicEQTreble.Name = "lblRadaeMicEQTreble";
+            this.lblRadaeMicEQTreble.TabIndex = 18;
+            this.lblRadaeMicEQTreble.Text = "Treble (Hz, dB):";
+            //
+            // udRadaeMicEQTrebleFreq
+            //
+            this.udRadaeMicEQTrebleFreq.Location = new System.Drawing.Point(120, 237);
+            this.udRadaeMicEQTrebleFreq.Maximum = new decimal(new int[] { 8000, 0, 0, 0 });
+            this.udRadaeMicEQTrebleFreq.Minimum = new decimal(new int[] { 1000, 0, 0, 0 });
+            this.udRadaeMicEQTrebleFreq.Increment = new decimal(new int[] { 100, 0, 0, 0 });
+            this.udRadaeMicEQTrebleFreq.DecimalPlaces = 0;
+            this.udRadaeMicEQTrebleFreq.Name = "udRadaeMicEQTrebleFreq";
+            this.udRadaeMicEQTrebleFreq.Size = new System.Drawing.Size(60, 20);
+            this.udRadaeMicEQTrebleFreq.TabIndex = 19;
+            this.udRadaeMicEQTrebleFreq.Value = new decimal(new int[] { 5000, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udRadaeMicEQTrebleFreq, "Treble-shelf corner frequency (Hz).");
+            this.udRadaeMicEQTrebleFreq.ValueChanged += new System.EventHandler(this.udRadaeMicEQTreble_ValueChanged);
+            //
+            // udRadaeMicEQTrebleGain
+            //
+            this.udRadaeMicEQTrebleGain.Location = new System.Drawing.Point(190, 237);
+            this.udRadaeMicEQTrebleGain.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
+            this.udRadaeMicEQTrebleGain.Minimum = new decimal(new int[] { 20, 0, 0, System.Int32.MinValue });
+            this.udRadaeMicEQTrebleGain.Increment = new decimal(new int[] { 1, 0, 0, 0x10000 });   // 0.1 dB
+            this.udRadaeMicEQTrebleGain.DecimalPlaces = 1;
+            this.udRadaeMicEQTrebleGain.Name = "udRadaeMicEQTrebleGain";
+            this.udRadaeMicEQTrebleGain.Size = new System.Drawing.Size(50, 20);
+            this.udRadaeMicEQTrebleGain.TabIndex = 20;
+            this.udRadaeMicEQTrebleGain.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udRadaeMicEQTrebleGain, "Treble-shelf gain (dB). 0 dB = band off.");
+            this.udRadaeMicEQTrebleGain.ValueChanged += new System.EventHandler(this.udRadaeMicEQTreble_ValueChanged);
+            //
+            // lblRadaeMicEQVol
+            //
+            this.lblRadaeMicEQVol.AutoSize = true;
+            this.lblRadaeMicEQVol.Location = new System.Drawing.Point(20, 263);
+            this.lblRadaeMicEQVol.Name = "lblRadaeMicEQVol";
+            this.lblRadaeMicEQVol.TabIndex = 21;
+            this.lblRadaeMicEQVol.Text = "Vol (dB):";
+            //
+            // udRadaeMicEQVol
+            //
+            this.udRadaeMicEQVol.Location = new System.Drawing.Point(120, 260);
+            this.udRadaeMicEQVol.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
+            this.udRadaeMicEQVol.Minimum = new decimal(new int[] { 20, 0, 0, System.Int32.MinValue });
+            this.udRadaeMicEQVol.Increment = new decimal(new int[] { 1, 0, 0, 0 });
+            this.udRadaeMicEQVol.DecimalPlaces = 0;
+            this.udRadaeMicEQVol.Name = "udRadaeMicEQVol";
+            this.udRadaeMicEQVol.Size = new System.Drawing.Size(50, 20);
+            this.udRadaeMicEQVol.TabIndex = 22;
+            this.udRadaeMicEQVol.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udRadaeMicEQVol, "Master post-EQ volume biquad gain (dB). Always active when non-zero, independent of the EQ master enable.");
+            this.udRadaeMicEQVol.ValueChanged += new System.EventHandler(this.udRadaeMicEQVol_ValueChanged);
             //
             // chkRADAEReporter  [v2.10.3.16]
             //
             this.chkRADAEReporter.AutoSize = true;
             this.chkRADAEReporter.Image = null;
-            this.chkRADAEReporter.Location = new System.Drawing.Point(420, 145);
+            this.chkRADAEReporter.Location = new System.Drawing.Point(10, 295);
             this.chkRADAEReporter.Name = "chkRADAEReporter";
             this.chkRADAEReporter.Size = new System.Drawing.Size(180, 17);
-            this.chkRADAEReporter.TabIndex = 99;
+            this.chkRADAEReporter.TabIndex = 23;
             this.chkRADAEReporter.Text = "RADE Reporter (qso.freedv.org)";
             this.toolTip1.SetToolTip(this.chkRADAEReporter, "Connects to qso.freedv.org as a 'report' client and shows the live FreeDV station list. Uses the Callsign / Locator / Msg fields below. Frequency, TX state and RADE SNR reports are sent automatically while this is enabled.");
             this.chkRADAEReporter.UseVisualStyleBackColor = true;
@@ -30164,57 +30368,57 @@ namespace Thetis
             // lblRadaeReporterCallsign
             //
             this.lblRadaeReporterCallsign.AutoSize = true;
-            this.lblRadaeReporterCallsign.Location = new System.Drawing.Point(420, 168);
+            this.lblRadaeReporterCallsign.Location = new System.Drawing.Point(10, 321);
             this.lblRadaeReporterCallsign.Name = "lblRadaeReporterCallsign";
             this.lblRadaeReporterCallsign.Size = new System.Drawing.Size(31, 13);
-            this.lblRadaeReporterCallsign.TabIndex = 100;
+            this.lblRadaeReporterCallsign.TabIndex = 24;
             this.lblRadaeReporterCallsign.Text = "Call:";
             //
             // txtRadaeReporterCallsign
             //
-            this.txtRadaeReporterCallsign.Location = new System.Drawing.Point(455, 165);
+            this.txtRadaeReporterCallsign.Location = new System.Drawing.Point(45, 318);
             this.txtRadaeReporterCallsign.MaxLength = 16;
             this.txtRadaeReporterCallsign.Name = "txtRadaeReporterCallsign";
-            this.txtRadaeReporterCallsign.Size = new System.Drawing.Size(80, 20);
-            this.txtRadaeReporterCallsign.TabIndex = 101;
+            this.txtRadaeReporterCallsign.Size = new System.Drawing.Size(100, 20);
+            this.txtRadaeReporterCallsign.TabIndex = 25;
             this.toolTip1.SetToolTip(this.txtRadaeReporterCallsign, "Your station callsign as it will appear on qso.freedv.org");
             this.txtRadaeReporterCallsign.TextChanged += new System.EventHandler(this.txtRadaeReporterCallsign_TextChanged);
             //
             // lblRadaeReporterGrid
             //
             this.lblRadaeReporterGrid.AutoSize = true;
-            this.lblRadaeReporterGrid.Location = new System.Drawing.Point(545, 168);
+            this.lblRadaeReporterGrid.Location = new System.Drawing.Point(160, 321);
             this.lblRadaeReporterGrid.Name = "lblRadaeReporterGrid";
             this.lblRadaeReporterGrid.Size = new System.Drawing.Size(31, 13);
-            this.lblRadaeReporterGrid.TabIndex = 102;
+            this.lblRadaeReporterGrid.TabIndex = 26;
             this.lblRadaeReporterGrid.Text = "Grid:";
             //
             // txtRadaeReporterGrid
             //
-            this.txtRadaeReporterGrid.Location = new System.Drawing.Point(580, 165);
+            this.txtRadaeReporterGrid.Location = new System.Drawing.Point(200, 318);
             this.txtRadaeReporterGrid.MaxLength = 8;
             this.txtRadaeReporterGrid.Name = "txtRadaeReporterGrid";
-            this.txtRadaeReporterGrid.Size = new System.Drawing.Size(70, 20);
-            this.txtRadaeReporterGrid.TabIndex = 103;
+            this.txtRadaeReporterGrid.Size = new System.Drawing.Size(90, 20);
+            this.txtRadaeReporterGrid.TabIndex = 27;
             this.toolTip1.SetToolTip(this.txtRadaeReporterGrid, "Maidenhead locator (4 or 6 characters), e.g. KM18ts");
             this.txtRadaeReporterGrid.TextChanged += new System.EventHandler(this.txtRadaeReporterGrid_TextChanged);
             //
             // lblRadaeReporterMsg
             //
             this.lblRadaeReporterMsg.AutoSize = true;
-            this.lblRadaeReporterMsg.Location = new System.Drawing.Point(420, 191);
+            this.lblRadaeReporterMsg.Location = new System.Drawing.Point(10, 344);
             this.lblRadaeReporterMsg.Name = "lblRadaeReporterMsg";
             this.lblRadaeReporterMsg.Size = new System.Drawing.Size(31, 13);
-            this.lblRadaeReporterMsg.TabIndex = 104;
+            this.lblRadaeReporterMsg.TabIndex = 28;
             this.lblRadaeReporterMsg.Text = "Msg:";
             //
             // txtRadaeReporterMsg
             //
-            this.txtRadaeReporterMsg.Location = new System.Drawing.Point(455, 188);
+            this.txtRadaeReporterMsg.Location = new System.Drawing.Point(45, 341);
             this.txtRadaeReporterMsg.MaxLength = 80;
             this.txtRadaeReporterMsg.Name = "txtRadaeReporterMsg";
-            this.txtRadaeReporterMsg.Size = new System.Drawing.Size(195, 20);
-            this.txtRadaeReporterMsg.TabIndex = 105;
+            this.txtRadaeReporterMsg.Size = new System.Drawing.Size(245, 20);
+            this.txtRadaeReporterMsg.TabIndex = 29;
             this.toolTip1.SetToolTip(this.txtRadaeReporterMsg, "Free-form status message visible on qso.freedv.org");
             this.txtRadaeReporterMsg.TextChanged += new System.EventHandler(this.txtRadaeReporterMsg_TextChanged);
             //
@@ -30222,10 +30426,10 @@ namespace Thetis
             //
             this.chkRADAEReporting.AutoSize = true;
             this.chkRADAEReporting.Image = null;
-            this.chkRADAEReporting.Location = new System.Drawing.Point(455, 211);
+            this.chkRADAEReporting.Location = new System.Drawing.Point(10, 365);
             this.chkRADAEReporting.Name = "chkRADAEReporting";
             this.chkRADAEReporting.Size = new System.Drawing.Size(140, 17);
-            this.chkRADAEReporting.TabIndex = 106;
+            this.chkRADAEReporting.TabIndex = 30;
             this.chkRADAEReporting.Text = "RADE enable reporting";
             this.toolTip1.SetToolTip(this.chkRADAEReporting, "When checked, Thetis publishes its own callsign / freq / TX state / RX SNR to qso.freedv.org as a 'report' client. When unchecked, the reporter window still shows the live station list (read-only 'view' role) but no own data is published.");
             this.chkRADAEReporting.UseVisualStyleBackColor = true;
@@ -37288,6 +37492,7 @@ namespace Thetis
             this.tcDSP.Controls.Add(this.tpDSPNB);
             this.tcDSP.Controls.Add(this.tpDSPVOXDE);
             this.tcDSP.Controls.Add(this.tpDSPCFC);
+            this.tcDSP.Controls.Add(this.tpDSPRADE);
             this.tcDSP.Location = new System.Drawing.Point(0, 0);
             this.tcDSP.Name = "tcDSP";
             this.tcDSP.SelectedIndex = 0;
@@ -44318,9 +44523,54 @@ namespace Thetis
             this.lblLMSNR2taps.Size = new System.Drawing.Size(40, 16);
             this.lblLMSNR2taps.TabIndex = 3;
             this.lblLMSNR2taps.Text = "Taps:";
-            // 
+            //
+            // tpDSPRADE  -- Setup -> DSP -> RADE.  All RADE controls
+            // (master enable, loopback, Mic/Rx levels, mic-conditioning
+            // chain, Reporter identity / enables) live here on a
+            // dedicated tab so the existing Audio Options tab is no
+            // longer overcrowded.
+            //
+            this.tpDSPRADE.BackColor = System.Drawing.SystemColors.Control;
+            this.tpDSPRADE.Controls.Add(this.chkRADAE);
+            this.tpDSPRADE.Controls.Add(this.chkRADAELoopback);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeMicLevel);
+            this.tpDSPRADE.Controls.Add(this.udRadaeMicLevel);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeRxLevel);
+            this.tpDSPRADE.Controls.Add(this.udRadaeRxLevel);
+            this.tpDSPRADE.Controls.Add(this.chkRadaeMicRNNoise);
+            this.tpDSPRADE.Controls.Add(this.chkRadaeMicAGC);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeMicAGCTarget);
+            this.tpDSPRADE.Controls.Add(this.udRadaeMicAGCTarget);
+            this.tpDSPRADE.Controls.Add(this.chkRadaeMicEQ);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeMicEQBass);
+            this.tpDSPRADE.Controls.Add(this.udRadaeMicEQBassFreq);
+            this.tpDSPRADE.Controls.Add(this.udRadaeMicEQBassGain);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeMicEQMid);
+            this.tpDSPRADE.Controls.Add(this.udRadaeMicEQMidFreq);
+            this.tpDSPRADE.Controls.Add(this.udRadaeMicEQMidGain);
+            this.tpDSPRADE.Controls.Add(this.udRadaeMicEQMidQ);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeMicEQTreble);
+            this.tpDSPRADE.Controls.Add(this.udRadaeMicEQTrebleFreq);
+            this.tpDSPRADE.Controls.Add(this.udRadaeMicEQTrebleGain);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeMicEQVol);
+            this.tpDSPRADE.Controls.Add(this.udRadaeMicEQVol);
+            this.tpDSPRADE.Controls.Add(this.chkRADAEReporter);
+            this.tpDSPRADE.Controls.Add(this.chkRADAEReporting);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeReporterCallsign);
+            this.tpDSPRADE.Controls.Add(this.txtRadaeReporterCallsign);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeReporterGrid);
+            this.tpDSPRADE.Controls.Add(this.txtRadaeReporterGrid);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeReporterMsg);
+            this.tpDSPRADE.Controls.Add(this.txtRadaeReporterMsg);
+            this.tpDSPRADE.Location = new System.Drawing.Point(4, 22);
+            this.tpDSPRADE.Name = "tpDSPRADE";
+            this.tpDSPRADE.Padding = new System.Windows.Forms.Padding(3);
+            this.tpDSPRADE.Size = new System.Drawing.Size(724, 414);
+            this.tpDSPRADE.TabIndex = 13;
+            this.tpDSPRADE.Text = "RADE";
+            //
             // tpDSPMNF
-            // 
+            //
             this.tpDSPMNF.BackColor = System.Drawing.SystemColors.Control;
             this.tpDSPMNF.Controls.Add(this.grpDSPMNF);
             this.tpDSPMNF.Location = new System.Drawing.Point(4, 22);
@@ -72187,6 +72437,8 @@ namespace Thetis
             ((System.ComponentModel.ISupportInitialize)(this.udLMSNR2gain)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.udLMSNR2delay)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.udLMSNR2taps)).EndInit();
+            this.tpDSPRADE.ResumeLayout(false);
+            this.tpDSPRADE.PerformLayout();
             this.tpDSPMNF.ResumeLayout(false);
             this.grpDSPMNF.ResumeLayout(false);
             this.grpDSPMNF.PerformLayout();
@@ -74646,6 +74898,7 @@ namespace Thetis
         private System.Windows.Forms.CheckBoxTS chkDisableRXOut;
         private System.Windows.Forms.CheckBoxTS chkSplitPins;
         private System.Windows.Forms.TabPage tpDSPMNF;
+        private System.Windows.Forms.TabPage tpDSPRADE;
         private System.Windows.Forms.GroupBoxTS grpDSPMNF;
         private System.Windows.Forms.CheckBoxTS chkMNFAutoIncrease;
         private System.Windows.Forms.ButtonTS btnMNFDelete;
@@ -75825,6 +76078,23 @@ namespace Thetis
         private NumericUpDownTS udRadaeMicLevel;
         private LabelTS    lblRadaeRxLevel;
         private NumericUpDownTS udRadaeRxLevel;
+        private CheckBoxTS chkRadaeMicRNNoise;
+        private CheckBoxTS chkRadaeMicAGC;
+        private LabelTS    lblRadaeMicAGCTarget;
+        private NumericUpDownTS udRadaeMicAGCTarget;
+        private CheckBoxTS chkRadaeMicEQ;
+        private LabelTS    lblRadaeMicEQBass;
+        private NumericUpDownTS udRadaeMicEQBassFreq;
+        private NumericUpDownTS udRadaeMicEQBassGain;
+        private LabelTS    lblRadaeMicEQMid;
+        private NumericUpDownTS udRadaeMicEQMidFreq;
+        private NumericUpDownTS udRadaeMicEQMidGain;
+        private NumericUpDownTS udRadaeMicEQMidQ;
+        private LabelTS    lblRadaeMicEQTreble;
+        private NumericUpDownTS udRadaeMicEQTrebleFreq;
+        private NumericUpDownTS udRadaeMicEQTrebleGain;
+        private LabelTS    lblRadaeMicEQVol;
+        private NumericUpDownTS udRadaeMicEQVol;
         private LabelTS    lblRadaeReporterCallsign;
         private LabelTS    lblRadaeReporterGrid;
         private LabelTS    lblRadaeReporterMsg;

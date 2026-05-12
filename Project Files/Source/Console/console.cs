@@ -53,10 +53,6 @@
 // Christos Nikolaou can be reached by email at : sv1eia@gmail.com                            //
 //============================================================================================//
 //
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Final modifictions by MW0LGE Richard Samphire - 19th April 2026
-// Nothing further added by him after this date, and his repo is now in archive https://github.com/ramdor/Thetis
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Migrated to VS2026 - 18/12/25 MW0LGE v2.10.3.12
 
@@ -21403,6 +21399,7 @@ namespace Thetis
                     sWarning = "Lost Radio Sync   ";
                     _had_radio_sync = false;
                     overload_only = false;
+                    Common.LogNetError("Lost Radio Sync");
                 }
             }
             else if (!_had_radio_sync) _had_radio_sync = true;
@@ -21930,7 +21927,9 @@ namespace Thetis
                     toolStripStatusLabel_SeqWarning.Visible = bShow;
                 }
 
-                if (_bInfoBarShowSEQErrors) infoBar.Warning("Sequence error : " + ooo.ToString() + " (" + s.Trim() + ")"); //MW0LGE_21k9c show/hide flag
+                string seqMsg = "Sequence error : " + ooo.ToString() + " (" + s.Trim() + ")";
+                if (_bInfoBarShowSEQErrors) infoBar.Warning(seqMsg); //MW0LGE_21k9c show/hide flag
+                Common.LogNetError(seqMsg);
             }
         }
         private float _RX1_smoothed_sig_avg_for_estimated_snr = -200;
@@ -45406,6 +45405,12 @@ namespace Thetis
                 if (!string.IsNullOrEmpty(msg))
                 {
                     infoBar.Warning(msg, false, 10000);
+                    /* Persist PING TOT events to the network-error log.
+                     * Other StopAllTx reasons (MOX TOT, Led-indicator
+                     * macro) are out of scope -- they aren't network
+                     * stream issues. */
+                    if (msg.IndexOf("PING Time Out", StringComparison.OrdinalIgnoreCase) >= 0)
+                        Common.LogNetError(msg);
                 }
             }
         }

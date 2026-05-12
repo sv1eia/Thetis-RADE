@@ -132,6 +132,21 @@ PORT void  SetRadaeMicScale(double scale);
 PORT void  SetRadaeRxScale(double scale);
 PORT void  SetRadaeRxDialScale(double scale);
 
+/* Pre-encoder mic conditioning (FreeDV-GUI parity).  Each stage has an
+ * enable + parameters.  All three off by default.  Chain runs in
+ * radae_micdsp.c as RNNoise -> AGC -> 3-band biquad EQ + Vol, in
+ * series, in xradae_tx step 1 (after deswizzle, before r8brain
+ * 48k -> 16k).  Effect only when chkRADAE is on (the surrounding
+ * xradae_tx returns early when RADE TX is disabled). */
+PORT void  SetRadaeMicRNNoiseEnabled(int enable);
+PORT void  SetRadaeMicAGCEnabled(int enable);
+PORT void  SetRadaeMicAGCTargetLufs(double target_lufs);
+PORT void  SetRadaeMicEQEnabled(int enable);
+PORT void  SetRadaeMicEQBass(double freq_hz, double gain_db);
+PORT void  SetRadaeMicEQMid (double freq_hz, double gain_db, double q);
+PORT void  SetRadaeMicEQTreble(double freq_hz, double gain_db);
+PORT void  SetRadaeMicEQVol(double gain_db);
+
 /* ============================================================
  * Hot-path entry points called from xpipe() in pipe.c.
  *

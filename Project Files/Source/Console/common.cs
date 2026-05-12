@@ -41,7 +41,10 @@
 // its original terms and is not affected by this dual-licensing statement in any way.        //
 // Richard Samphire can be reached by email at :  mw0lge@grange-lane.co.uk                    //
 //============================================================================================//
-
+//============================================================================================//
+// Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork                       //
+// Christos Nikolaou can be reached by email at : sv1eia@gmail.com                            //
+//============================================================================================//
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -630,6 +633,39 @@ namespace Thetis
             {
 
             }
+        }
+
+        /* Network-stream event logger.  Appends one timestamped line per
+         * call to <m_sLogPath>\NetErrorLog.txt in the format
+         *   yyyy/MM/dd HH:mm:ss.fff <entry>
+         * Used by the panadapter-warning code in console.cs to persist
+         * "Lost Radio Sync", "Sequence error ...", and "PING Time Out
+         * Timer" events so the user has a post-hoc record of network
+         * stream issues that previously only appeared as transient
+         * yellow text on the infoBar.  Same on-disk dir as ErrorLog.txt
+         * (re-uses SetLogPath / m_sLogPath).  Lock-serialised so the
+         * audio / overload-poll / TimeOutTimerManager threads can call
+         * it concurrently without losing entries to file-in-use races. */
+        private static readonly object m_oNetLogLock = new object();
+        public static void LogNetError(string entry)
+        {
+            if (m_sLogPath == "") return;
+            if (string.IsNullOrEmpty(entry)) return;
+            try
+            {
+                lock (m_oNetLogLock)
+                {
+                    using (StreamWriter w = File.AppendText(m_sLogPath + "\\NetErrorLog.txt"))
+                    {
+                        w.WriteLine(
+                            DateTime.Now.ToString(
+                                "yyyy/MM/dd HH:mm:ss.fff",
+                                System.Globalization.CultureInfo.InvariantCulture)
+                            + " " + entry);
+                    }
+                }
+            }
+            catch { }
         }
 
 		// returns the Thetis version number in "a.b.c" format

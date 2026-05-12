@@ -41,6 +41,8 @@
  * + Gray interleaver, matching the real wire format. */
 #include "rade_text.h"
 
+#include "radae_micdsp.h"
+
 #include <math.h>
 
 /* WDSP mono-float resampler -- still used on RX */
@@ -494,6 +496,13 @@ void create_radae(void)
             rade_text_set_rx_callback(g_rade_text, on_radae_text_rx, NULL);
     }
 
+    /* Pre-encoder mic DSP chain (RNNoise + AGC + 3-band biquad EQ).
+     * Sample rate is the radio's input rate, queried lazily from the
+     * first xradae_tx call -- but we call create here with a default
+     * 48 kHz rate, then if the actual rate differs the radae_micdsp
+     * resampler / RNNoise gate handles it (RNNoise only runs at 48k). */
+    radae_micdsp_create(48000);
+
     g_initialized = 1;
     OutputDebugStringA("[RADAE] create_radae complete\n");
 }
@@ -504,6 +513,8 @@ void destroy_radae(void)
 
     _InterlockedExchange(&g_radae_rx_enabled, 0);
     _InterlockedExchange(&g_radae_tx_enabled, 0);
+
+    radae_micdsp_destroy();
 
     EnterCriticalSection(&g_radae_cs);
 
@@ -715,6 +726,52 @@ PORT void SetRadaeRxDialScale(double scale)
     if (!(scale > 0.0))      scale = 1.0;
     if (scale > 100.0)       scale = 100.0;
     g_radae_rx_dial_scale = (float)scale;
+}
+
+/* ============================================================
+ * Pre-encoder mic-conditioning chain (FreeDV-GUI parity).  Thin
+ * forwarders to radae_micdsp.c.  Enable flags + parameters; the
+ * mic chain is gated inside xradae_tx by g_radae_tx_enabled, so
+ * these have effect only when RADE is enabled.
+ * ============================================================ */
+PORT void SetRadaeMicRNNoiseEnabled(int e)
+{
+    radae_micdsp_set_rnnoise_enabled(e);
+}
+
+PORT void SetRadaeMicAGCEnabled(int e)
+{
+    radae_micdsp_set_agc_enabled(e);
+}
+
+PORT void SetRadaeMicAGCTargetLufs(double t)
+{
+    radae_micdsp_set_agc_target_lufs(t);
+}
+
+PORT void SetRadaeMicEQEnabled(int e)
+{
+    radae_micdsp_set_eq_enabled(e);
+}
+
+PORT void SetRadaeMicEQBass(double f, double g)
+{
+    radae_micdsp_set_eq_bass(f, g);
+}
+
+PORT void SetRadaeMicEQMid(double f, double g, double q)
+{
+    radae_micdsp_set_eq_mid(f, g, q);
+}
+
+PORT void SetRadaeMicEQTreble(double f, double g)
+{
+    radae_micdsp_set_eq_treble(f, g);
+}
+
+PORT void SetRadaeMicEQVol(double db)
+{
+    radae_micdsp_set_eq_vol(db);
 }
 
 /* Cache the user's callsign for EOO transmission.  The actual encode
@@ -989,7 +1046,9 @@ void xradae_tx(double* mic_io)
     EnterCriticalSection(&g_radae_cs);
 
     /* MOX RX->TX edge: drop any per-over state so this over starts with
-     * a deterministic pipeline phase. */
+     * a deterministic pipeline phase.  Mirrors freedv-gui's
+     * TxRxThread::txProcessing_() reset path: full pipeline reset +
+     * FIFO clear at RX->TX transition. */
     if (_InterlockedExchange(&g_radae_box_pending, 0))
     {
         g_tx_features_buf_n = 0;
@@ -997,6 +1056,7 @@ void xradae_tx(double* mic_io)
         g_tx_modem_fifo_n   = 0;
         g_tx_outrate_fifo_n = 0;
         if (g_tx_rmatch != NULL) resetRMatchDiags(g_tx_rmatch);
+        radae_micdsp_reset();
     }
 
     /* (Re)build the resamplers if outrate or outsize changed. */
@@ -1033,6 +1093,12 @@ void xradae_tx(double* mic_io)
         if (blk_peak >= RADAE_TX_CLIP_THRESHOLD)
             _InterlockedExchange(&g_tx_in_clip_last_tick, (long)GetTickCount());
     }
+
+    /* 1b) Pre-encoder mic-conditioning DSP chain (RNNoise + AGC +
+     *     3-band biquad EQ).  All stages off by default; each stage's
+     *     enable is independent and the chain is in-place on
+     *     g_tx_in_mono.  Mirrors FreeDV-GUI 2.3.0's mic pipeline. */
+    radae_micdsp_process(g_tx_in_mono, outsize);
 
     /* 2) ENCODER INPUT RESAMPLER: r8brain outrate -> 16 kHz, push to speech FIFO */
     {
