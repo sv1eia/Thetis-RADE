@@ -28,8 +28,10 @@ warren@pratt.one
 
 void start_syncbthread (SYNCB a)
 {
-	HANDLE handle = (HANDLE) _beginthread(syncb_main, 0, (void *)a);
-	SetThreadPriority (handle, THREAD_PRIORITY_HIGHEST);
+	/* MMCSS registration happens at the top of syncb_main() so the
+	 * Windows scheduler accounts CPU on the syncb worker against the
+	 * Pro Audio task class (same tier as wdspmain / mix_main). */
+	(void)_beginthread(syncb_main, 0, (void *)a);
 }
 
 SYNCB create_syncbuffs (int accept, int nstreams, int max_insize, int max_outsize, int outsize, double** out, void (*exf)(void))
@@ -161,14 +163,20 @@ void syncbdata (SYNCB a)
 
 void syncb_main (void *p)
 {
+	DWORD taskIndex = 0;
+	HANDLE hTask = AvSetMmThreadCharacteristics(TEXT("Pro Audio"), &taskIndex);
+	if (hTask != 0) AvSetMmThreadPriority(hTask, 2);
+	else SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+
 	SYNCB a = (SYNCB)p;
-	
+
 	while (_InterlockedAnd (&a->run, 1))
 	{
 		WaitForSingleObject (a->Sem_BuffReady,INFINITE);
 		syncbdata (a);
 		a->exf();
 	}
+	if (hTask != 0) AvRevertMmThreadCharacteristics(hTask);
 	_endthread();
 }
 

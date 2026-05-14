@@ -166,7 +166,7 @@ static int           g_rnn_out_fifo_n     = 0;
 
 /* ----- AGC state (mirrors freedv-gui AgcStep.cpp) ----- */
 static volatile long g_agc_enable         = 0;
-static volatile double g_agc_target_lufs  = -20.0;
+static volatile double g_agc_target_lufs  = -23.0;
 
 #define MICDSP_AGC_MAX_DB        12.0     /* AGC_MAX_GAIN_DB         */
 #define MICDSP_AGC_MIN_DB       -20.0     /* AGC_MIN_GAIN_DB         */
@@ -269,6 +269,23 @@ static void agc_init_engines(void)
     g_agc_out_fifo_n = 0;
 }
 
+/* Soft reset -- mirrors freedv-gui AgcStep::reset() exactly:
+ * zero the smoothed-gain accumulators and clear the input FIFO, but
+ * leave the existing ebur128_state and WebRtcAgc instances allocated
+ * so their internal histories (loudness ring, limiter envelope)
+ * survive the reset.  Our output FIFO is also cleared because it's
+ * the bridging buffer between AGC blocks and the float-block caller
+ * contract -- the freedv-gui equivalent (outputSamples_) is naturally
+ * overwritten on every execute() call, so retaining stale samples
+ * here would diverge from upstream. */
+static void agc_soft_reset(void)
+{
+    g_agc_current_db = 0.0;
+    g_agc_target_db  = 0.0;
+    g_agc_in_fifo_n  = 0;
+    g_agc_out_fifo_n = 0;
+}
+
 void radae_micdsp_create(int sample_rate)
 {
     if (sample_rate <= 0) sample_rate = 48000;
@@ -313,9 +330,11 @@ void radae_micdsp_reset(void)
     g_rnn_out_fifo_n      = 0;
     g_first_rnnoise_frame = 1;
 
-    /* AGC: re-init ebur128 + WebRTC limiter, zero current/target gain
-     * and clear the bridging short FIFOs.  Mirrors AgcStep::reset(). */
-    agc_init_engines();
+    /* AGC: zero the smoothed-gain accumulators and clear the bridging
+     * FIFOs, but leave ebur128 + WebRTC instances allocated -- their
+     * internal histories survive the reset.  Exact parity with
+     * freedv-gui's AgcStep::reset(). */
+    agc_soft_reset();
 
     /* EQ biquad z-state -- bass / mid / treble / vol. */
     biquad_reset(&g_eq_bass);
@@ -339,9 +358,10 @@ void radae_micdsp_set_agc_enabled(int e)
     long was = _InterlockedExchange(&g_agc_enable, e ? 1 : 0);
     if (e && !was)
     {
-        /* Re-init AGC engines so each on-edge starts clean (matches
-         * AgcStep::reset() semantics). */
-        agc_init_engines();
+        /* On disabled -> enabled edge: zero the gain accumulators and
+         * clear the bridging FIFOs (matches AgcStep::reset()).  The
+         * ebur128 + WebRTC instances stay allocated. */
+        agc_soft_reset();
     }
 }
 
@@ -516,10 +536,17 @@ static int agc_run_one_block(int16_t* in_block, int16_t* out_block, int n)
     return n;
 }
 
-static void agc_step_block(float* buf, int n)
+/* Returns the number of float samples actually written to buf.  May be
+ * less than n during startup priming (AGC drains in 10 ms blocks, so
+ * up to ~10 ms of input is buffered before any output appears).
+ * Matches freedv-gui AgcStep::execute() semantics: the caller absorbs
+ * the variable rate.  Do NOT zero-pad on under-fill -- those zeros
+ * would otherwise become the first LPCNet frame's input on every MOX
+ * RX->TX edge and surface as a "swallowed first syllable" on receivers. */
+static int agc_step_block(float* buf, int n)
 {
     if (g_ebur128 == NULL || g_webrtc_agc == NULL || g_agc_samples_per_run <= 0)
-        return;    /* AGC unsupported (e.g. exotic sample rate) -- bypass. */
+        return n;   /* AGC unsupported -- bypass: leave buf unchanged, report full count. */
 
     int n_per_run = g_agc_samples_per_run;
 
@@ -557,23 +584,19 @@ static void agc_step_block(float* buf, int n)
         }
     }
 
-    /* Pop short FIFO -> float output (write back to buf). */
+    /* Pop short FIFO -> float output (write back to buf).  Return the
+     * actual count produced; the caller propagates it downstream. */
+    int avail = (g_agc_out_fifo_n < n) ? g_agc_out_fifo_n : n;
+    int i;
+    for (i = 0; i < avail; i++)
+        buf[i] = s16_to_float(g_agc_out_fifo[i]);
+    if (avail > 0)
     {
-        int avail = (g_agc_out_fifo_n < n) ? g_agc_out_fifo_n : n;
-        int i;
-        for (i = 0; i < avail; i++)
-            buf[i] = s16_to_float(g_agc_out_fifo[i]);
-        if (avail > 0)
-        {
-            memmove(g_agc_out_fifo, g_agc_out_fifo + avail,
-                    (size_t)(g_agc_out_fifo_n - avail) * sizeof(int16_t));
-            g_agc_out_fifo_n -= avail;
-        }
-        /* During AGC startup priming the chain has fewer output samples
-         * than it consumed.  Pad with zeros so the caller still gets a
-         * full block (same contract as the RNNoise stage). */
-        for (i = avail; i < n; i++) buf[i] = 0.0f;
+        memmove(g_agc_out_fifo, g_agc_out_fifo + avail,
+                (size_t)(g_agc_out_fifo_n - avail) * sizeof(int16_t));
+        g_agc_out_fifo_n -= avail;
     }
+    return avail;
 }
 
 /* ============================================================
@@ -672,30 +695,38 @@ int radae_micdsp_process(float* buf, int n_in)
 {
     if (!g_ready || n_in <= 0) return n_in;
 
-    int rn_on = (int)_InterlockedAnd(&g_rnnoise_enable, 1);
+    int rn_on  = (int)_InterlockedAnd(&g_rnnoise_enable, 1);
     int agc_on = (int)_InterlockedAnd(&g_agc_enable, 1);
-    int eq_on = (int)_InterlockedAnd(&g_eq_enable, 1);
+    int eq_on  = (int)_InterlockedAnd(&g_eq_enable, 1);
 
     int n = n_in;
 
     if (rn_on)
     {
-        int got = rnnoise_step_block(buf, n);
-        /* During warm-up RNNoise produces fewer samples than it
-         * consumed.  Pad with zeros so the caller can keep its
-         * fixed-block contract; the encoder treats zero-padded
-         * frames as silence (correct during the priming gap). */
-        if (got < n)
-        {
-            int i;
-            for (i = got; i < n; i++) buf[i] = 0.0f;
-        }
+        /* RNNoise drains in 480-sample (10 ms @ 48 k) frames and
+         * discards the first frame after every reset / reset-equivalent
+         * (g_first_rnnoise_frame priming).  During the priming gap the
+         * call returns fewer samples than it consumed -- the rest are
+         * buffered inside RNNoise's input FIFO and surface on later
+         * calls.  Propagate the actual count downstream instead of
+         * zero-padding: zero-padding would force LPCNet to encode
+         * silence for the missing samples, which is the source of the
+         * "swallowed first syllable" at the start of every over.
+         * Matches freedv-gui's RNNoiseStep contract. */
+        n = rnnoise_step_block(buf, n);
+        if (n <= 0) return 0;
     }
 
     eq_rebuild_if_dirty();
 
     if (agc_on)
-        agc_step_block(buf, n);
+    {
+        /* Same contract as RNNoise: AGC drains in 10 ms blocks at the
+         * configured sample rate; during startup priming the output
+         * count is less than the input.  Propagate the actual count. */
+        n = agc_step_block(buf, n);
+        if (n <= 0) return 0;
+    }
 
     if (eq_on || g_eq_vol.enabled)
         eq_step_block(buf, n);

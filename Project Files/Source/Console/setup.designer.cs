@@ -1633,6 +1633,13 @@ namespace Thetis
             this.chkRX2AutoMuteRX1OnVFOBTX = new System.Windows.Forms.CheckBoxTS();
             this.chkRX2AutoMuteTX = new System.Windows.Forms.CheckBoxTS();
             this.tpGeneralNavigation = new System.Windows.Forms.TabPage();
+            this.tpGeneralLog = new System.Windows.Forms.TabPage();
+            this.chkLogEnable = new System.Windows.Forms.CheckBoxTS();
+            this.btnLogClear = new System.Windows.Forms.ButtonTS();
+            this.udLogMaxLines = new System.Windows.Forms.NumericUpDownTS();
+            this.lblLogMaxLines = new System.Windows.Forms.LabelTS();
+            this.lblLogViewerTitle = new System.Windows.Forms.LabelTS();
+            this.txtLogViewer = new System.Windows.Forms.TextBox();
             this.grpGlobalHIDConrtolOptions = new System.Windows.Forms.GroupBoxTS();
             this.lblRawHIDWarning = new System.Windows.Forms.LabelTS();
             this.txtDeviceHID_hidden = new System.Windows.Forms.TextBoxTS();
@@ -1856,6 +1863,12 @@ namespace Thetis
             this.txtRadaeReporterCallsign = new System.Windows.Forms.TextBoxTS();
             this.txtRadaeReporterGrid = new System.Windows.Forms.TextBoxTS();
             this.txtRadaeReporterMsg = new System.Windows.Forms.TextBoxTS();
+            this.grpRadaeDiagnostics = new System.Windows.Forms.GroupBox();
+            this.chkRadaeBypassEncoder = new System.Windows.Forms.CheckBox();
+            this.chkRadaeBypassEncoderCore = new System.Windows.Forms.CheckBox();
+            this.chkRadaeBypassRmatch = new System.Windows.Forms.CheckBox();
+            this.chkRadaeBypassMicDsp = new System.Windows.Forms.CheckBox();
+            this.chkRadaeBypassAll = new System.Windows.Forms.CheckBox();
             this.tpAdvancedAudio = new System.Windows.Forms.TabPage();
             this.lblAdvancedAudioWarning = new System.Windows.Forms.LabelTS();
             this.grpVAC2ResamplerAdvanced = new System.Windows.Forms.GroupBoxTS();
@@ -4803,6 +4816,8 @@ namespace Thetis
             this.grpGanymedeCtrl.SuspendLayout();
             this.tpRX2.SuspendLayout();
             this.tpGeneralNavigation.SuspendLayout();
+            this.tpGeneralLog.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.udLogMaxLines)).BeginInit();
             this.grpGlobalHIDConrtolOptions.SuspendLayout();
             this.tpAudio.SuspendLayout();
             this.tcAudio.SuspendLayout();
@@ -8098,11 +8113,13 @@ namespace Thetis
             this.tcGeneral.Controls.Add(this.tpOtherHW);
             this.tcGeneral.Controls.Add(this.tpRX2);
             this.tcGeneral.Controls.Add(this.tpGeneralNavigation);
+            this.tcGeneral.Controls.Add(this.tpGeneralLog);
             this.tcGeneral.Location = new System.Drawing.Point(0, 0);
             this.tcGeneral.Name = "tcGeneral";
             this.tcGeneral.SelectedIndex = 0;
             this.tcGeneral.Size = new System.Drawing.Size(732, 436);
             this.tcGeneral.TabIndex = 26;
+            this.tcGeneral.SelectedIndexChanged += new System.EventHandler(this.tcGeneral_SelectedIndexChanged);
             // 
             // tpGeneralHardware
             // 
@@ -27432,8 +27449,101 @@ namespace Thetis
         "l or other signals with RX2 while transmitting");
             this.chkRX2AutoMuteTX.CheckedChanged += new System.EventHandler(this.chkRX2AutoMuteTX_CheckedChanged);
             // 
+            // tpGeneralLog
+            //
+            this.tpGeneralLog.BackColor = System.Drawing.SystemColors.Control;
+            this.tpGeneralLog.Controls.Add(this.chkLogEnable);
+            this.tpGeneralLog.Controls.Add(this.btnLogClear);
+            this.tpGeneralLog.Controls.Add(this.lblLogMaxLines);
+            this.tpGeneralLog.Controls.Add(this.udLogMaxLines);
+            this.tpGeneralLog.Controls.Add(this.lblLogViewerTitle);
+            this.tpGeneralLog.Controls.Add(this.txtLogViewer);
+            this.tpGeneralLog.Location = new System.Drawing.Point(4, 22);
+            this.tpGeneralLog.Name = "tpGeneralLog";
+            this.tpGeneralLog.Padding = new System.Windows.Forms.Padding(3);
+            this.tpGeneralLog.Size = new System.Drawing.Size(724, 410);
+            this.tpGeneralLog.TabIndex = 6;
+            this.tpGeneralLog.Text = "Log";
+            this.toolTip1.SetToolTip(this.tpGeneralLog, "Network-event log (NetErrorLog.txt) controls + mini viewer of the last 10 lines.");
+            //
+            // chkLogEnable
+            //
+            this.chkLogEnable.AutoSize = true;
+            this.chkLogEnable.Checked = true;
+            this.chkLogEnable.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkLogEnable.Location = new System.Drawing.Point(16, 16);
+            this.chkLogEnable.Name = "chkLogEnable";
+            this.chkLogEnable.Size = new System.Drawing.Size(94, 17);
+            this.chkLogEnable.TabIndex = 0;
+            this.chkLogEnable.Text = "Log enabled";
+            this.toolTip1.SetToolTip(this.chkLogEnable, "When ticked, network events (Lost Radio Sync, Sequence error, PING Time Out, Thetis started/shutdown) are appended to NetErrorLog.txt.");
+            this.chkLogEnable.UseVisualStyleBackColor = true;
+            this.chkLogEnable.CheckedChanged += new System.EventHandler(this.chkLogEnable_CheckedChanged);
+            //
+            // btnLogClear
+            //
+            this.btnLogClear.Image = null;
+            this.btnLogClear.Location = new System.Drawing.Point(16, 44);
+            this.btnLogClear.Name = "btnLogClear";
+            this.btnLogClear.Selectable = true;
+            this.btnLogClear.Size = new System.Drawing.Size(90, 23);
+            this.btnLogClear.TabIndex = 1;
+            this.btnLogClear.Text = "Clear log";
+            this.toolTip1.SetToolTip(this.btnLogClear, "Truncate NetErrorLog.txt to zero bytes.");
+            this.btnLogClear.UseVisualStyleBackColor = true;
+            this.btnLogClear.Click += new System.EventHandler(this.btnLogClear_Click);
+            //
+            // lblLogMaxLines
+            //
+            this.lblLogMaxLines.AutoSize = true;
+            this.lblLogMaxLines.Image = null;
+            this.lblLogMaxLines.Location = new System.Drawing.Point(140, 20);
+            this.lblLogMaxLines.Name = "lblLogMaxLines";
+            this.lblLogMaxLines.Size = new System.Drawing.Size(74, 13);
+            this.lblLogMaxLines.TabIndex = 2;
+            this.lblLogMaxLines.Text = "Max lines:";
+            //
+            // udLogMaxLines
+            //
+            this.udLogMaxLines.Location = new System.Drawing.Point(214, 16);
+            this.udLogMaxLines.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
+            this.udLogMaxLines.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this.udLogMaxLines.Increment = new decimal(new int[] { 100, 0, 0, 0 });
+            this.udLogMaxLines.DecimalPlaces = 0;
+            this.udLogMaxLines.Name = "udLogMaxLines";
+            this.udLogMaxLines.Size = new System.Drawing.Size(70, 20);
+            this.udLogMaxLines.TabIndex = 3;
+            this.udLogMaxLines.Value = new decimal(new int[] { 10000, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udLogMaxLines, "Maximum line count for NetErrorLog.txt.  Set to 0 for no cap.  When the file already has this many lines, further events are dropped and \"Log overflow\" is shown on the panadapter.");
+            this.udLogMaxLines.ValueChanged += new System.EventHandler(this.udLogMaxLines_ValueChanged);
+            //
+            // lblLogViewerTitle
+            //
+            this.lblLogViewerTitle.AutoSize = true;
+            this.lblLogViewerTitle.Image = null;
+            this.lblLogViewerTitle.Location = new System.Drawing.Point(16, 84);
+            this.lblLogViewerTitle.Name = "lblLogViewerTitle";
+            this.lblLogViewerTitle.Size = new System.Drawing.Size(168, 13);
+            this.lblLogViewerTitle.TabIndex = 4;
+            this.lblLogViewerTitle.Text = "Latest log lines (live refresh):";
+            //
+            // txtLogViewer
+            //
+            this.txtLogViewer.BackColor = System.Drawing.Color.Black;
+            this.txtLogViewer.ForeColor = System.Drawing.Color.LightGreen;
+            this.txtLogViewer.Font = new System.Drawing.Font("Consolas", 8.25F);
+            this.txtLogViewer.Location = new System.Drawing.Point(16, 104);
+            this.txtLogViewer.Multiline = true;
+            this.txtLogViewer.Name = "txtLogViewer";
+            this.txtLogViewer.ReadOnly = true;
+            this.txtLogViewer.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.txtLogViewer.Size = new System.Drawing.Size(692, 290);
+            this.txtLogViewer.TabIndex = 5;
+            this.txtLogViewer.WordWrap = false;
+            this.toolTip1.SetToolTip(this.txtLogViewer, "Live viewer of NetErrorLog.txt -- scroll with mouse wheel or the side scrollbar, select with the mouse or Ctrl+A, copy with Ctrl+C or right-click → Copy.");
+            //
             // tpGeneralNavigation
-            // 
+            //
             this.tpGeneralNavigation.BackColor = System.Drawing.SystemColors.Control;
             this.tpGeneralNavigation.Controls.Add(this.grpGlobalHIDConrtolOptions);
             this.tpGeneralNavigation.Location = new System.Drawing.Point(4, 22);
@@ -30193,8 +30303,8 @@ namespace Thetis
             this.udRadaeMicAGCTarget.Name = "udRadaeMicAGCTarget";
             this.udRadaeMicAGCTarget.Size = new System.Drawing.Size(50, 20);
             this.udRadaeMicAGCTarget.TabIndex = 9;
-            this.udRadaeMicAGCTarget.Value = new decimal(new int[] { 20, 0, 0, System.Int32.MinValue });
-            this.toolTip1.SetToolTip(this.udRadaeMicAGCTarget, "AGC loudness target (LUFS).  Default -20 dB; lower (more negative) = quieter target.  Range -30..0 LUFS.");
+            this.udRadaeMicAGCTarget.Value = new decimal(new int[] { 23, 0, 0, System.Int32.MinValue });
+            this.toolTip1.SetToolTip(this.udRadaeMicAGCTarget, "AGC loudness target (LUFS).  Default -23 dB (matches freedv-gui); lower (more negative) = quieter target.  Range -30..0 LUFS.");
             this.udRadaeMicAGCTarget.ValueChanged += new System.EventHandler(this.udRadaeMicAGCTarget_ValueChanged);
             //
             // chkRadaeMicEQ
@@ -30381,8 +30491,9 @@ namespace Thetis
             this.txtRadaeReporterCallsign.Name = "txtRadaeReporterCallsign";
             this.txtRadaeReporterCallsign.Size = new System.Drawing.Size(100, 20);
             this.txtRadaeReporterCallsign.TabIndex = 25;
-            this.toolTip1.SetToolTip(this.txtRadaeReporterCallsign, "Your station callsign as it will appear on qso.freedv.org");
+            this.toolTip1.SetToolTip(this.txtRadaeReporterCallsign, "Your station callsign as it will appear on qso.freedv.org.  Only alphanumeric characters and '/' are accepted.");
             this.txtRadaeReporterCallsign.TextChanged += new System.EventHandler(this.txtRadaeReporterCallsign_TextChanged);
+            this.txtRadaeReporterCallsign.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.txtRadaeReporterCallsign_KeyPress);
             //
             // lblRadaeReporterGrid
             //
@@ -30396,12 +30507,13 @@ namespace Thetis
             // txtRadaeReporterGrid
             //
             this.txtRadaeReporterGrid.Location = new System.Drawing.Point(200, 318);
-            this.txtRadaeReporterGrid.MaxLength = 8;
+            this.txtRadaeReporterGrid.MaxLength = 6;
             this.txtRadaeReporterGrid.Name = "txtRadaeReporterGrid";
             this.txtRadaeReporterGrid.Size = new System.Drawing.Size(90, 20);
             this.txtRadaeReporterGrid.TabIndex = 27;
-            this.toolTip1.SetToolTip(this.txtRadaeReporterGrid, "Maidenhead locator (4 or 6 characters), e.g. KM18ts");
+            this.toolTip1.SetToolTip(this.txtRadaeReporterGrid, "Maidenhead 6-character locator: AAnnaa (two letters upper-case, two digits, two letters lower-case).  Case is converted on entry; characters that don\'t match the position\'s class are dropped.");
             this.txtRadaeReporterGrid.TextChanged += new System.EventHandler(this.txtRadaeReporterGrid_TextChanged);
+            this.txtRadaeReporterGrid.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.txtRadaeReporterGrid_KeyPress);
             //
             // lblRadaeReporterMsg
             //
@@ -30421,6 +30533,85 @@ namespace Thetis
             this.txtRadaeReporterMsg.TabIndex = 29;
             this.toolTip1.SetToolTip(this.txtRadaeReporterMsg, "Free-form status message visible on qso.freedv.org");
             this.txtRadaeReporterMsg.TextChanged += new System.EventHandler(this.txtRadaeReporterMsg_TextChanged);
+            //
+            // grpRadaeDiagnostics  -- non-persistent pipeline-bypass group
+            //   All four child checkboxes are plain System.Windows.Forms.CheckBox
+            //   so they are NOT picked up by SaveOptions; each boots OFF on
+            //   every launch.  Tooltips describe what each bypass tests.
+            //
+            this.grpRadaeDiagnostics.Controls.Add(this.chkRadaeBypassEncoder);
+            this.grpRadaeDiagnostics.Controls.Add(this.chkRadaeBypassEncoderCore);
+            this.grpRadaeDiagnostics.Controls.Add(this.chkRadaeBypassRmatch);
+            this.grpRadaeDiagnostics.Controls.Add(this.chkRadaeBypassMicDsp);
+            this.grpRadaeDiagnostics.Controls.Add(this.chkRadaeBypassAll);
+            this.grpRadaeDiagnostics.Location = new System.Drawing.Point(380, 10);
+            this.grpRadaeDiagnostics.Name = "grpRadaeDiagnostics";
+            this.grpRadaeDiagnostics.Size = new System.Drawing.Size(330, 155);
+            this.grpRadaeDiagnostics.TabIndex = 31;
+            this.grpRadaeDiagnostics.TabStop = false;
+            this.grpRadaeDiagnostics.Text = "Diagnostics -- pipeline bypass (boots OFF)";
+            // Hidden in production -- the bypass flags / PORT setters / event
+            // handlers remain in the binary so a developer can re-enable the
+            // group by flipping Visible=true here if a future regression needs
+            // bisecting.  All four child checkboxes remain non-persistent
+            // (plain CheckBox, not CheckBoxTS) so they would still boot OFF.
+            this.grpRadaeDiagnostics.Visible = false;
+            this.grpRadaeDiagnostics.Enabled = false;
+            //
+            // chkRadaeBypassEncoder
+            //
+            this.chkRadaeBypassEncoder.AutoSize = true;
+            this.chkRadaeBypassEncoder.Location = new System.Drawing.Point(10, 22);
+            this.chkRadaeBypassEncoder.Name = "chkRadaeBypassEncoder";
+            this.chkRadaeBypassEncoder.TabIndex = 0;
+            this.chkRadaeBypassEncoder.Text = "Bypass entire encoder (mic -> SSB voice)";
+            this.toolTip1.SetToolTip(this.chkRadaeBypassEncoder, "Skip Stages 2..7 of xradae_tx -- write the (optionally micdsp'd) mic audio directly to mic_io as 48 kHz mono.  Sends raw SSB voice over the air, NOT a RADE signal.  Receivers will hear voice, not decode.  Single decisive bisect: if the skirt bumps disappear here, the cause is somewhere in Stages 2..7.");
+            this.chkRadaeBypassEncoder.UseVisualStyleBackColor = true;
+            this.chkRadaeBypassEncoder.CheckedChanged += new System.EventHandler(this.chkRadaeBypassEncoder_CheckedChanged);
+            //
+            // chkRadaeBypassEncoderCore
+            //
+            this.chkRadaeBypassEncoderCore.AutoSize = true;
+            this.chkRadaeBypassEncoderCore.Location = new System.Drawing.Point(10, 47);
+            this.chkRadaeBypassEncoderCore.Name = "chkRadaeBypassEncoderCore";
+            this.chkRadaeBypassEncoderCore.TabIndex = 1;
+            this.chkRadaeBypassEncoderCore.Text = "Bypass rade_tx core (silence in modem FIFO)";
+            this.toolTip1.SetToolTip(this.chkRadaeBypassEncoderCore, "Skip Stage 4 (rade_tx() + OFDM modulator) -- push zero-valued samples into the modem FIFO instead of calling rade_tx().  All other stages (mic DSP, r8brain up/down, rmatchV) still run on the silent modem stream.  If the bumps disappear here, the OFDM output of rade_tx() is the source.");
+            this.chkRadaeBypassEncoderCore.UseVisualStyleBackColor = true;
+            this.chkRadaeBypassEncoderCore.CheckedChanged += new System.EventHandler(this.chkRadaeBypassEncoderCore_CheckedChanged);
+            //
+            // chkRadaeBypassRmatch
+            //
+            this.chkRadaeBypassRmatch.AutoSize = true;
+            this.chkRadaeBypassRmatch.Location = new System.Drawing.Point(10, 72);
+            this.chkRadaeBypassRmatch.Name = "chkRadaeBypassRmatch";
+            this.chkRadaeBypassRmatch.TabIndex = 2;
+            this.chkRadaeBypassRmatch.Text = "Bypass rmatchV (outrate FIFO -> mic_io)";
+            this.toolTip1.SetToolTip(this.chkRadaeBypassRmatch, "Skip Stage 7 (WDSP rmatchV adaptive resampler) -- copy the outrate FIFO directly into mic_io with no variable-rate resampling.  If the bumps disappear here, rmatchV's varsamp linear interpolation is the source.");
+            this.chkRadaeBypassRmatch.UseVisualStyleBackColor = true;
+            this.chkRadaeBypassRmatch.CheckedChanged += new System.EventHandler(this.chkRadaeBypassRmatch_CheckedChanged);
+            //
+            // chkRadaeBypassMicDsp
+            //
+            this.chkRadaeBypassMicDsp.AutoSize = true;
+            this.chkRadaeBypassMicDsp.Location = new System.Drawing.Point(10, 97);
+            this.chkRadaeBypassMicDsp.Name = "chkRadaeBypassMicDsp";
+            this.chkRadaeBypassMicDsp.TabIndex = 3;
+            this.chkRadaeBypassMicDsp.Text = "Bypass mic DSP (RNNoise/AGC/EQ chain)";
+            this.toolTip1.SetToolTip(this.chkRadaeBypassMicDsp, "Skip Stage 1b (radae_micdsp_process) entirely -- mic audio passes through unchanged regardless of the NR/AGC/EQ checkboxes and EQ-Vol value.  One-click equivalent of NR/AGC/EQ all off + EQ-Vol=0.");
+            this.chkRadaeBypassMicDsp.UseVisualStyleBackColor = true;
+            this.chkRadaeBypassMicDsp.CheckedChanged += new System.EventHandler(this.chkRadaeBypassMicDsp_CheckedChanged);
+            //
+            // chkRadaeBypassAll  -- Test G: xradae_tx() returns at top
+            //
+            this.chkRadaeBypassAll.AutoSize = true;
+            this.chkRadaeBypassAll.Location = new System.Drawing.Point(10, 122);
+            this.chkRadaeBypassAll.Name = "chkRadaeBypassAll";
+            this.chkRadaeBypassAll.TabIndex = 4;
+            this.chkRadaeBypassAll.Text = "Bypass ALL (xradae_tx returns at top)";
+            this.toolTip1.SetToolTip(this.chkRadaeBypassAll, "Test G: xradae_tx returns at the very top of the function -- no read of mic_io, no write of mic_io, no Stage 1, no Stage 1b.  chkRADAE itself stays on so its side-effects (mode forced to DIGU/DIGL, VAC1 disabled, VACPreamp=1.0 in CMSetTXAPanelGain1, xradae_rx running continuously) remain active.  Isolates 'anything xradae_tx touches' from 'anything else chkRADAE activates application-wide'.  If bumps disappear here, the cause is something xradae_tx does to mic_io; if they remain, the cause is in those side-effects.");
+            this.chkRadaeBypassAll.UseVisualStyleBackColor = true;
+            this.chkRadaeBypassAll.CheckedChanged += new System.EventHandler(this.chkRadaeBypassAll_CheckedChanged);
             //
             // chkRADAEReporting  [v2.10.3.16]
             //
@@ -44562,6 +44753,7 @@ namespace Thetis
             this.tpDSPRADE.Controls.Add(this.txtRadaeReporterGrid);
             this.tpDSPRADE.Controls.Add(this.lblRadaeReporterMsg);
             this.tpDSPRADE.Controls.Add(this.txtRadaeReporterMsg);
+            this.tpDSPRADE.Controls.Add(this.grpRadaeDiagnostics);
             this.tpDSPRADE.Location = new System.Drawing.Point(4, 22);
             this.tpDSPRADE.Name = "tpDSPRADE";
             this.tpDSPRADE.Padding = new System.Windows.Forms.Padding(3);
@@ -71999,6 +72191,9 @@ namespace Thetis
             this.grpGanymedeCtrl.PerformLayout();
             this.tpRX2.ResumeLayout(false);
             this.tpGeneralNavigation.ResumeLayout(false);
+            this.tpGeneralLog.ResumeLayout(false);
+            this.tpGeneralLog.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.udLogMaxLines)).EndInit();
             this.grpGlobalHIDConrtolOptions.ResumeLayout(false);
             this.grpGlobalHIDConrtolOptions.PerformLayout();
             this.tpAudio.ResumeLayout(false);
@@ -73423,6 +73618,13 @@ namespace Thetis
         private ButtonTS btnSkinExport;
         private CheckBoxTS chkAudioRX2toVAC;
         private TabPage tpGeneralNavigation;
+        private System.Windows.Forms.TabPage tpGeneralLog;
+        private CheckBoxTS chkLogEnable;
+        private ButtonTS btnLogClear;
+        private NumericUpDownTS udLogMaxLines;
+        private LabelTS lblLogMaxLines;
+        private LabelTS lblLogViewerTitle;
+        private System.Windows.Forms.TextBox txtLogViewer;
         private TrackBarTS tbRX1FilterAlpha;
         private TrackBarTS tbMultiRXFilterAlpha;
         private CheckBoxTS chkWheelTuneVFOB;
@@ -76098,6 +76300,14 @@ namespace Thetis
         private LabelTS    lblRadaeReporterCallsign;
         private LabelTS    lblRadaeReporterGrid;
         private LabelTS    lblRadaeReporterMsg;
+        // Diagnostics group -- plain CheckBox/GroupBox (NOT CheckBoxTS) so
+        // SaveOptions skips them; each boots OFF on every launch.
+        private System.Windows.Forms.GroupBox grpRadaeDiagnostics;
+        private System.Windows.Forms.CheckBox chkRadaeBypassEncoder;
+        private System.Windows.Forms.CheckBox chkRadaeBypassEncoderCore;
+        private System.Windows.Forms.CheckBox chkRadaeBypassRmatch;
+        private System.Windows.Forms.CheckBox chkRadaeBypassMicDsp;
+        private System.Windows.Forms.CheckBox chkRadaeBypassAll;
         private TextBoxTS  txtRadaeReporterCallsign;
         private TextBoxTS  txtRadaeReporterGrid;
         private TextBoxTS  txtRadaeReporterMsg;

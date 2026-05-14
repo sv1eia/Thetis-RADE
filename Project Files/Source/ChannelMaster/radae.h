@@ -147,6 +147,18 @@ PORT void  SetRadaeMicEQMid (double freq_hz, double gain_db, double q);
 PORT void  SetRadaeMicEQTreble(double freq_hz, double gain_db);
 PORT void  SetRadaeMicEQVol(double gain_db);
 
+/* Diagnostic bypass flags (each 0 = normal, 1 = bypass).  Used by the
+ * four checkboxes under Setup -> DSP -> RADE -> Diagnostics to isolate
+ * which stage of the encoder pipeline is producing the residual skirt
+ * splatter / receiver-decoder clicking.  Boot-OFF is enforced on the
+ * C# side (non-persistent checkboxes); each flag takes effect on the
+ * next xradae_tx() call. */
+PORT void  SetRadaeBypassMicDsp(int enable);       /* skip Stage 1b */
+PORT void  SetRadaeBypassEncoderCore(int enable);  /* skip Stage 4 -- push silence to modem FIFO */
+PORT void  SetRadaeBypassRmatch(int enable);       /* skip Stage 7 -- direct copy outrate FIFO -> mic_io */
+PORT void  SetRadaeBypassEncoder(int enable);      /* skip Stages 2..7 -- mic -> mic_io as SSB voice */
+PORT void  SetRadaeBypassAll(int enable);          /* Test G -- xradae_tx returns at top; no read or write of mic_io */
+
 /* ============================================================
  * Hot-path entry points called from xpipe() in pipe.c.
  *

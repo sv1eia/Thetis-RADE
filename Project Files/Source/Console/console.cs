@@ -1620,6 +1620,7 @@ namespace Thetis
                 }
 
                 Common.SetLogPath(app_data_path); // init the logger MW0LGE
+                Common.LogNetError("Thetis Boot");
 
                 Win32.TimeBeginPeriod(1); // set timer resolution to 1ms => freq=1000Hz
 
@@ -2305,6 +2306,21 @@ namespace Thetis
 
             //setup info bar
             SetupInfoBar();
+
+            // Wire the "Log overflow" yellow-letters warning so Common.cs
+            // can fire it without depending on Console / the InfoBar.
+            Common.OnLogOverflow = () =>
+            {
+                if (infoBar == null || IsDisposed) return;
+                try
+                {
+                    if (InvokeRequired)
+                        BeginInvoke(new Action(() => { try { infoBar.Warning("Log overflow"); } catch { } }));
+                    else
+                        infoBar.Warning("Log overflow");
+                }
+                catch { }
+            };
 
             DumpCap.Initalise(this);
             if (DumpCap.ClearFolderOnRestart) DumpCap.ClearDumpFolder();
@@ -27347,6 +27363,8 @@ namespace Thetis
                 }
                 if (!IsSetupFormNull) SetupForm.BoardWarning = NetworkIO.BoardMismatch; //[2.10.3.9]MW0LGE show warning in setup if board does not match expected
 
+                Common.LogNetError("Thetis PowerOn");
+
                 //MW0LGE_21k9 these two moved after the audio start
                 //seems to fix issue that was causing multiRX to be silent when starting up and it was switched on
                 if (chkEnableMultiRX.Checked) chkEnableMultiRX_CheckedChanged(this, EventArgs.Empty);
@@ -27528,6 +27546,8 @@ namespace Thetis
             }
             else
             {
+                Common.LogNetError("Thetis PowerOff");
+
                 DataFlowing = false;
                 SetupForm.TestIMD = false;
 
@@ -28205,6 +28225,7 @@ namespace Thetis
 
             if (!_is_shutting_down)
             {
+                Common.LogNetError("Thetis shutdown");
                 shutdownLogStringToPath("Inside Console_Closing()");
 
                 //show the shutdown form and then restart the close process via BeginInvoke

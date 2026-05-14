@@ -220,6 +220,19 @@ namespace Thetis
         public static extern void SetRadaeMicEQTreble(double freq_hz, double gain_db);
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicEQVol", CallingConvention = CallingConvention.Cdecl)]
         public static extern void SetRadaeMicEQVol(double gain_db);
+
+        // Diagnostic bypass flags -- non-persistent, see SetRadae*Bypass*
+        // checkboxes under Setup -> DSP -> RADE -> Diagnostics.
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeBypassMicDsp", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeBypassMicDsp(int enable);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeBypassEncoderCore", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeBypassEncoderCore(int enable);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeBypassRmatch", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeBypassRmatch(int enable);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeBypassEncoder", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeBypassEncoder(int enable);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeBypassAll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeBypassAll(int enable);
         // end radae
 
         // router

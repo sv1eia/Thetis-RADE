@@ -45,6 +45,12 @@ void r8b_destroy(r8b_handle h);
 int r8b_process_ff(r8b_handle h, const float* in, int n_in,
                    float* out, int out_cap);
 
+/* Clear the filter delay-line state and re-prewarm so the next
+ * process() call returns output from the first input sample.  Call at
+ * MOX RX->TX edges to prevent the first preamble from being convolved
+ * with the previous over's tail.  Safe on NULL. */
+void r8b_clear(r8b_handle h);
+
 #ifdef __cplusplus
 }
 #endif

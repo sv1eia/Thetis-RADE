@@ -2301,6 +2301,9 @@ namespace Thetis
             chkRADAEReporter_CheckedChanged(this, e);
             chkRADAEReporting_CheckedChanged(this, e);
 
+            chkLogEnable_CheckedChanged(this, e);
+            udLogMaxLines_ValueChanged(this, e);
+
             chkLinkMaster_CheckedChanged(this, e);
             chkLinkRX0AF_CheckedChanged(this, e);
             chkLinkRX1AF_CheckedChanged(this, e);
@@ -22176,6 +22179,145 @@ namespace Thetis
             cmaster.SetRadaeMicEQVol((double)udRadaeMicEQVol.Value);
         }
 
+        // ----- Setup -> DSP -> RADE -> Diagnostics handlers -----
+        // Plain System.Windows.Forms.CheckBox -- not picked up by SaveOptions
+        // so each flag boots OFF on every launch.  Pushes the 0/1 flag down
+        // to ChannelMaster.dll where xradae_tx() reads it atomically at the
+        // top of every audio block.
+
+        private void chkRadaeBypassEncoder_CheckedChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeBypassEncoder(chkRadaeBypassEncoder.Checked ? 1 : 0);
+        }
+
+        private void chkRadaeBypassEncoderCore_CheckedChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeBypassEncoderCore(chkRadaeBypassEncoderCore.Checked ? 1 : 0);
+        }
+
+        private void chkRadaeBypassRmatch_CheckedChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeBypassRmatch(chkRadaeBypassRmatch.Checked ? 1 : 0);
+        }
+
+        private void chkRadaeBypassMicDsp_CheckedChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeBypassMicDsp(chkRadaeBypassMicDsp.Checked ? 1 : 0);
+        }
+
+        private void chkRadaeBypassAll_CheckedChanged(object sender, EventArgs e)
+        {
+            cmaster.SetRadaeBypassAll(chkRadaeBypassAll.Checked ? 1 : 0);
+        }
+
+        // ----- Setup -> General -> Log handlers + mini viewer -----
+
+        private System.Windows.Forms.Timer m_logViewerTimer = null;
+        private long m_logViewerLastStamp = 0;
+
+        private void chkLogEnable_CheckedChanged(object sender, EventArgs e)
+        {
+            Common.LogEnabled = chkLogEnable.Checked;
+        }
+
+        private void udLogMaxLines_ValueChanged(object sender, EventArgs e)
+        {
+            int v = (int)udLogMaxLines.Value;
+            Common.LogMaxLines = (v <= 0) ? -1 : v;
+        }
+
+        private void btnLogClear_Click(object sender, EventArgs e)
+        {
+            Common.LogClear();
+            m_logViewerLastStamp = 0;
+            refreshLogViewer();
+        }
+
+        private void tcGeneral_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            bool isLogTab = (tcGeneral.SelectedTab == tpGeneralLog);
+            ensureLogViewerTimer();
+            if (isLogTab)
+            {
+                refreshLogViewer();
+                m_logViewerTimer.Start();
+            }
+            else
+            {
+                m_logViewerTimer.Stop();
+            }
+        }
+
+        private void ensureLogViewerTimer()
+        {
+            if (m_logViewerTimer != null) return;
+            m_logViewerTimer = new System.Windows.Forms.Timer();
+            m_logViewerTimer.Interval = 1000;
+            m_logViewerTimer.Tick += (s, e) =>
+            {
+                if (tcGeneral.SelectedTab != tpGeneralLog) { m_logViewerTimer.Stop(); return; }
+                long stamp = Common.LogFileStamp();
+                if (stamp == m_logViewerLastStamp) return;
+                m_logViewerLastStamp = stamp;
+                refreshLogViewer();
+            };
+        }
+
+        /* Win32 hooks used by refreshLogViewer to read/restore the
+         * scroll position of the textbox across a Text replacement. */
+        private const int EM_GETFIRSTVISIBLELINE = 0x00CE;
+        private const int EM_LINESCROLL          = 0x00B6;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        private static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
+
+        private void refreshLogViewer()
+        {
+            // Snapshot scroll + selection before we replace Text.
+            int firstVisibleLine = 0;
+            bool atBottom = true;
+            int oldLineCount = txtLogViewer.Lines.Length;
+            int selStart = txtLogViewer.SelectionStart;
+            int selLen   = txtLogViewer.SelectionLength;
+
+            if (txtLogViewer.IsHandleCreated)
+            {
+                firstVisibleLine = SendMessage(txtLogViewer.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+                int fontH = txtLogViewer.Font.Height > 0 ? txtLogViewer.Font.Height : 13;
+                int linesPerPage = Math.Max(1, txtLogViewer.ClientSize.Height / fontH);
+                atBottom = (firstVisibleLine + linesPerPage) >= oldLineCount;
+            }
+
+            string[] lines = Common.LogReadAll();
+            string newText = string.Join(Environment.NewLine, lines);
+
+            txtLogViewer.Text = newText;
+
+            if (atBottom || lines.Length < oldLineCount)
+            {
+                // Stick to the bottom -- either the user was already there,
+                // or the log shrank (Clear) and the old position is moot.
+                txtLogViewer.SelectionStart  = txtLogViewer.TextLength;
+                txtLogViewer.SelectionLength = 0;
+                txtLogViewer.ScrollToCaret();
+            }
+            else
+            {
+                // User had scrolled up to read history -- restore the same
+                // first-visible-line and re-apply the selection if it's
+                // still in range.
+                if (txtLogViewer.IsHandleCreated && firstVisibleLine > 0)
+                    SendMessage(txtLogViewer.Handle, EM_LINESCROLL, 0, firstVisibleLine);
+                if (selStart + selLen <= txtLogViewer.TextLength)
+                {
+                    txtLogViewer.SelectionStart  = selStart;
+                    txtLogViewer.SelectionLength = selLen;
+                }
+            }
+
+            m_logViewerLastStamp = Common.LogFileStamp();
+        }
+
         // [v2.10.3.16] RADE Reporter (qso.freedv.org).  Connects to the
         // FreeDV Reporter Socket.IO service, sends station identity +
         // freq/TX/RX/SNR updates, and shows the live station list in a
@@ -22225,6 +22367,46 @@ namespace Thetis
         // socket with the new role.
         private void chkRADAEReporting_CheckedChanged(object sender, EventArgs e)
         {
+            // Validation gate: refuse to enable reporting unless BOTH the
+            // callsign and the Maidenhead grid are filled and well-formed.
+            // qso.freedv.org keys station records on callsign + grid; sending
+            // empty or malformed values pollutes the public station list.
+            // Triggered both by a direct click on chkRADAEReporting and by
+            // a click on the console-side VIS checkbox, since chkVIS_CheckedChanged
+            // sets SetupForm.RADAEReporting which lands here.  Setting
+            // Checked = false below re-enters this handler with Checked=false;
+            // the recursive call falls through to the existing mirror chain
+            // and turns off chkVIS as well, so the two stay in sync.
+            if (!initializing && chkRADAEReporting.Checked)
+            {
+                string call = txtRadaeReporterCallsign.Text == null
+                              ? "" : txtRadaeReporterCallsign.Text.Trim();
+                string grid = txtRadaeReporterGrid.Text == null
+                              ? "" : txtRadaeReporterGrid.Text.Trim();
+                bool callOk = IsValidRadaeCallsign(call);
+                bool gridOk = IsValidRadaeGrid(grid);
+                if (!callOk || !gridOk)
+                {
+                    string msg = "RADE reporting requires both a callsign and a "
+                               + "valid Maidenhead locator before it can be enabled.\n\n"
+                               + (callOk ? "" : "  - Callsign is empty.\n")
+                               + (gridOk ? "" : "  - Grid must be 6 characters in the form "
+                                              + "AAnnaa  (two upper-case letters, two digits, "
+                                              + "two lower-case letters).\n")
+                               + "\nNo reports will be sent to qso.freedv.org until both are filled.";
+                    try
+                    {
+                        System.Windows.Forms.MessageBox.Show(this, msg,
+                            "RADE Reporter",
+                            System.Windows.Forms.MessageBoxButtons.OK,
+                            System.Windows.Forms.MessageBoxIcon.Information);
+                    }
+                    catch { }
+                    chkRADAEReporting.Checked = false;
+                    return;
+                }
+            }
+
             // Mirror to console-side chkVIS so both stay in sync.
             try
             {
@@ -22238,8 +22420,148 @@ namespace Thetis
             Thetis.FreeDVReporter.FreeDVReporterManager.SetReportingEnabled(chkRADAEReporting.Checked);
         }
 
+        // Re-entrancy guards for the sanitising TextChanged handlers --
+        // we set TextBoxTS.Text programmatically when normalising, which
+        // re-fires TextChanged.  The flag short-circuits the re-entry.
+        private bool m_radaeCallUpdating = false;
+        private bool m_radaeGridUpdating = false;
+
+        private static string SanitizeRadaeCallsign(string raw)
+        {
+            // Allowed: alphanumeric ASCII letters/digits and '/'.  Anything
+            // else is silently dropped.  No case folding -- callsigns can
+            // be entered as the user prefers (qso.freedv.org accepts either
+            // case but conventionally amateur callsigns are uppercase).
+            if (string.IsNullOrEmpty(raw)) return string.Empty;
+            var sb = new System.Text.StringBuilder(raw.Length);
+            foreach (char c in raw)
+            {
+                if (char.IsLetterOrDigit(c) || c == '/') sb.Append(c);
+            }
+            return sb.ToString();
+        }
+
+        private static string NormalizeRadaeGrid(string raw)
+        {
+            // Maidenhead 6-char locator: AA NN aa
+            //   pos 0,1: alpha -> uppercase
+            //   pos 2,3: digit
+            //   pos 4,5: alpha -> lowercase
+            // Trim to 6 characters; drop any char that does not match
+            // its position's required class.
+            if (string.IsNullOrEmpty(raw)) return string.Empty;
+            var sb = new System.Text.StringBuilder(6);
+            for (int i = 0; i < raw.Length && sb.Length < 6; i++)
+            {
+                char c = raw[i];
+                int pos = sb.Length;
+                if (pos < 2)
+                {
+                    if (char.IsLetter(c)) sb.Append(char.ToUpper(c));
+                }
+                else if (pos < 4)
+                {
+                    if (char.IsDigit(c)) sb.Append(c);
+                }
+                else
+                {
+                    if (char.IsLetter(c)) sb.Append(char.ToLower(c));
+                }
+            }
+            return sb.ToString();
+        }
+
+        private static bool IsValidRadaeCallsign(string s)
+        {
+            // Non-empty + at least one alphanumeric char.  We don't try
+            // to enforce a strict callsign pattern; that's the user's
+            // call.  Empty / whitespace-only -> invalid.
+            if (string.IsNullOrEmpty(s)) return false;
+            for (int i = 0; i < s.Length; i++)
+                if (char.IsLetterOrDigit(s[i])) return true;
+            return false;
+        }
+
+        private static bool IsValidRadaeGrid(string s)
+        {
+            // Strict 6-char Maidenhead: AA NN aa.
+            if (s == null || s.Length != 6) return false;
+            return char.IsLetter(s[0]) && char.IsUpper(s[0])
+                && char.IsLetter(s[1]) && char.IsUpper(s[1])
+                && char.IsDigit(s[2])
+                && char.IsDigit(s[3])
+                && char.IsLetter(s[4]) && char.IsLower(s[4])
+                && char.IsLetter(s[5]) && char.IsLower(s[5]);
+        }
+
+        // Per-keystroke filter: drop anything that isn't alphanumeric or
+        // '/' before it reaches the TextBox.  Control chars (backspace,
+        // navigation, Ctrl-shortcuts) are passed through.
+        private void txtRadaeReporterCallsign_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            char c = e.KeyChar;
+            if (char.IsControl(c)) return;
+            if (char.IsLetterOrDigit(c) || c == '/') return;
+            e.Handled = true;
+        }
+
+        // Per-keystroke filter for the 6-char Maidenhead grid.  Drops
+        // chars that don't match the position's class, force-converts
+        // alpha to the position's required case, and refuses any input
+        // once the box is full at 6 chars.  Selection is honoured --
+        // if the user has chars 0..5 selected and types 'k', the
+        // selection is replaced and we start at position 0.
+        private void txtRadaeReporterGrid_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            char c = e.KeyChar;
+            if (char.IsControl(c)) return;
+
+            int sel = txtRadaeReporterGrid.SelectionStart;
+            int len = txtRadaeReporterGrid.SelectionLength;
+
+            // After insertion, the new char ends up at `sel`.  If the
+            // resulting text would exceed 6 chars, drop.
+            int afterLen = txtRadaeReporterGrid.TextLength - len + 1;
+            if (afterLen > 6) { e.Handled = true; return; }
+            if (sel >= 6) { e.Handled = true; return; }
+
+            if (sel < 2)
+            {
+                if (!char.IsLetter(c)) { e.Handled = true; return; }
+                e.KeyChar = char.ToUpper(c);
+            }
+            else if (sel < 4)
+            {
+                if (!char.IsDigit(c)) { e.Handled = true; return; }
+            }
+            else // sel < 6
+            {
+                if (!char.IsLetter(c)) { e.Handled = true; return; }
+                e.KeyChar = char.ToLower(c);
+            }
+        }
+
         private void txtRadaeReporterCallsign_TextChanged(object sender, EventArgs e)
         {
+            // Paste / programmatic-set safety: sanitise the entire
+            // string in case anything bypassed the per-key filter.
+            if (!m_radaeCallUpdating)
+            {
+                string raw = txtRadaeReporterCallsign.Text;
+                string clean = SanitizeRadaeCallsign(raw);
+                if (clean != raw)
+                {
+                    int caret = txtRadaeReporterCallsign.SelectionStart;
+                    m_radaeCallUpdating = true;
+                    try
+                    {
+                        txtRadaeReporterCallsign.Text = clean;
+                        txtRadaeReporterCallsign.SelectionStart = Math.Min(caret, clean.Length);
+                    }
+                    finally { m_radaeCallUpdating = false; }
+                }
+            }
+
             if (initializing) return;
             Thetis.FreeDVReporter.FreeDVReporterManager.ApplyIdentity(
                 txtRadaeReporterCallsign.Text,
@@ -22249,6 +22571,25 @@ namespace Thetis
 
         private void txtRadaeReporterGrid_TextChanged(object sender, EventArgs e)
         {
+            // Paste / programmatic-set safety: re-normalise per-position
+            // case and class.  See NormalizeRadaeGrid for the rules.
+            if (!m_radaeGridUpdating)
+            {
+                string raw = txtRadaeReporterGrid.Text;
+                string clean = NormalizeRadaeGrid(raw);
+                if (clean != raw)
+                {
+                    int caret = txtRadaeReporterGrid.SelectionStart;
+                    m_radaeGridUpdating = true;
+                    try
+                    {
+                        txtRadaeReporterGrid.Text = clean;
+                        txtRadaeReporterGrid.SelectionStart = Math.Min(caret, clean.Length);
+                    }
+                    finally { m_radaeGridUpdating = false; }
+                }
+            }
+
             if (initializing) return;
             Thetis.FreeDVReporter.FreeDVReporterManager.ApplyIdentity(
                 txtRadaeReporterCallsign.Text,

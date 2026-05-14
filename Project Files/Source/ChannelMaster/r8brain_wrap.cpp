@@ -41,6 +41,27 @@ namespace
         double*               in_d;       /* float -> double scratch */
         int                   max_in_len;
     };
+
+    /* Feed zero samples to the resampler until it is ready to emit
+     * output on its first real sample.  r8brain absorbs the first
+     * getInLenBeforeOutPos(0) input samples into its polyphase filter
+     * delay-line before producing any output; without this pre-warm
+     * the first call to r8b_process_ff() with real audio returns 0
+     * samples even though it has consumed the input.  Mirrors
+     * freedv-gui's ResampleStep::prewarm_(). */
+    void r8b_prewarm(r8b_state* s)
+    {
+        if (!s || !s->resamp || s->max_in_len <= 0 || !s->in_d) return;
+        for (int i = 0; i < s->max_in_len; ++i) s->in_d[i] = 0.0;
+        double* tmp_out = 0;
+        int need = s->resamp->getInLenBeforeOutPos(0);
+        while (need > 0)
+        {
+            int n = (need < s->max_in_len) ? need : s->max_in_len;
+            s->resamp->process(s->in_d, n, tmp_out);
+            need -= n;
+        }
+    }
 }
 
 extern "C"
@@ -74,6 +95,8 @@ r8b_handle r8b_create(double src_rate, double dst_rate, int max_in_len)
         return 0;
     }
 
+    r8b_prewarm(s);
+
     return (r8b_handle)s;
 }
 
@@ -85,6 +108,21 @@ void r8b_destroy(r8b_handle h)
     if (s->resamp) delete s->resamp;
     if (s->in_d)   _aligned_free(s->in_d);
     delete s;
+}
+
+/* Clear the resampler's filter delay-line state, then pre-warm again
+ * so the next process() call produces output from the first sample.
+ * Called from the MOX RX->TX edge in radae.c so the first preamble of
+ * every over is computed from a clean filter state instead of being
+ * convolved with the tail of the previous over. */
+extern "C"
+void r8b_clear(r8b_handle h)
+{
+    if (!h) return;
+    r8b_state* s = (r8b_state*)h;
+    if (!s->resamp) return;
+    s->resamp->clear();
+    r8b_prewarm(s);
 }
 
 extern "C"

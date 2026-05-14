@@ -647,15 +647,50 @@ namespace Thetis
          * audio / overload-poll / TimeOutTimerManager threads can call
          * it concurrently without losing entries to file-in-use races. */
         private static readonly object m_oNetLogLock = new object();
+
+        /* User-controllable gates for NetErrorLog (Setup -> General -> Log).
+         * LogEnabled toggles all LogNetError writes.  LogMaxLines (-1 = no
+         * cap) makes LogNetError refuse to append once the file already has
+         * that many lines; instead it raises OnLogOverflow so the console
+         * can flash a "Log overflow" yellow warning. */
+        public static volatile bool LogEnabled = true;
+        public static volatile int  LogMaxLines = -1;
+
+        /* Console wires this in Console_Load so common.cs stays UI-free. */
+        public static Action OnLogOverflow = null;
+
         public static void LogNetError(string entry)
         {
+            if (!LogEnabled) return;
             if (m_sLogPath == "") return;
             if (string.IsNullOrEmpty(entry)) return;
             try
             {
                 lock (m_oNetLogLock)
                 {
-                    using (StreamWriter w = File.AppendText(m_sLogPath + "\\NetErrorLog.txt"))
+                    string path = m_sLogPath + "\\NetErrorLog.txt";
+
+                    if (LogMaxLines > 0 && File.Exists(path))
+                    {
+                        int existing = 0;
+                        try
+                        {
+                            using (StreamReader r = new StreamReader(path))
+                                while (r.ReadLine() != null) existing++;
+                        }
+                        catch { existing = 0; }
+                        if (existing + 1 > LogMaxLines)
+                        {
+                            Action cb = OnLogOverflow;
+                            if (cb != null)
+                            {
+                                try { cb(); } catch { }
+                            }
+                            return;
+                        }
+                    }
+
+                    using (StreamWriter w = File.AppendText(path))
                     {
                         w.WriteLine(
                             DateTime.Now.ToString(
@@ -666,6 +701,77 @@ namespace Thetis
                 }
             }
             catch { }
+        }
+
+        /* Truncate NetErrorLog.txt (used by Setup -> General -> Log clear). */
+        public static void LogClear()
+        {
+            if (m_sLogPath == "") return;
+            try
+            {
+                lock (m_oNetLogLock)
+                {
+                    string path = m_sLogPath + "\\NetErrorLog.txt";
+                    if (File.Exists(path)) File.WriteAllText(path, "");
+                }
+            }
+            catch { }
+        }
+
+        /* Return the last N lines of NetErrorLog.txt (most-recent last).
+         * Used by the mini viewer in Setup -> General -> Log. */
+        public static string[] LogReadTail(int n)
+        {
+            if (m_sLogPath == "" || n <= 0) return new string[0];
+            try
+            {
+                lock (m_oNetLogLock)
+                {
+                    string path = m_sLogPath + "\\NetErrorLog.txt";
+                    if (!File.Exists(path)) return new string[0];
+
+                    System.Collections.Generic.Queue<string> q =
+                        new System.Collections.Generic.Queue<string>();
+                    using (StreamReader r = new StreamReader(path))
+                    {
+                        string line;
+                        while ((line = r.ReadLine()) != null)
+                        {
+                            q.Enqueue(line);
+                            if (q.Count > n) q.Dequeue();
+                        }
+                    }
+                    return q.ToArray();
+                }
+            }
+            catch { return new string[0]; }
+        }
+
+        /* Return every line of NetErrorLog.txt (most-recent last), capped
+         * at LogReadAllMax for safety.  Used by the scrollable viewer in
+         * Setup -> General -> Log so the user can scroll back through the
+         * full file, not just the tail.  Returns at most LogReadAllMax
+         * lines (oldest dropped if the file is bigger). */
+        public const int LogReadAllMax = 100000;
+        public static string[] LogReadAll()
+        {
+            return LogReadTail(LogReadAllMax);
+        }
+
+        /* File-stat snapshot for the viewer's polling timer.  Cheap to call
+         * each tick; the viewer only re-reads the tail when the snapshot
+         * changes. */
+        public static long LogFileStamp()
+        {
+            if (m_sLogPath == "") return 0L;
+            try
+            {
+                string path = m_sLogPath + "\\NetErrorLog.txt";
+                FileInfo fi = new FileInfo(path);
+                if (!fi.Exists) return 0L;
+                return fi.LastWriteTimeUtc.Ticks ^ fi.Length;
+            }
+            catch { return 0L; }
         }
 
 		// returns the Thetis version number in "a.b.c" format

@@ -253,6 +253,24 @@ void flush_dexp (int id)
 	flush_delring (a->audring);
 }
 
+PORT
+void FlushDexpAudioDelay (int id)
+{
+	// Targeted flush of just the audio-delay ring (60 ms by default).
+	// Leaves the VOX side-channel filter, DEXP state-machine, and
+	// avsig/peak detection untouched -- those should keep running
+	// across MOX edges so VOX can re-trigger normally.
+	// Called from radae.c at the MOX RX->TX edge to drop the 60 ms
+	// of stale mic audio that the audring captured during RX time,
+	// so the audring starts the new over zero-filled instead of
+	// transmitting pre-PTT audio for the first 60 ms.
+	DEXP a = pdexp[id];
+	if (a == 0) return;
+	EnterCriticalSection (&a->cs_update);
+	if (a->audring != 0) flush_delring (a->audring);
+	LeaveCriticalSection (&a->cs_update);
+}
+
 enum _dexpstate
 {
 	DEXP_LOW,

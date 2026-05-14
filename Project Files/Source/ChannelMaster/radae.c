@@ -64,6 +64,13 @@ extern __declspec(dllimport) void  getRMatchDiags(void* b, int* underflows, int*
                                                   double* var, int* ringsize, int* nring);
 extern __declspec(dllimport) void  resetRMatchDiags(void* b);
 
+/* WDSP dexp audring flush (PORT-exported by wdsp.dll, defined in
+ * Source/wdsp/dexp.c).  Used at the MOX RX->TX edge to drop the 60 ms
+ * of stale mic audio that the audring captured during RX time, so the
+ * audring does not transmit pre-PTT mic audio for the first 60 ms of
+ * every over. */
+extern __declspec(dllimport) void  FlushDexpAudioDelay(int id);
+
 /* ============================================================
  * State
  * ============================================================ */
@@ -164,10 +171,73 @@ static volatile long g_tx_in_clip_last_tick   = 0;
 #define RADAE_TX_CLIP_THRESHOLD 0.8f       /* matches FreeDV's FROM_MIC_MAX */
 #define RADAE_TX_CLIP_HOLD_MS   500
 
+/* Diagnostic bypass flags -- runtime-toggleable atomic flags read at
+ * the top of every xradae_tx() call.  Each flag short-circuits one
+ * stage in the TX pipeline so we can isolate which stage is producing
+ * the residual skirt splatter / receiver-decoder clicking.
+ *
+ *   g_radae_bypass_micdsp     -- skip Stage 1b (RNNoise/AGC/EQ);
+ *                                 g_tx_in_mono passes through unchanged.
+ *   g_radae_bypass_core       -- skip Stage 4 (rade_tx()); push silence
+ *                                 (zero samples) into the modem FIFO so
+ *                                 Stages 6 and 7 still run, but on
+ *                                 silence.  Isolates the OFDM output.
+ *   g_radae_bypass_rmatch     -- skip Stage 7 (rmatchV); copy the
+ *                                 outrate FIFO directly into mic_io.
+ *   g_radae_bypass_encoder    -- skip Stages 2..7 entirely; write the
+ *                                 (optionally micdsp'd) mic_in_mono
+ *                                 directly to mic_io as L=R 48 kHz
+ *                                 stereo doubles.  Sends raw SSB voice
+ *                                 over the air (NOT a RADE signal);
+ *                                 single decisive bisect of whether the
+ *                                 cause is inside xradae_tx at all.
+ *
+ * All flags default OFF.  Boot-OFF is enforced by the C# side: the four
+ * checkboxes that drive these flags are non-persistent (plain CheckBox,
+ * not CheckBoxTS) so they are unchecked every time the app starts. */
+static volatile long g_radae_bypass_micdsp    = 0;
+static volatile long g_radae_bypass_core      = 0;
+static volatile long g_radae_bypass_rmatch    = 0;
+static volatile long g_radae_bypass_encoder   = 0;
+
+/* Test G -- coarsest bypass.  When this is set, xradae_tx() returns at
+ * the very top of the function, before any read or write of mic_io.
+ * Effectively makes xradae_tx a no-op while chkRADAE itself stays
+ * on, so all chkRADAE side-effects on the rest of the application
+ * (mode forced to DIGU/DIGL, VAC1 disabled, VACPreamp=1.0 in
+ * CMSetTXAPanelGain1, xradae_rx running continuously on the RX path,
+ * RADE Reporter background polling, etc.) remain in effect.  Isolates
+ * "anything xradae_tx itself touches" from "anything else chkRADAE
+ * activates application-wide". */
+static volatile long g_radae_bypass_all       = 0;
+
 static int g_initialized = 0;
 
+/* g_radae_cs -- "shared" critical section.  Protects state accessed by
+ * BOTH xradae_rx (RX audio thread) and the UI thread, OR by both audio
+ * threads simultaneously.  Concretely: g_rx_remote_callsign and the
+ * rade_text codec.  UI-thread setters that mutate UI-published state
+ * also take it briefly.
+ *
+ * Originally this lock was ALSO held across the entire xradae_tx body.
+ * That was a bug: xradae_rx holds the lock across rade_rx + FARGAN
+ * synthesis -- a multi-millisecond CPU burst per RX audio block.  When
+ * xradae_tx tried to acquire it on the next TX audio block, it waited
+ * past its 1.33 ms TX-block deadline (at outsize=64 @ 48 k), the audio
+ * engine produced a glitch, and the SSB modulator turned that into a
+ * broadband transient on the RF skirts (the "bumps").
+ *
+ * xradae_tx and xradae_rx access disjoint state (separate FIFOs,
+ * separate resamplers, separate rmatchV ring, separate sub-structs of
+ * the rade context: r->tx vs r->rx).  So the lock split below is
+ * structurally safe: TX uses g_radae_tx_cs only, RX continues to use
+ * g_radae_cs.  The one piece of state they DO share -- the rade_text
+ * EOO codec -- is touched briefly in xradae_tx step 4 and is wrapped
+ * in g_radae_cs for those few calls. */
 static CRITICAL_SECTION g_radae_cs;
 static int              g_radae_cs_inited = 0;
+static CRITICAL_SECTION g_radae_tx_cs;
+static int              g_radae_tx_cs_inited = 0;
 
 /* radae library context */
 static struct rade*    g_rade   = NULL;
@@ -403,6 +473,11 @@ void create_radae(void)
         InitializeCriticalSectionAndSpinCount(&g_radae_cs, 4000);
         g_radae_cs_inited = 1;
     }
+    if (!g_radae_tx_cs_inited)
+    {
+        InitializeCriticalSectionAndSpinCount(&g_radae_tx_cs, 4000);
+        g_radae_tx_cs_inited = 1;
+    }
 
     rade_initialize();
     g_rade = rade_open("", RADE_USE_C_ENCODER | RADE_USE_C_DECODER | RADE_VERBOSE_0);
@@ -559,6 +634,11 @@ void destroy_radae(void)
     LeaveCriticalSection(&g_radae_cs);
     DeleteCriticalSection(&g_radae_cs);
     g_radae_cs_inited = 0;
+    if (g_radae_tx_cs_inited)
+    {
+        DeleteCriticalSection(&g_radae_tx_cs);
+        g_radae_tx_cs_inited = 0;
+    }
 }
 
 /* ============================================================
@@ -772,6 +852,42 @@ PORT void SetRadaeMicEQTreble(double f, double g)
 PORT void SetRadaeMicEQVol(double db)
 {
     radae_micdsp_set_eq_vol(db);
+}
+
+/* ============================================================
+ * Diagnostic bypass flags.  Each setter takes 0 (= normal path) or
+ * non-zero (= bypass that stage).  Flags are torn-free volatiles read
+ * at the top of every xradae_tx() call.  See the comment block on the
+ * g_radae_bypass_* globals near the top of this file for the full
+ * description of what each flag bypasses and what test it isolates.
+ *
+ * The C# UI wires these to four non-persistent checkboxes under
+ * Setup -> DSP -> RADE so a forgotten test flag cannot leak into a
+ * normal QSO across restarts.
+ * ============================================================ */
+PORT void SetRadaeBypassMicDsp(int enable)
+{
+    _InterlockedExchange(&g_radae_bypass_micdsp, enable ? 1 : 0);
+}
+
+PORT void SetRadaeBypassEncoderCore(int enable)
+{
+    _InterlockedExchange(&g_radae_bypass_core, enable ? 1 : 0);
+}
+
+PORT void SetRadaeBypassRmatch(int enable)
+{
+    _InterlockedExchange(&g_radae_bypass_rmatch, enable ? 1 : 0);
+}
+
+PORT void SetRadaeBypassEncoder(int enable)
+{
+    _InterlockedExchange(&g_radae_bypass_encoder, enable ? 1 : 0);
+}
+
+PORT void SetRadaeBypassAll(int enable)
+{
+    _InterlockedExchange(&g_radae_bypass_all, enable ? 1 : 0);
 }
 
 /* Cache the user's callsign for EOO transmission.  The actual encode
@@ -1043,20 +1159,59 @@ void xradae_tx(double* mic_io)
     if (!g_initialized || g_rade == NULL) return;
     if (outrate <= 0 || outsize <= 0) return;
 
-    EnterCriticalSection(&g_radae_cs);
+    /* Test G -- coarsest bypass.  Read this flag BEFORE entering the
+     * critical section so the early-return is the cheapest possible
+     * no-op (no lock, no mic_io read, no mic_io write).  Behaves
+     * exactly as if chkRADAE were off as far as xradae_tx is
+     * concerned, but every other chkRADAE side-effect (mode forced,
+     * VAC1 disabled, VACPreamp=1.0, xradae_rx running, RADE Reporter
+     * polling) stays active.  If bumps disappear here, the cause is
+     * something xradae_tx itself touches; if they remain, the cause
+     * is in those side-effects (most likely a mode-driven TXA stage). */
+    if (_InterlockedAnd(&g_radae_bypass_all, 1)) return;
 
-    /* MOX RX->TX edge: drop any per-over state so this over starts with
-     * a deterministic pipeline phase.  Mirrors freedv-gui's
-     * TxRxThread::txProcessing_() reset path: full pipeline reset +
-     * FIFO clear at RX->TX transition. */
+    /* TX-side lock only -- xradae_rx and the UI use g_radae_cs which
+     * is held briefly when needed (e.g. around rade_text access in
+     * step 4 EOO).  See the comment block on g_radae_tx_cs near the
+     * top of this file for the rationale: xradae_rx runs CPU-heavy
+     * neural-net calls (rade_rx + FARGAN synthesis) inside its lock
+     * hold; sharing that lock with xradae_tx made TX-block processing
+     * wait past its 1.33 ms deadline -> audio engine glitch -> broadband
+     * skirt bumps on the RF output.  Splitting the locks eliminates
+     * the cross-thread serialisation. */
+    EnterCriticalSection(&g_radae_tx_cs);
+
+    /* MOX RX->TX edge: there is intentionally nothing to reset here.
+     *
+     * xradae_tx runs on EVERY audio block whenever chkRADAE is on, not
+     * just during TX -- the early-return in this function is gated by
+     * g_radae_tx_enabled (set by SetRadaeTxEnabled, only on chkRADAE
+     * toggle), NOT by MOX state.  So the entire encoder pipeline (mic
+     * DSP -> r8brain down -> speech FIFO -> LPCNet -> rade_tx -> modem
+     * FIFO -> r8brain up -> outrate FIFO -> rmatchV -> mic_io -> dexp
+     * audring -> fexchange0) is running continuously during both RX
+     * and TX modes, producing a continuous OFDM stream that the radio's
+     * MOX hardware gates on/off for actual emission.
+     *
+     * Resetting any of that state at MOX 0->1 destroys in-flight modem
+     * samples and creates a ~120 ms silence trough plus two step
+     * transitions (clean modem -> zero at ~42 ms; zero -> clean modem at
+     * ~162 ms) that surface as broadband skirt splatter and receiver
+     * sync loss.  freedv-gui resets its pipeline at MOX 0->1 because its
+     * pipeline only runs during TX -- that pattern does not apply here.
+     *
+     * Continuous pipeline + continuous OFDM stream is what the protocol
+     * actually needs.  RADE V1 OFDM uses continuous pilot symbols for
+     * sync tracking; receivers can lock onto any clean segment of the
+     * stream, so there is no "first preamble" that needs special
+     * handling at MOX 0->1.
+     *
+     * Keep the flag consumption (so it doesn't latch) and the per-over
+     * rmatchV diagnostic-counter reset (useful for telemetry; touches
+     * only counters, not the ring state).  Drop everything else. */
     if (_InterlockedExchange(&g_radae_box_pending, 0))
     {
-        g_tx_features_buf_n = 0;
-        g_tx_speech_fifo_n  = 0;
-        g_tx_modem_fifo_n   = 0;
-        g_tx_outrate_fifo_n = 0;
         if (g_tx_rmatch != NULL) resetRMatchDiags(g_tx_rmatch);
-        radae_micdsp_reset();
     }
 
     /* (Re)build the resamplers if outrate or outsize changed. */
@@ -1065,6 +1220,17 @@ void xradae_tx(double* mic_io)
     {
         rebuild_tx_resamplers(outrate, outsize);
     }
+
+    /* DIAGNOSTIC -- atomic snapshot of the four bypass flags for this
+     * audio block.  Each flag short-circuits one stage in the encoder
+     * pipeline so we can isolate which stage is producing the residual
+     * skirt splatter / receiver-decoder clicking.  See the comment
+     * block on the g_radae_bypass_* globals near the top of this file
+     * for the full description of what each flag bypasses. */
+    const int bypass_micdsp  = (int)_InterlockedAnd(&g_radae_bypass_micdsp,  1);
+    const int bypass_core    = (int)_InterlockedAnd(&g_radae_bypass_core,    1);
+    const int bypass_rmatch  = (int)_InterlockedAnd(&g_radae_bypass_rmatch,  1);
+    const int bypass_encoder = (int)_InterlockedAnd(&g_radae_bypass_encoder, 1);
 
     /* 1) deswizzle L into mono float, apply g_radae_mic_scale (driven
      *    by the "RADE Mic level" spinner in Setup -> Audio -> Options;
@@ -1097,17 +1263,67 @@ void xradae_tx(double* mic_io)
     /* 1b) Pre-encoder mic-conditioning DSP chain (RNNoise + AGC +
      *     3-band biquad EQ).  All stages off by default; each stage's
      *     enable is independent and the chain is in-place on
-     *     g_tx_in_mono.  Mirrors FreeDV-GUI 2.3.0's mic pipeline. */
-    radae_micdsp_process(g_tx_in_mono, outsize);
-
-    /* 2) ENCODER INPUT RESAMPLER: r8brain outrate -> 16 kHz, push to speech FIFO */
+     *     g_tx_in_mono.  Mirrors FreeDV-GUI 2.3.0's mic pipeline.
+     *
+     *     May return fewer samples than outsize during startup priming
+     *     (RNNoise's first 480-sample frame is discarded; AGC accumulates
+     *     a 10 ms block before producing output).  Propagate the actual
+     *     count to the encoder-input resampler so we do NOT feed zero
+     *     samples downstream -- zero samples in the first frame are
+     *     encoded as silence by LPCNet and surface as a "swallowed first
+     *     syllable" on receivers.  The downstream FIFOs and r8brain are
+     *     all variable-rate by design so the smaller count is fine.
+     *
+     *     DIAGNOSTIC bypass_micdsp: skip micdsp; n_dsp = outsize so the
+     *     raw post-Stage-1 mono mic passes through unchanged.
+     *
+     * 2) ENCODER INPUT RESAMPLER: r8brain outrate -> 16 kHz, push to
+     *    speech FIFO.  Skip when the DSP chain emitted nothing this
+     *    block (startup priming).
+     *
+     *    DIAGNOSTIC bypass_encoder: skip Stages 2..7 entirely.  Write
+     *    the (optionally micdsp'd) mic_in_mono directly to mic_io as
+     *    L=R 48 kHz doubles and return.  Sends raw SSB voice over the
+     *    air (NOT a RADE signal) -- the receiver will hear voice, not
+     *    decode.  Single decisive bisect of whether the bumps cause
+     *    is inside Stages 2..7. */
     {
-        int n16 = r8b_process_ff(g_tx_resamp_down, g_tx_in_mono, outsize,
-                                 g_tx_speech_16k, RADAE_MAX_RESAMP_OUT);
-        if (n16 > 0)
-            fifo_push_check(g_tx_speech_fifo, &g_tx_speech_fifo_n, g_tx_speech_fifo_cap,
-                            g_tx_speech_16k, n16,
-                            &g_tx_speech_ovrun_count, "tx.speech_fifo");
+        int n_dsp = bypass_micdsp ? outsize
+                                  : radae_micdsp_process(g_tx_in_mono, outsize);
+        if (bypass_encoder)
+        {
+            int i;
+            for (i = 0; i < n_dsp; i++)
+            {
+                /* I = real audio, Q = 0.  Matches the convention the
+                 * HPSDR Protocol-2 mic handler uses (network.c:769) and
+                 * that WDSP TXA's SSB modulator expects -- the internal
+                 * Hilbert filter generates the analytic signal from
+                 * Q=0 input.  Writing the real audio into BOTH I and Q
+                 * makes the modulator see an "already-analytic" signal
+                 * with I=Q, which produces spurious in-band products
+                 * (skirt bumps on the panadapter, audible click /
+                 * unintelligible FARGAN synthesis on the receiver). */
+                mic_io[2 * i]     = (double)g_tx_in_mono[i];
+                mic_io[2 * i + 1] = 0.0;
+            }
+            for (; i < outsize; i++)
+            {
+                mic_io[2 * i]     = 0.0;
+                mic_io[2 * i + 1] = 0.0;
+            }
+            LeaveCriticalSection(&g_radae_tx_cs);
+            return;
+        }
+        if (n_dsp > 0)
+        {
+            int n16 = r8b_process_ff(g_tx_resamp_down, g_tx_in_mono, n_dsp,
+                                     g_tx_speech_16k, RADAE_MAX_RESAMP_OUT);
+            if (n16 > 0)
+                fifo_push_check(g_tx_speech_fifo, &g_tx_speech_fifo_n, g_tx_speech_fifo_cap,
+                                g_tx_speech_16k, n16,
+                                &g_tx_speech_ovrun_count, "tx.speech_fifo");
+        }
     }
 
     /* 3) drain speech FIFO in LPCNET_FRAME_SIZE chunks, accumulate features,
@@ -1135,16 +1351,33 @@ void xradae_tx(double* mic_io)
             g_tx_features_buf[g_tx_features_buf_n++] = feats[i];
             if (g_tx_features_buf_n == g_rade_n_features)
             {
-                int n_modem = rade_tx(g_rade, g_rade_tx_out, g_tx_features_buf);
-                int j;
                 g_tx_features_buf_n = 0;
-                if (n_modem > 0)
+                if (!bypass_core)
                 {
-                    int avail = (g_rade_n_tx_out > n_modem) ? n_modem : g_rade_n_tx_out;
-                    for (j = 0; j < avail; j++)
-                        g_tx_modem_8k[j] = g_rade_tx_out[j].real * RADE_TX_SCALE;
+                    int n_modem = rade_tx(g_rade, g_rade_tx_out, g_tx_features_buf);
+                    int j;
+                    if (n_modem > 0)
+                    {
+                        int avail = (g_rade_n_tx_out > n_modem) ? n_modem : g_rade_n_tx_out;
+                        for (j = 0; j < avail; j++)
+                            g_tx_modem_8k[j] = g_rade_tx_out[j].real * RADE_TX_SCALE;
+                        fifo_push_check(g_tx_modem_fifo, &g_tx_modem_fifo_n, g_tx_modem_fifo_cap,
+                                        g_tx_modem_8k, avail,
+                                        &g_tx_modem_ovrun_count, "tx.modem_fifo");
+                    }
+                }
+                else
+                {
+                    /* DIAGNOSTIC bypass_core: push g_rade_n_tx_out
+                     * samples of silence into the modem FIFO instead of
+                     * calling rade_tx().  Downstream Stages 6 and 7
+                     * still run on this silent input -- if the skirt
+                     * bumps disappear in this mode, the OFDM output
+                     * of rade_tx() is the source. */
+                    int silence_n = g_rade_n_tx_out;
+                    memset(g_tx_modem_8k, 0, (size_t)silence_n * sizeof(float));
                     fifo_push_check(g_tx_modem_fifo, &g_tx_modem_fifo_n, g_tx_modem_fifo_cap,
-                                    g_tx_modem_8k, avail,
+                                    g_tx_modem_8k, silence_n,
                                     &g_tx_modem_ovrun_count, "tx.modem_fifo");
                 }
             }
@@ -1163,13 +1396,21 @@ void xradae_tx(double* mic_io)
             g_rade_eoo_bits != NULL && g_rade_n_eoo_bits > 0)
         {
             /* rade_text_generate_tx_string takes a symSize arg expressed
-             * as (I,Q) pairs of floats -- divide bit count by 2. */
+             * as (I,Q) pairs of floats -- divide bit count by 2.
+             *
+             * rade_text codec is shared with xradae_rx's rade_text_rx
+             * callback path -- briefly grab g_radae_cs here so the two
+             * threads don't race on the codec's internal state.  This
+             * is a rare event (only fires on MOX 1->0 edge) so the
+             * inter-thread serialisation cost is negligible. */
+            if (g_radae_cs_inited) EnterCriticalSection(&g_radae_cs);
             rade_text_generate_tx_string(g_rade_text,
                                          g_tx_own_callsign,
                                          (int)strlen(g_tx_own_callsign),
                                          g_rade_eoo_bits,
                                          g_rade_n_eoo_bits / 2);
             rade_tx_set_eoo_bits(g_rade, g_rade_eoo_bits);
+            if (g_radae_cs_inited) LeaveCriticalSection(&g_radae_cs);
         }
         int n_eoo = rade_tx_eoo(g_rade, g_rade_tx_eoo_out);
         int j;
@@ -1209,18 +1450,56 @@ void xradae_tx(double* mic_io)
         }
     }
 
-    /* 6) RMATCH-V LAYER: drain outrate FIFO of exactly rmatch_blksz samples,
-     *    push to rmatchV via xrmatchIN; then xrmatchOUT directly into mic_io.
+    /* 6) RMATCH-V LAYER: every block, push exactly rmatch_blksz samples
+     *    to rmatchV via xrmatchIN; then xrmatchOUT directly into mic_io.
      *
-     *    If outrate FIFO doesn't have a full block ready, skip the push so
-     *    rmatchV's underrun-handling produces a smooth dslew on the OUT
-     *    path.  Short underrun log emitted (rate-limited) so we know when
-     *    this happens. */
+     *    If outrate FIFO doesn't have a full block ready (the typical
+     *    case during the ~120 ms preamble gap at the start of every
+     *    over while LPCNet accumulates 12 feature frames before the
+     *    first rade_tx() fires), push ZEROS instead of skipping the
+     *    xrmatchIN.  This keeps rmatchV's ring at steady fill so
+     *    xrmatchOUT does not trigger dslew (a 3 ms Hann fade-to-zero
+     *    + zero-fill of the rest of the block) on every block.  The
+     *    dslew transients, repeated at the audio-block rate (~750 Hz
+     *    at outsize=64), are what produces the broadband splatter on
+     *    the SSB output at the start of each over.  Spectrally clean
+     *    silence is far better than a comb of Hann-tapered transients.
+     *    Diag counter still increments so the rate-limited log line
+     *    reflects how often the zero-feed kicks in. */
     if (g_tx_rmatch != NULL && g_tx_rmatch_blksz > 0 &&
         g_tx_rmatch_blksz <= outsize)   /* must match how we configured rmatchV */
     {
         const int blk = g_tx_rmatch_blksz;
         int i;
+
+        /* DIAGNOSTIC bypass_rmatch: skip xrmatchIN/xrmatchOUT entirely;
+         * copy the outrate FIFO directly into mic_io.  If the skirt
+         * bumps disappear here, rmatchV's varsamp linear interpolation
+         * is the source.  Pad with silence when the FIFO is short
+         * (same zero-feed semantics as fix A -- spectrally clean). */
+        if (bypass_rmatch)
+        {
+            float scratch[RADAE_MAX_BLOCK];
+            int have = (g_tx_outrate_fifo_n < blk) ? g_tx_outrate_fifo_n : blk;
+            if (have > 0)
+                fifo_pop(g_tx_outrate_fifo, &g_tx_outrate_fifo_n, scratch, have);
+            for (i = 0; i < have; i++)
+            {
+                /* I = modem real, Q = 0 (see comment above the bypass_encoder
+                 * branch).  Writing modem to both slots makes WDSP SSB
+                 * generate spurious products. */
+                mic_io[2 * i]     = (double)scratch[i];
+                mic_io[2 * i + 1] = 0.0;
+            }
+            for (; i < outsize; i++)
+            {
+                mic_io[2 * i]     = 0.0;
+                mic_io[2 * i + 1] = 0.0;
+            }
+            LeaveCriticalSection(&g_radae_tx_cs);
+            return;
+        }
+
         if (g_tx_outrate_fifo_n >= blk)
         {
             float scratch[RADAE_MAX_BLOCK];
@@ -1231,20 +1510,22 @@ void xradae_tx(double* mic_io)
                 g_tx_rmatch_in[2 * i]     = v;
                 g_tx_rmatch_in[2 * i + 1] = v;
             }
-            xrmatchIN(g_tx_rmatch, g_tx_rmatch_in);
         }
         else
         {
-            long c = ++g_tx_outrate_underrun_count;
+            long c;
+            memset(g_tx_rmatch_in, 0, (size_t)(2 * blk) * sizeof(double));
+            c = ++g_tx_outrate_underrun_count;
             if (c == 1 || (c % 50) == 0)
             {
-                char log[120];
+                char log[140];
                 sprintf_s(log, sizeof(log),
-                    "[RADAE] outrate->rmatch UNDR have=%d need=%d total=%ld\n",
+                    "[RADAE] outrate->rmatch UNDR have=%d need=%d total=%ld (zero-fed)\n",
                     g_tx_outrate_fifo_n, blk, c);
                 OutputDebugStringA(log);
             }
         }
+        xrmatchIN(g_tx_rmatch, g_tx_rmatch_in);
         /* xrmatchOUT writes 2*blk doubles into our scratch.  blk == outsize
          * by configuration. */
         xrmatchOUT(g_tx_rmatch, g_tx_rmatch_out);
@@ -1287,8 +1568,16 @@ void xradae_tx(double* mic_io)
         {
             for (i = 0; i < blk; i++)
             {
+                /* I = real modem audio, Q = 0.  Matches the network
+                 * mic handler's (real, 0) convention -- WDSP TXA's SSB
+                 * modulator generates the analytic signal internally via
+                 * its Hilbert filter and expects Q=0.  Writing modem on
+                 * both slots creates spurious in-band products that
+                 * appear as skirt bumps on the panadapter and audible
+                 * clicks on the receiver decoder.  rmatchV processed
+                 * both slots above (L=R=modem) but only L is used here. */
                 mic_io[2 * i]     = g_tx_rmatch_out[2 * i];
-                mic_io[2 * i + 1] = g_tx_rmatch_out[2 * i + 1];
+                mic_io[2 * i + 1] = 0.0;
             }
         }
     }
@@ -1303,5 +1592,5 @@ void xradae_tx(double* mic_io)
         }
     }
 
-    LeaveCriticalSection(&g_radae_cs);
+    LeaveCriticalSection(&g_radae_tx_cs);
 }
