@@ -529,7 +529,11 @@ namespace Midi2Cat.Data
         [CatCommandAttribute("APF Type Bi-Quad", ControlType.Button)] // [2.10.3.12]MW0LGE 
         APFType_biquad = 315,
 
-        [CatCommandAttribute("Toggle Wheel to VFOA/VFOB ", ControlType.Button)]  //-W2PA Added a toggle between A/B for main wheel 
-        ToggleVFOWheel = 700
+        [CatCommandAttribute("Toggle Wheel to VFOA/VFOB ", ControlType.Button)]  //-W2PA Added a toggle between A/B for main wheel
+        ToggleVFOWheel = 700,
+        [CatCommandAttribute("CWX Key ", ControlType.Button)]  // MI0BOT: Added ability to key via MIDI
+        CWXKey = 800,
+        [CatCommandAttribute("CWX PTT ", ControlType.Button)]  // MI0BOT: Added ability to PTT via MIDI
+        CWXPTT = 801
     }
 }// namespace

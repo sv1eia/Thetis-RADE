@@ -636,7 +636,7 @@ namespace Thetis
             SetPSRxIdx(0, 0);   // txid = 0, all current models use Stream0 for RX feedback
             SetPSTxIdx(0, 1);   // txid = 0, all current models use Stream1 for TX feedback
             puresignal.SetPSFeedbackRate(txch, ps_rate);
-            puresignal.SetPSHWPeak(txch, 0.2899);
+            //puresignal.SetPSHWPeak(txch, 0.2899);     // MI0BOT: Corrected for in CMLoadRouterAll()
 
             // setup transmitter display
             WDSP.TXASetSipMode(txch, 1);            // 1=>call the appropriate 'analyzer'
@@ -663,6 +663,11 @@ namespace Thetis
 
         public static void CMLoadRouterAll(HPSDRModel model)
         {
+            int txinid = cmaster.inid(1, 0);        // stream id
+            int txch = cmaster.chid(txinid, 0);     // wdsp channel
+
+            puresignal.SetPSHWPeak(txch, HardwareSpecific.PSDefaultPeak);   // MI0BOT: Correct for correct PS value
+
             switch (NetworkIO.CurrentRadioProtocol)
             {
                 case RadioProtocol.USB: //Protocol 1
@@ -690,6 +695,7 @@ namespace Thetis
                                     LoadRouterAll((void*)0, 0, 1, 2, 8, pstreams, pfunction, pcallid);
                                 break;
                             case HPSDRModel.HERMES:
+                            case HPSDRModel.HERMESLITE: // MI0BOT: HL2
                             case HPSDRModel.ANAN_G2E: //N1GP G2E added
                             case HPSDRModel.ANAN10:
                             case HPSDRModel.ANAN100:
@@ -780,6 +786,7 @@ namespace Thetis
                                     LoadRouterAll((void*)0, 0, 1, /*1*/2, 8, pstreams, pfunction, pcallid); //MW0LGE_21d DUP on top panadaptor (Warren provided info)
                                 break;
                             case HPSDRModel.HERMES:
+                            case HPSDRModel.HERMESLITE: // MI0BOT: HL2
                             case HPSDRModel.ANAN_G2E: //N1GP G2E added
                             case HPSDRModel.ANAN10:
                             case HPSDRModel.ANAN100:
@@ -902,6 +909,7 @@ namespace Thetis
                                 break;
 
                             case HPSDRModel.HERMES:
+                            case HPSDRModel.HERMESLITE: // MI0BOT: HL2
                             case HPSDRModel.ANAN_G2E: //N1GP G2E added
                             case HPSDRModel.ANAN10:
                             case HPSDRModel.ANAN100:
@@ -980,6 +988,7 @@ namespace Thetis
                                 break;
 
                             case HPSDRModel.HERMES:
+                            case HPSDRModel.HERMESLITE: // MI0BOT: HL2
                             case HPSDRModel.ANAN_G2E: //N1GP G2E added
                             case HPSDRModel.ANAN10:
                             case HPSDRModel.ANAN100:
@@ -1167,6 +1176,19 @@ namespace Thetis
 
         public static void CMSetTXAPanelGain1(int channel)
         {
+            // [VAC1/RADE separation] When RADE TX is on, xpanel sees the
+            // modem audio out of xradae_tx, not voice.  RADE_TX_SCALE
+            // (=0.5f) already sets the modem to ~-6 dBFS, the correct SSB
+            // operating point.  Force xpanel.gain1 = 1.0 so VAC1 TX Gain
+            // cannot accidentally re-scale the modem via the legacy
+            // VACPreamp branch (which fires for !VACEnabled + DIGU/DIGL).
+            // "RADE Mic level" stays the only TX-side encoder-input knob.
+            if (cmaster.GetRadaeTxEnabled() != 0)
+            {
+                Audio.console.radio.GetDSPTX(0).MicGain = 1.0;
+                return;
+            }
+
             double gain = 1.0;
             DSPMode mode = Audio.TXDSPMode;
             if ((!Audio.VACEnabled &&

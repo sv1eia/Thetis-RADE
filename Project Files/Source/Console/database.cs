@@ -41,6 +41,12 @@
 // its original terms and is not affected by this dual-licensing statement in any way.        //
 // Richard Samphire can be reached by email at :  mw0lge@grange-lane.co.uk                    //
 //============================================================================================//
+/*
+----------------------------------------------------------------------------------------------
+Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+Christos Nikolaou can be reached by email at : sv1eia@gmail.com
+----------------------------------------------------------------------------------------------
+*/
 
 using System;
 using System.Data;
@@ -10965,6 +10971,7 @@ namespace Thetis
                                 string sRad = "";
                                 if (getRadioSelectedFromOldRadButton(ref tempTable, "radGenModelHPSDR")) sRad = "HPSDR";
                                 else if (getRadioSelectedFromOldRadButton(ref tempTable, "radGenModelHermes")) sRad = "HERMES";
+                                else if (getRadioSelectedFromOldRadButton(ref tempTable, "radGenModelHermeslite")) sRad = "HERMES LITE";    // MI0BOT: HL2
                                 else if (getRadioSelectedFromOldRadButton(ref tempTable, "radGenModelANAN10")) sRad = "ANAN-10";
                                 else if (getRadioSelectedFromOldRadButton(ref tempTable, "radGenModelANAN10E")) sRad = "ANAN-10E";
                                 else if (getRadioSelectedFromOldRadButton(ref tempTable, "radGenModelANAN100")) sRad = "ANAN-100";

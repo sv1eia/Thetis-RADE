@@ -222,6 +222,14 @@ namespace Thetis.FreeDVReporter
                     Log("session ended: " + ex.GetType().Name + " " + ex.Message);
                     if (ex.InnerException != null)
                         Log("  inner: " + ex.InnerException.GetType().Name + " " + ex.InnerException.Message);
+
+                    // [Reporter logging] Communication lost — surface to NetErrorLog with reason.
+                    string innerMsg = ex.InnerException == null
+                                      ? ""
+                                      : " (inner: " + ex.InnerException.GetType().Name + " " + ex.InnerException.Message + ")";
+                    Common.LogReporter("Communication lost: "
+                        + ex.GetType().Name + " " + ex.Message + innerMsg
+                        + " — reconnecting in 5s");
                 }
                 SetState("Reconnecting in 5s");
                 try { await Task.Delay(5000, ct); }
@@ -229,6 +237,7 @@ namespace Thetis.FreeDVReporter
             }
             Log("RunLoop exit");
             SetState("Disconnected");
+            Common.LogReporter("Reporter exit — client disconnected");
         }
 
         private async Task ConnectAndPumpAsync(CancellationToken ct)
@@ -281,6 +290,15 @@ namespace Thetis.FreeDVReporter
             }
             string authStr = "40" + auth.ToString(Formatting.None);
             Log("sending CONNECT: " + authStr);
+
+            // [Reporter logging] Login attempt — capture host + credentials the user is trying.
+            Common.LogReporter("Login attempt: host=" + host + ":" + port
+                + " role=" + roleEffective
+                + " call=" + (string.IsNullOrEmpty(Callsign) ? "<empty>" : Callsign)
+                + " grid=" + (string.IsNullOrEmpty(GridSquare) ? "<empty>" : GridSquare)
+                + " client=" + (ClientName ?? "Thetis")
+                + " rx_only=" + RxOnly);
+
             await SendRawAsync(authStr, ct).ConfigureAwait(false);
 
             /* 3) Wait for Socket.IO connect ack ("40{...}") or error ("44{...}").
@@ -296,11 +314,20 @@ namespace Thetis.FreeDVReporter
                 Log("pre-ack rx: " + (pkt.Length > 200 ? pkt.Substring(0, 200) + "..." : pkt));
                 if (pkt == "2") { await SendRawAsync("3", ct).ConfigureAwait(false); continue; }
                 if (pkt.StartsWith("44"))
+                {
+                    // [Reporter logging] Server rejected our connect — log fail reason.
+                    Common.LogReporter("Connection FAILED: server rejected connect: "
+                        + pkt.Substring(2));
                     throw new Exception("server rejected connect: " + pkt.Substring(2));
+                }
                 if (pkt.StartsWith("40")) { ack = pkt; break; }
                 /* Anything else (early events, ignored). */
             }
             Log("got CONNECT-ack: " + ack);
+
+            // [Reporter logging] Connection successful.
+            Common.LogReporter("Connected successfully: host=" + host + ":" + port
+                + " role=" + roleEffective);
 
             /* Parse our own sid from the ack so LocalMirror* methods can
              * route self-emits into the Stations dict. */

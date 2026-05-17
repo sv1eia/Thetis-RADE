@@ -645,6 +645,7 @@
     <Compile Include="CW\CWInput.cs" />
     <Compile Include="GlobalMouseHandler.cs" />
     <Compile Include="HPSDR\Alex.cs" />
+    <Compile Include="HPSDR\IoBoardHl2.cs" />
     <Compile Include="audio.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -816,6 +817,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="setup.designer.cs">
+      <DependentUpon>setup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="setup.HL2.cs">
       <DependentUpon>setup.cs</DependentUpon>
     </Compile>
     <Compile Include="Skin.cs" />

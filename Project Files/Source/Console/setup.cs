@@ -851,6 +851,10 @@ namespace Thetis
 
             bool include_extra_p1_rate = HardwareSpecific.Model == HPSDRModel.REDPITAYA; //DH1KLM
 
+            // MI0BOT: The HL supports 384K
+            if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                include_extra_p1_rate = true;
+
             int[] p1_rates = include_extra_p1_rate ? new int[] { 48000, 96000, 192000, 384000 } : new int[] { 48000, 96000, 192000 };
             int[] p2_rates = { 48000, 96000, 192000, 384000, 768000, 1536000 };
 
@@ -1077,6 +1081,24 @@ namespace Thetis
         public void PerformDelayedInitalistion()
         {
             EventArgs e = EventArgs.Empty;
+
+            // MI0BOT: Make sure the correct stuff is enabled for HL2 (16-step output attenuator, wider LNA range)
+            if (HPSDRHW.HermesLite == Audio.LastRadioHardware ||
+                HPSDRModel.HERMESLITE == HardwareSpecific.Model)
+            {
+                udATTOnTX.Minimum = -28;
+                udMicGainMax.Maximum = 40;
+                chkHermesStepAttenuator.Checked = true;
+                udHermesStepAttenuatorData.Minimum = -28;
+                udHermesStepAttenuatorDataRX2.Minimum = -28;
+                udTXTunePower.Minimum = (Decimal)(-16.5);
+                chkHL2PsSync_CheckedChanged(this, EventArgs.Empty);
+                lblADCLinked.Visible = false;
+            }
+            else
+            {
+                udTXTunePower.Minimum = 0;  // MI0BOT: For non HL2, minimum 0
+            }
 
             chkDisable6mLNAonTX_CheckedChanged(this, e);
             chkDisable6mLNAonRX_CheckedChanged(this, e);
@@ -2302,6 +2324,7 @@ namespace Thetis
             chkRADAEReporting_CheckedChanged(this, e);
 
             chkLogEnable_CheckedChanged(this, e);
+            chkReporterLogEnable_CheckedChanged(this, e);
             udLogMaxLines_ValueChanged(this, e);
 
             chkLinkMaster_CheckedChanged(this, e);
@@ -5464,6 +5487,7 @@ namespace Thetis
 
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA1W.Value;
@@ -5484,6 +5508,7 @@ namespace Thetis
                 float rv = (float)ud100PA20W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA2W.Value;
@@ -5503,6 +5528,7 @@ namespace Thetis
                 float rv = (float)ud100PA30W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA3W.Value;
@@ -5522,6 +5548,7 @@ namespace Thetis
                 float rv = (float)ud100PA40W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA4W.Value;
@@ -5541,6 +5568,7 @@ namespace Thetis
                 float rv = (float)ud100PA50W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA5W.Value;
@@ -5560,6 +5588,7 @@ namespace Thetis
                 float rv = (float)ud100PA60W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA6W.Value;
@@ -5579,6 +5608,7 @@ namespace Thetis
                 float rv = (float)ud100PA70W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA7W.Value;
@@ -5598,6 +5628,7 @@ namespace Thetis
                 float rv = (float)ud100PA80W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA8W.Value;
@@ -5617,6 +5648,7 @@ namespace Thetis
                 float rv = (float)ud100PA90W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA9W.Value;
@@ -5636,6 +5668,7 @@ namespace Thetis
                 float rv = (float)ud100PA100W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA10W.Value;
@@ -5655,6 +5688,7 @@ namespace Thetis
                 float rv = (float)ud100PA110W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA11W.Value;
@@ -5674,6 +5708,7 @@ namespace Thetis
                 float rv = (float)ud100PA120W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA12W.Value;
@@ -5693,6 +5728,7 @@ namespace Thetis
                 float rv = (float)ud100PA130W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA13W.Value;
@@ -5712,6 +5748,7 @@ namespace Thetis
                 float rv = (float)ud100PA140W.Value;
                 switch (HardwareSpecific.Model)
                 {
+                    case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                     case HPSDRModel.ANAN10:
                     case HPSDRModel.ANAN10E:
                         rv = (float)ud10PA14W.Value;
@@ -6444,6 +6481,7 @@ namespace Thetis
             }
 
             if (HardwareSpecific.Model == HPSDRModel.HERMES ||
+                HardwareSpecific.Model == HPSDRModel.HERMESLITE ||      // MI0BOT: HL2 PA Control tab
                 HardwareSpecific.Model == HPSDRModel.ANAN7000D || HardwareSpecific.Model == HPSDRModel.ANAN8000D ||
                 HardwareSpecific.Model == HPSDRModel.ANVELINAPRO3 ||
                 HardwareSpecific.Model == HPSDRModel.ANAN_G2 || HardwareSpecific.Model == HPSDRModel.ANAN_G2_1K ||
@@ -6465,6 +6503,8 @@ namespace Thetis
 
                 if (AndromedaCATEnabled)
                     tpOtherHW.Text = "Andromeda";
+                else if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                    tpOtherHW.Text = "PA Control";      // MI0BOT: HL2
                 else
                     tpOtherHW.Text = "Other H/W";
             }
@@ -7563,7 +7603,11 @@ namespace Thetis
             console.VACRXGain = (int)udAudioVACGainRX.Value;
             if (console.sliderForm != null)
                 console.sliderForm.RX1VACRX = (int)udAudioVACGainRX.Value;
-            cmaster.SetRadaeRxScale(Audio.VACRXScale);
+            // [VAC1/RADE separation] No longer push VACRXScale into the RADE
+            // decoder scale.  VAC1 RX Gain drives only the VAC1 output path
+            // (ivac VACRXScale, see Audio.VACRXScale above).  RADE decoder
+            // input level is owned solely by the dedicated "RADE Rx level"
+            // dial which drives g_radae_rx_dial_scale.
         }
 
         private void udVAC2GainRX_ValueChanged(object sender, System.EventArgs e)
@@ -7582,16 +7626,13 @@ namespace Thetis
             console.VACTXGain = (int)udAudioVACGainTX.Value;
             if (console.sliderForm != null)
                 console.sliderForm.RX1VACTX = (int)udAudioVACGainTX.Value;
-            // VAC1 TXGain is intentionally NOT pushed into the RADE
-            // encoder's pre-encoder mic scale.  In DIGL/DIGU with
-            // VAC1 disabled, CMSetTXAPanelGain1 already routes the
-            // same VACPreamp to the WDSP xpanel multiplier, which
-            // operates on the modem audio at the encoder OUTPUT --
-            // so wiring it to the encoder INPUT as well would apply
-            // the gain twice.  The C-side g_radae_mic_scale stays at
-            // its 1.0 default; SetRadaeMicScale remains exported so
-            // a future dedicated RADE mic level control can drive
-            // it without colliding with VAC1 TXGain.
+            // [VAC1/RADE separation] VAC1 TXGain drives only ivac
+            // vac_preamp (the VAC1 mic path).  When chkRADAE is on,
+            // CMSetTXAPanelGain1 short-circuits xpanel.gain1 to 1.0
+            // regardless of VACPreamp, so this spinner has no effect
+            // on the modem output level.  The dedicated "RADE Mic
+            // level" spinner on the RADE Setup tab is the only
+            // encoder-input control (g_radae_mic_scale).
         }
 
         private void udVAC2GainTX_ValueChanged(object sender, System.EventArgs e)
@@ -19896,10 +19937,18 @@ namespace Thetis
 
             comboAudioSampleRateRX2.Enabled = true;
 
+            // MI0BOT: Remove the HL2 option tab and only add it back when the model is HL2
+            tcOptions.Controls.Remove(tpHL2Options);
+
             groupBoxRXOptions.Text = HardwareSpecific.ModelString + " Options";
             grpHermesStepAttenuator.Text = HardwareSpecific.ModelString + " Step Atten";
 
             console.UpdatePIVisibilty();
+
+            if (HardwareSpecific.Model != HPSDRModel.HERMESLITE)
+            {
+                removeHL2Options();      // MI0BOT: Hide HL2-only ancillary controls when not HL2
+            }
 
             switch (HardwareSpecific.Model)
             {
@@ -19930,6 +19979,60 @@ namespace Thetis
                     chkBPF2Gnd.Visible = false;
                     chkAutoATTRx1.Enabled = false;
                     chkAutoATTRx2.Enabled = false;
+                    setupAttRXControls(1);
+                    setupAttRXControls(2);
+                    break;
+
+                case HPSDRModel.HERMESLITE:         // MI0BOT: HL2
+                    tcOptions.Controls.Add(tpHL2Options);
+                    udHermesStepAttenuatorDataRX2.Minimum = (decimal)-28;
+                    udHermesStepAttenuatorData.Maximum = 31;
+                    udHermesStepAttenuatorDataRX2.Maximum = 31;
+                    labelTxLatency.Visible = true;
+                    labelPttHang.Visible = true;
+                    udTxBufferLat.Visible = true;
+                    udPTTHang.Visible = true;
+                    chkCATtoVFOB.Enabled = true;
+                    chkCATtoVFOB.Visible = true;
+                    grpIOPinState.Enabled = true;
+                    grpIOPinState.Visible = true;
+                    ucIOPinsLedStripHF.Enabled = true;
+                    ucIOPinsLedStripHF.Visible = true;
+                    chkHL2IOBoardPresent.Enabled = true;
+                    chkHL2IOBoardPresent.Visible = true;
+                    udATTOnTX.Minimum = (decimal)-28;
+                    udTXTunePower.DecimalPlaces = 1;
+                    udTXTunePower.Increment = (decimal)0.5;
+                    udTXTunePower.Maximum = (decimal)0;
+                    udTXTunePower.Minimum = (decimal)-16.5;
+
+                    // MI0BOT: HL2 — relabel existing mainline controls and their tooltips so HL2 operators see HL2-flavoured names.
+                    //         All underlying control names, event handlers and wire-format bits remain identical to mainline;
+                    //         only the displayed text is overridden when HERMESLITE is the active model.
+                    labelRXAntControl.Text = "  RX1   RX2    XVTR";
+                    chkRxOutOnTx.Text = "RX 1 OUT on Tx";
+                    chkEXT1OutOnTx.Text = "RX 2 IN on Tx";
+                    chkEXT2OutOnTx.Text = "RX 1 IN on Tx";
+                    tpOtherHW.Text = "PA Control";
+                    chkApolloFilter.Text = "Enable Full Duplex";
+                    chkApolloTuner.Text = "Enable PA";
+                    grpApolloCtrl.Text = "PA Control";
+                    tpApolloApollo.Text = "PA";
+                    chkHERCULES.Text = "N2ADR Filter";
+                    tpAlexControl.Text = "Ant/Filters";
+                    grpDisplay8000DLE.Text = "Hermes-Lite";
+                    chkANAN8000DLEDisplayVoltsAmps.Text = "Show Temp/Current";
+
+                    // MI0BOT: HL2 — tooltip overrides for the 3 relabelled control checkboxes
+                    toolTip1.SetToolTip(chkHERCULES, "Preset pins for for N2ADR filter board");
+                    toolTip1.SetToolTip(chkApolloFilter, "Enables the full duplex on the HL2");
+                    toolTip1.SetToolTip(chkApolloTuner, "Enables HL2 power amplifier");
+
+                    // MI0BOT: HL2 — extra side-effects matching the source's HL2 case body
+                    chkHERCULES.Visible = true;
+                    chkAutoATTRx1.Enabled = true;
+                    chkAutoATTRx2.Enabled = false;
+
                     setupAttRXControls(1);
                     setupAttRXControls(2);
                     break;
@@ -22015,20 +22118,21 @@ namespace Thetis
             // can adjust manually).
             if (chkRADAE.Checked)
             {
-                if (chkAudioEnableVAC.Checked) chkAudioEnableVAC.Checked = false;
-                try { if (udAudioVACGainTX.Value != 0) udAudioVACGainTX.Value = 0; } catch { }
-                try { if (udAudioVACGainRX.Value != 0) udAudioVACGainRX.Value = 0; } catch { }
-                // Setup-side spinners (Setup -> VAC tab).
-                udAudioVACGainTX.Enabled = false;
-                udAudioVACGainRX.Enabled = false;
-                // Console-face PrettyTrackBar mirrors -- Enabled is
-                // independent from the Setup spinners; grey them so
-                // the user can't drag them while RADE is the active
-                // path.  Values track via the VAC*Gain property
-                // setters (already triggered by setting Value=0
-                // above), so no separate Value reset is needed here.
-                try { if (console.ptbVACTXGainMirror != null) console.ptbVACTXGainMirror.Enabled = false; } catch { }
-                try { if (console.ptbVACRXGainMirror != null) console.ptbVACRXGainMirror.Enabled = false; } catch { }
+                // VAC1 enable state and VAC TX/RX gain VALUES
+                // and Enabled state must not be touched by RADE. The user
+                // keeps whatever VAC1 .Checked / gain values / spinner
+                // interactivity was set manually.  RADE no longer greys or
+                // zeroes the Setup-side spinners or the console-face
+                // PrettyTrackBar mirrors.
+
+                // [VAC1/RADE separation, defensive] Reset g_radae_rx_scale
+                // to unity on every RADE-enable edge.  Belt-and-braces
+                // against stale C-side state from upgrades where the old
+                // udAudioVACGainRX -> SetRadaeRxScale push may have left a
+                // non-unity value in the static.  Fresh process start
+                // already initialises it to 1.0f.
+                try { cmaster.SetRadaeRxScale(1.0); } catch { }
+
                 try
                 {
                     double f = console.VFOAFreq;
@@ -22039,13 +22143,6 @@ namespace Thetis
                     if (console.RX1DSPMode != want) console.RX1DSPMode = want;
                 }
                 catch { }
-            }
-            else
-            {
-                udAudioVACGainTX.Enabled = true;
-                udAudioVACGainRX.Enabled = true;
-                try { if (console.ptbVACTXGainMirror != null) console.ptbVACTXGainMirror.Enabled = true; } catch { }
-                try { if (console.ptbVACRXGainMirror != null) console.ptbVACRXGainMirror.Enabled = true; } catch { }
             }
 
             // [v2.10.3.16] Mirror to the console-side chkRADE so both
@@ -22092,6 +22189,16 @@ namespace Thetis
             int active = chkRADAELoopback.Checked ? 1 : 0;
             if (initializing) return;
             cmaster.SetRadaeLoopbackEnabled(active);
+
+            // When loopback is enabled, also uncheck the
+            // RADE reporting checkbox so nothing is sent to qso.freedv.org.
+            // The chkRADAEReporting handler cascades through to the console
+            // mirror (chkVIS) and to FreeDVReporterManager.SetReportingEnabled,
+            // which flips the SocketIO role to "view" and suppresses all wire
+            // emits.  Disabling loopback does not auto-re-check reporting --
+            // the user re-enables it manually if/when desired.
+            if (chkRADAELoopback.Checked && chkRADAEReporting.Checked)
+                chkRADAEReporting.Checked = false;
         }
 
         // RADE Mic level (dB) -> g_radae_mic_scale.  Dedicated mic-input
@@ -22218,6 +22325,14 @@ namespace Thetis
         private void chkLogEnable_CheckedChanged(object sender, EventArgs e)
         {
             Common.LogEnabled = chkLogEnable.Checked;
+        }
+
+        // Subsystem gate for FreeDV Reporter logging.  Reporter events go
+        // to NetErrorLog.txt only when both this AND chkLogEnable are
+        // checked.  Master "Log enabled" continues to gate everything.
+        private void chkReporterLogEnable_CheckedChanged(object sender, EventArgs e)
+        {
+            Common.ReporterLogEnabled = chkReporterLogEnable.Checked;
         }
 
         private void udLogMaxLines_ValueChanged(object sender, EventArgs e)

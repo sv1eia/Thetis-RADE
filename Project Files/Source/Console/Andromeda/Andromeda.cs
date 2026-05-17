@@ -22,6 +22,12 @@
 //
 // laurence@nicklebyhouse.co.uk
 //=================================================================
+/*
+----------------------------------------------------------------------------------------------
+Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+Christos Nikolaou can be reached by email at : sv1eia@gmail.com
+----------------------------------------------------------------------------------------------
+*/
 
 using System;
 using System.Collections.Generic;
@@ -4177,7 +4183,22 @@ namespace Thetis
             //slow down, perhaps z-order fighting, not sure. ~1-3 seconds taken to get through
             //this function, changing from digi to something else.
             //Hidden controls are still returned in this.Controls so will still be saved out ok
-            switch (RX1DSPMode)
+
+            // MI0BOT: Make the panel based on mode of the current transmit VFO
+            DSPMode currentMode;
+            if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+            {
+                if (chkVFOBTX.Checked)
+                    currentMode = RX2DSPMode;
+                else
+                    currentMode = RX1DSPMode;
+            }
+            else
+            {
+                currentMode = RX1DSPMode;
+            }
+
+            switch (currentMode)
             {
                 case DSPMode.LSB:
                 case DSPMode.USB:

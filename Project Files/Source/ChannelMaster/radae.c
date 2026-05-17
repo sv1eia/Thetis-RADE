@@ -22,6 +22,12 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA
  */
+/*
+----------------------------------------------------------------------------------------------
+Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+Christos Nikolaou can be reached by email at : sv1eia@gmail.com
+----------------------------------------------------------------------------------------------
+*/
 
 #include "cmcomm.h"
 #include "radae.h"
@@ -103,11 +109,13 @@ static          float g_radae_freq_off   = 0.0f;
  *                             collapse to a single combined multiply
  *                             pre-loop for cache friendliness).
  *
- * Independent of VAC1 TXGain, which scales the modem audio at the
- * encoder OUTPUT via WDSP xpanel.  The RADE-specific dials and the
- * VAC1 spinners are now mutually exclusive at the UI level: enabling
- * RADE greys VAC1 TX/RX gains and zeroes them, so the dials are the
- * only knobs in play during RADE operation.
+ * Independent of VAC1 TXGain.  As of the VAC1/RADE separation pass,
+ * VAC1 spinners drive ONLY the VAC1 path; RADE has its own dedicated
+ * dials (g_radae_mic_scale, g_radae_rx_dial_scale).  The VAC1 spinners
+ * are NOT greyed when RADE is enabled.  On the TX side,
+ * CMSetTXAPanelGain1 short-circuits to xpanel.gain1 = 1.0 whenever
+ * RADE TX is on, so VAC1 TX Gain cannot leak into the modem output
+ * level via the legacy VACPreamp branch.
  *
  * Aligned 32-bit float reads/writes compile to a single MOV on x86 and
  * are torn-free at the hardware level for UI-rate updates -- a plain

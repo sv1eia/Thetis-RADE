@@ -37,6 +37,12 @@ mw0lge@grange-lane.co.uk
 // its original terms and is not affected by this dual-licensing statement in any way.        //
 // Richard Samphire can be reached by email at :  mw0lge@grange-lane.co.uk                    //
 //============================================================================================//
+/*
+----------------------------------------------------------------------------------------------
+Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+Christos Nikolaou can be reached by email at : sv1eia@gmail.com
+----------------------------------------------------------------------------------------------
+*/
 
 using System;
 using System.Collections.Generic;
@@ -1965,6 +1971,12 @@ if (!DoesRadioExist(item.Key))
                     {
                         versionText += " p2app=" + radio.BetaVersion.ToString();
                     }
+                    break;
+
+                case HPSDRHW.HermesLite:   // MI0BOT: HL2
+                    versionText = (radio.CodeVersion / 10.0f).ToString("F1");
+                    if (radio.BetaVersion > 0)
+                        versionText += "." + radio.BetaVersion.ToString();
                     break;
 
                 default:

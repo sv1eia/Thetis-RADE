@@ -20,6 +20,12 @@
 // this module contains code to support the Alex Filter and Antenna Selection board 
 // 
 // 
+/*
+----------------------------------------------------------------------------------------------
+Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+Christos Nikolaou can be reached by email at : sv1eia@gmail.com
+----------------------------------------------------------------------------------------------
+*/
 
 namespace Thetis
 {
@@ -307,16 +313,18 @@ namespace Thetis
 		private int m_nOld_rx_out = -99;
 		private bool m_bOld_tx = false;
 		private bool m_bOld_alex_enabled = false;
-        public void UpdateAlexAntSelection(Band band, bool tx, bool alex_enabled, bool xvtr) 
+        public void UpdateAlexAntSelection(Band band, bool tx, bool alex_enabled, bool xvtr)
 		{
-			if ( !alex_enabled ) 
+            Console c = Console.getConsole();   // MI0BOT: Needed for HL2 XVTR-form RX-antenna lookup
+
+			if ( !alex_enabled )
 			{
                 NetworkIO.SetAntBits(0, 0, 0, 0, false);
                 m_bOld_alex_enabled = alex_enabled;
                 return;
-			}            
+			}
 
-			int rx_only_ant; 
+			int rx_only_ant;
 			int trx_ant; 
 			int tx_ant; 
 			int rx_out;
@@ -350,8 +358,21 @@ namespace Thetis
                 rx_only_ant = RxOnlyAnt[idx];
                 if (xvtr)
                 {
-                    if (rx_only_ant >= 3) rx_only_ant = 3;
-                    else rx_only_ant = 0;
+                    if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                    {
+                        int xvtrAnt = c.XVTRForm.GetRXAntenna(c.RX1XVTRIndex);
+
+                        if (xvtrAnt == 4 ||     // MI0BOT: Alt RX has been requested or TX and Rx are not the same
+                           TRxAnt == false)
+                            rx_only_ant = 1;
+                        else
+                            rx_only_ant = 0;
+                    }
+                    else
+                    {
+                        if (rx_only_ant >= 3) rx_only_ant = 3;
+                        else rx_only_ant = 0;
+                    }
                 }
                 else
                 {
@@ -362,7 +383,16 @@ namespace Thetis
 
                 if (TRxAnt) trx_ant = TxAnt[idx];
                 else trx_ant = RxAnt[idx];
-				trx_ant_different = RxAnt[idx] != TxAnt[idx];
+
+                if ((RxAnt[idx] != TxAnt[idx]) ||
+                    (0 != rx_only_ant && HardwareSpecific.Model == HPSDRModel.HERMESLITE))  // MI0BOT: Antenna not the same is valid
+                {                                                                           //         for receive only aerial as well
+                    trx_ant_different = true;
+                }
+                else
+                {
+                    trx_ant_different = false;
+                }
             }
 
             if (rx_out_override && rx_out == 1)
@@ -390,6 +420,14 @@ namespace Thetis
 			//    Thread.Sleep(10);
 			//}
 
+            if (TRxAnt && HardwareSpecific.Model == HPSDRModel.HERMESLITE && !xvtr)
+            {
+                // MI0BOT: Transmit antenna is being used for reception in split aerial operation
+                //         so switch of the rx only aerial but not with transverter operation
+
+                rx_only_ant = 0;
+            }
+
 			//MW0LGE_21k9d only set bits if different
 			if (m_nOld_rx_only_ant != rx_only_ant ||
 				m_nOld_trx_ant != trx_ant ||
@@ -402,6 +440,9 @@ namespace Thetis
 
 				System.Console.WriteLine("Ant idx: " + idx + "(" + ((Band)idx + (int)Band.B160M).ToString() + ")");
                 System.Console.WriteLine("Ant Rx Only {0} , TRx Ant {1}, Tx Ant {2}, Rx Out {3}, TX {4}", rx_only_ant.ToString(), trx_ant.ToString(), tx_ant.ToString(), rx_out.ToString(), tx.ToString());
+
+                if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                    c.SetIOBoardAerialPorts(rx_only_ant, trx_ant - 1, tx_ant - 1, tx);   // MI0BOT: Sets the aerial controls on the I/O board
 
 				//store old
 				m_nOld_rx_only_ant = rx_only_ant;

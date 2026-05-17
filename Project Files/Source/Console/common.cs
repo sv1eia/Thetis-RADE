@@ -656,8 +656,25 @@ namespace Thetis
         public static volatile bool LogEnabled = true;
         public static volatile int  LogMaxLines = -1;
 
+        /* Subsystem gate for FreeDV Reporter logging (Setup -> General ->
+         * Log -> "Reporter logging").  Reporter events are written to
+         * NetErrorLog.txt only when BOTH LogEnabled (master) and
+         * ReporterLogEnabled are true.  Master defaults true, subsystem
+         * gate defaults true so existing builds behave identically until
+         * the user toggles either checkbox. */
+        public static volatile bool ReporterLogEnabled = true;
+
         /* Console wires this in Console_Load so common.cs stays UI-free. */
         public static Action OnLogOverflow = null;
+
+        /* Gated wrapper for Reporter-specific events.  Behaves like
+         * LogNetError but also requires ReporterLogEnabled.  Reporter call
+         * sites use this; non-reporter sites stay on LogNetError. */
+        public static void LogReporter(string entry)
+        {
+            if (!LogEnabled || !ReporterLogEnabled) return;
+            LogNetError(entry);
+        }
 
         public static void LogNetError(string entry)
         {

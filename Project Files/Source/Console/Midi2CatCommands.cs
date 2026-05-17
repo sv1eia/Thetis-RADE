@@ -38,6 +38,12 @@ by Chris Codella, W2PA, April 2017.  Indicated by //-W2PA comment lines.
 // its original terms and is not affected by this dual-licensing statement in any way.        //
 // Richard Samphire can be reached by email at :  mw0lge@grange-lane.co.uk                    //
 //============================================================================================//
+/*
+----------------------------------------------------------------------------------------------
+Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+Christos Nikolaou can be reached by email at : sv1eia@gmail.com
+----------------------------------------------------------------------------------------------
+*/
 
 using Midi2Cat;
 using Midi2Cat.Data; 
@@ -6376,6 +6382,22 @@ namespace Thetis
                 }
             }
             return CmdState.NoChange;
+        }
+
+        public void CWXKey(int msg, MidiDevice device)  // MI0BOT: CW keying via MIDI
+        {
+            if (127 == msg)
+                NetworkIO.SetCWX(1);
+            else
+                NetworkIO.SetCWX(0);
+        }
+
+        public void CWXPTT(int msg, MidiDevice device)  // MI0BOT: CW PTT via MIDI
+        {
+            if (127 == msg)
+                NetworkIO.SetCWXPTT(1);
+            else
+                NetworkIO.SetCWXPTT(0);
         }
 
         //MW0LGE_21k9d

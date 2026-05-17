@@ -45,6 +45,12 @@
 // its original terms and is not affected by this dual-licensing statement in any way.        //
 // Richard Samphire can be reached by email at :  mw0lge@grange-lane.co.uk                    //
 //============================================================================================//
+/*
+----------------------------------------------------------------------------------------------
+Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+Christos Nikolaou can be reached by email at : sv1eia@gmail.com
+----------------------------------------------------------------------------------------------
+*/
 
 #define SAVERESTORE
 //#define CWX_DEBUG (Note: Please do not put all Debug.Writeline()under this. Leave them commented off.)
@@ -284,6 +290,9 @@ namespace Thetis
                 //    // CWPTTItem item = new CWPTTItem(state, CWSensorItem.GetCurrentTime());
                 //    // CWKeyer.PTTEnqueue(item);
                 //}
+
+                if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                    NetworkIO.SetCWXPTT(Convert.ToInt32(state));    // MI0BOT: HL2 uses CWX-PTT (bit 3) instead of standard CW PTT path
 
                 ptt = state;
                 if (state) pttLed.BackColor = System.Drawing.Color.Red;

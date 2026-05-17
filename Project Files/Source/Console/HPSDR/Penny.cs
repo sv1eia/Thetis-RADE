@@ -21,6 +21,12 @@
 // this module contains code to support the Penelope Transmitter board 
 // 
 // 
+/*
+----------------------------------------------------------------------------------------------
+Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+Christos Nikolaou can be reached by email at : sv1eia@gmail.com
+----------------------------------------------------------------------------------------------
+*/
 
 
 
@@ -171,11 +177,31 @@ namespace Thetis
                 }
                 else
                 {
-                    if (tx && VFOBTX)
-                        bits = TXABitMasks[idxb];
-                    else if (tx)
-                        bits = TXABitMasks[idx];
-                    else bits = RXABitMasks[idx];
+                    if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)    // MI0BOT: Select correct LPF for 2 receivers
+                    {
+                        if (tx)
+                        {
+                            if (VFOBTX)
+                                bits = TXABitMasks[idxb];
+                            else
+                                bits = TXABitMasks[idx];
+                        }
+                        else
+                        {
+                            if (Console.getConsole().RX2Enabled && (idxb > idx))     // MI0BOT: Select the filter for the high band
+                                bits = RXABitMasks[idxb];
+                            else
+                                bits = RXABitMasks[idx];
+                        }
+                    }
+                    else
+                    {
+                        if (tx && VFOBTX)
+                            bits = TXABitMasks[idxb];
+                        else if (tx)
+                            bits = TXABitMasks[idx];
+                        else bits = RXABitMasks[idx];
+                    }
                 }
 			}
 

@@ -127,6 +127,7 @@ namespace Thetis
         private Thread vox_update_thread;					// polls the mic input
         private Thread noise_gate_update_thread;			// polls the mic input during TX
         private Thread _overload_thread;
+        private Thread IOBoard_update_thread;               // updates the HL2 I/O board (MI0BOT)
         public bool _pause_DisplayThread = true;             // MW0LGE_21d initally paused
         private bool calibration_running = false;
         private bool displaydidit = false;
@@ -2154,6 +2155,36 @@ namespace Thetis
                 //MiniSpec.Add(1, 0, true); // rx1 sub //not used yet
             }
             //
+
+            if (HPSDRHW.HermesLite == Audio.LastRadioHardware ||
+                HPSDRModel.HERMESLITE == HardwareSpecific.Model)     // MI0BOT: Need an early indication of hardware type due to HL2 rx attenuator can be negative
+            {
+                ptbPWR.Maximum = 90;        // MI0BOT: Changes for HL2 only having a 16 step output attenuator
+                ptbPWR.Value = 0;
+                ptbPWR.LargeChange = 6;
+                ptbPWR.SmallChange = 6;
+                ptbTune.Maximum = 99;
+                ptbTune.Value = 0;
+                ptbTune.LargeChange = 3;
+                ptbTune.SmallChange = 3;
+
+                // MI0BOT: Changes for HL2 having a greater range of LNA
+                udRX1StepAttData.Maximum = 31;
+                udRX2StepAttData.Maximum = 31;
+                udRX1StepAttData.Minimum = -28;
+                udRX2StepAttData.Minimum = -28;
+                udTXStepAttData.Minimum = -28;
+
+                comboRX2Preamp.Enabled = false;
+                udRX2StepAttData.Enabled = false;
+                lblRX2Preamp.Enabled = false;
+
+                // MI0BOT: Remove items from main menu that are currently not used
+                this.menuStrip1.Items.Remove(pIToolStripMenuItem);
+                this.menuStrip1.Items.Remove(wBToolStripMenuItem);
+                this.menuStrip1.Items.Remove(eSCToolStripMenuItem);
+                this.menuStrip1.Items.Remove(BPFToolStripMenuItem);
+            }
 
             UpdateTXProfile(SetupForm.TXProfile); // now update the combos
 
@@ -6822,6 +6853,7 @@ namespace Thetis
                 case HPSDRModel.ANAN8000D:
                     interval = 20.0f;
                     break;
+                case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                 case HPSDRModel.ANAN10:
                 case HPSDRModel.ANAN10E:
                     interval = 1.0f;
@@ -10697,7 +10729,10 @@ namespace Thetis
                     setTXstepAttenuatorForBand(_tx_band, _tx_attenuator_data); //[2.10.3.6]MW0LGE att_fixes #399
                     if (m_bATTonTX)
                     {
-                        NetworkIO.SetTxAttenData(_tx_attenuator_data); //[2.10.3.6]MW0LGE att_fixes
+                        if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                            NetworkIO.SetTxAttenData(31 - _tx_attenuator_data); // MI0BOT: Greater range for HL2
+                        else
+                            NetworkIO.SetTxAttenData(_tx_attenuator_data); //[2.10.3.6]MW0LGE att_fixes
                         Display.TXAttenuatorOffset = _tx_attenuator_data; //[2.10.3.6]MW0LGE att_fixes
                     }
                     else
@@ -16995,6 +17030,21 @@ namespace Thetis
             get { return cat_enabled; }
         }
 
+        private bool cat_to_vfo_b = false;  // MI0BOT: Flag used to identify that CAT commands should operate on VFO B
+        public bool CATtoVFOB
+        {
+            set { cat_to_vfo_b = value; }
+            get { return cat_to_vfo_b; }
+        }
+
+        // MI0BOT: HL2 I/O Board polling pause (Phase 3 stub; full I/O-Board worker thread added in Phase 5)
+        private bool I2CPollingPause = false;
+        public void SetI2CPollingPause(bool pause)
+        {
+            I2CPollingPause = pause;
+            if (pause) System.Threading.Thread.Sleep(45);
+        }
+
         // property set when An Andromeda panel is connected via a serial CAT port.
         // NOT used for G2 panel accessed via TCP/IP
         // when connection established, request ID.
@@ -19154,7 +19204,10 @@ namespace Thetis
                     if (m_bATTonTX)
                     {
                         int txatt = getTXstepAttenuatorForBand(_tx_band);
-                        NetworkIO.SetTxAttenData(txatt); //[2.10.3.6]MW0LGE att_fixes
+                        if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                            NetworkIO.SetTxAttenData(31 - txatt); // MI0BOT: Greater range for HL2
+                        else
+                            NetworkIO.SetTxAttenData(txatt); //[2.10.3.6]MW0LGE att_fixes
                         Display.TXAttenuatorOffset = txatt; //[2.10.3.6]MW0LGE att_fixes
                     }
                     else
@@ -24865,8 +24918,10 @@ namespace Thetis
 
         private float _MKIIPAVolts = 0f;
         private float _MKIIPAAmps = 0f;
+        private float _MKIIHL2Temp = 0f;                                        // MI0BOT: HL2 temperature
         private ConcurrentQueue<int> _voltsQueue = new ConcurrentQueue<int>();
         private ConcurrentQueue<int> _ampsQueue = new ConcurrentQueue<int>();
+        private ConcurrentQueue<int> _tempQueue = new ConcurrentQueue<int>();   // MI0BOT: HL2 temperature
         public float MKIIPAVolts
         {
             get { return _MKIIPAVolts; }
@@ -24882,10 +24937,21 @@ namespace Thetis
             //G8NJJ need similar code for Saturn here, but rates from Ssaturn will be different
             while (chkPower.Checked && HardwareSpecific.HasVolts && HardwareSpecific.HasAmps)
             {
-                int adc0 = NetworkIO.getUserADC0();
-                int adc1 = NetworkIO.getUserADC1();
-                _voltsQueue.Enqueue(adc0);
-                _ampsQueue.Enqueue(adc1);
+                int adc0 = 0;
+                int adc1 = 0;
+
+                if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)       // MI0BOT: HL2 temperature & current
+                {
+                    _ampsQueue.Enqueue(NetworkIO.getUserADC0());
+                    _tempQueue.Enqueue(NetworkIO.getExciterPower());
+                }
+                else
+                {
+                    adc0 = NetworkIO.getUserADC0();
+                    adc1 = NetworkIO.getUserADC1();
+                    _voltsQueue.Enqueue(adc0);
+                    _ampsQueue.Enqueue(adc1);
+                }
 
                 bool bOk;
                 int nTries = 0;
@@ -24907,6 +24973,20 @@ namespace Thetis
                     {
                         await Task.Delay(1);
                         nTries++;
+                    }
+                }
+
+                if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                {
+                    nTries = 0;
+                    while (_tempQueue.Count > 100 && nTries < 100) // MI0BOT: HL2 temperature, keep max 100 in the queue
+                    {
+                        bOk = _tempQueue.TryDequeue(out int tmp);
+                        if (!bOk)
+                        {
+                            await Task.Delay(1);
+                            nTries++;
+                        }
                     }
                 }
 
@@ -24945,7 +25025,8 @@ namespace Thetis
             }
             _MKIIPAVolts = 0f;
             _MKIIPAAmps = 0;
-            
+            _MKIIHL2Temp = 0f;      // MI0BOT: HL2 temperature
+
             //there is no clear for ConcurrentQueues, we need to dequeue to clear
             int tries;
             tries = _voltsQueue.Count;
@@ -24995,9 +25076,13 @@ namespace Thetis
         {
             float voltAverage = _voltsQueue.Count > 0 ? (float)_voltsQueue.Average() : 0;
             float ampAverage = _ampsQueue.Count > 0 ? (float)_ampsQueue.Average() : 0;
+            float tempAverage = _tempQueue.Count > 0 ? (float)_tempQueue.Average() : 0;     // MI0BOT: HL2 temperature
 
             //volts
             _MKIIPAVolts = convertToVolts(voltAverage);
+
+            // MI0BOT: temp for HL2 (LM75 reading scaled: 3.26V ref / 4096 steps, then (Vread-0.5)/0.01 = °C)
+            _MKIIHL2Temp = (3.26f * (tempAverage / 4096.0f) - 0.5f) / 0.01f;
 
             //amps
             _MKIIPAAmps = convertToAmps(ampAverage);
@@ -25036,9 +25121,21 @@ namespace Thetis
         {
             float voff = _amp_voff;
             float sens = _amp_sens;
+            float amps;
+
             float fwdvolts = (IOreading * 5000.0f) / 4095.0f;
-            if (fwdvolts < 0) fwdvolts = 0.0f;
-            float amps = ((fwdvolts - voff) / sens);
+            if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)       // MI0BOT: HL2 current
+            {
+                // 3.26 Ref voltage, 4096 steps in ADC, gain x50 for sense amp,
+                // 0.04 Ohm sense resistor; scale by 1000/(1000+270) voltage divider on slow ADC.
+                amps = ((3.26f * (IOreading / 4096.0f)) / 50.0f) / 0.04f;
+                amps = amps / (1000.0f / 1270.0f);
+            }
+            else
+            {
+                if (fwdvolts < 0) fwdvolts = 0.0f;
+                amps = ((fwdvolts - voff) / sens);
+            }
             //  float amps = (0.01f * adc - 2.91f);
             if (amps < 0) amps = 0.0f;
             return amps;
@@ -25428,6 +25525,353 @@ namespace Thetis
             }
 
             return (float)result;
+        }
+
+        // MI0BOT: HL2 temperature one-shot averager (100 samples over ~100 ms)
+        public void computeHermesLiteTemp()
+        {
+            float adc = 0;
+            float addadc = 0;
+
+            for (int count = 0; count < 100; count++)
+            {
+                adc = NetworkIO.getExciterPower(); // This method returns temp for HL2
+                addadc += adc;
+                Thread.Sleep(1);
+            }
+
+            adc = addadc / 100.0f;
+        }
+
+        // MI0BOT: HL2 PA-current one-shot averager (100 samples over ~100 ms)
+        public void computeHermesLitePAAmps()
+        {
+            float adc = 0;
+            float addadc = 0;
+
+            for (int count = 0; count < 100; count++)
+            {
+                adc = NetworkIO.getUserADC0(); // This method returns PA current for HL2
+                addadc += adc;
+                Thread.Sleep(1);
+            }
+
+            adc = addadc / 100.0f;      // Average counts
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // MI0BOT: HL2 I/O Board (Phase 5)
+        // ──────────────────────────────────────────────────────────────────────
+
+        // MI0BOT: Set I/O Board aerial ports (4-arg overload for split-aerial operation)
+        public void SetIOBoardAerialPorts(int rx_only_ant, int rx_ant, int tx_ant, bool tx)
+        {
+            SetIOBoardAerialPorts(rx_only_ant);
+
+            IOBoardAerialPorts = (byte)(rx_ant & 0x0f);
+            IOBoardAerialPorts |= (byte)(tx_ant << 4);
+        }
+
+        // MI0BOT: Set I/O Board aerial mode (1-arg overload for Alt-RX selection)
+        public void SetIOBoardAerialPorts(int rx_only_ant)
+        {
+            switch (rx_only_ant)
+            {
+                case 1:
+                    IOBoardAerialMode = 2;
+                    break;
+
+                case 0:
+                default:
+                    IOBoardAerialMode = 0;
+                    break;
+            }
+        }
+
+        private byte IOBoardAerialMode = 0;
+        private byte IOBoardAerialPorts = 0;
+
+        public enum AutoTuneState
+        {
+            Disabled = 0,
+            Idle,
+            StartTune,
+            WaitRF,
+            Tuning,
+            Fault,
+        }
+
+        public enum ProtocolEvent
+        {
+            Start = -1,             // MI0BOT: Not strictly a protocol event but used to start the whole process
+            Idle = 0x00,
+            RequestTune = 0x01,
+            RequestRF = 0xEE,
+            Fault = 0xF0,
+        }
+
+        private AutoTuneState auto_tuning = AutoTuneState.Disabled; // MI0BOT: Holds state when the Auto TUN button is active
+        private int tune_timeout = 0;                               // MI0BOT: Auto tune timeout
+        private int fault_timeout = 0;
+        const byte AUTOTUNE_TIMEOUT = 50;
+
+        // MI0BOT: HL2 auto-tune state machine. Wraps the PTT-up/PTT-down sequence around an I/O Board ATU.
+        bool AutoTuningHL2(ProtocolEvent protocolEvent)
+        {
+            bool returnCode = false;
+
+            switch (protocolEvent)
+            {
+                case ProtocolEvent.Start:                            // The tune key has been pressed
+                    if (Control.ModifierKeys == Keys.Control &&
+                    SetupForm.HL2IOBoardPresent == true &&
+                    (AutoTuneState.Idle == auto_tuning ||
+                    AutoTuneState.Fault == auto_tuning))
+                    {
+                        auto_tuning = AutoTuneState.StartTune;
+                        returnCode = true;
+                    }
+                    break;
+
+                case ProtocolEvent.Idle:                            // Protocol is idle
+                    switch (auto_tuning)
+                    {
+                        case AutoTuneState.Idle:
+                            break;
+
+                        case AutoTuneState.StartTune:               // Auto tune has been instigated from UI
+                            ioBoard.writeRequest(IOBoard.Registers.REG_ANTENNA_TUNER, (byte)ProtocolEvent.RequestTune);
+                            auto_tuning = AutoTuneState.WaitRF;
+                            tune_timeout = 0;
+                            fault_timeout = 0;
+                            chkTUN.Text = "AUTO";
+                            break;
+
+                        case AutoTuneState.Fault:                  // Auto tune has had a fault, time out the message
+                            if (fault_timeout++ >= AUTOTUNE_TIMEOUT)
+                            {
+                                infoBar.Warning("");
+                                auto_tuning = AutoTuneState.Idle;
+                                fault_timeout = 0;
+                            }
+                            break;
+
+                        default:
+                            tune_timeout = AUTOTUNE_TIMEOUT;
+                            break;
+                    }
+                    break;
+
+                case ProtocolEvent.RequestTune:
+                    switch (auto_tuning)
+                    {
+                        case AutoTuneState.WaitRF:
+                            tune_timeout++;
+                            break;
+
+                        default:
+                            tune_timeout = AUTOTUNE_TIMEOUT;
+                            break;
+                    }
+                    break;
+
+                case ProtocolEvent.RequestRF:                       // Protocol has requested RF
+                    switch (auto_tuning)
+                    {
+                        case AutoTuneState.WaitRF:
+                            auto_tuning = AutoTuneState.Tuning;
+                            chkTUN_CheckedChanged(this, EventArgs.Empty);
+                            break;
+
+                        case AutoTuneState.Tuning:
+                            tune_timeout++;
+                            break;
+
+                        default:
+                            tune_timeout = AUTOTUNE_TIMEOUT;
+                            break;
+                    }
+                    break;
+
+                default:
+                    if (protocolEvent >= ProtocolEvent.Fault)
+                    {
+                        auto_tuning = AutoTuneState.Fault;
+                        fault_timeout = 0;
+                        infoBar.Warning("I/O Board: Auto Tune Fault Code 0x" + ((byte)protocolEvent).ToString("X"));
+                    }
+
+                    tune_timeout = AUTOTUNE_TIMEOUT;
+                    break;
+            }
+
+            if (tune_timeout >= AUTOTUNE_TIMEOUT)
+            {
+                tune_timeout = 0;
+                ioBoard.writeRequest(IOBoard.Registers.REG_ANTENNA_TUNER, (byte)ProtocolEvent.Idle);
+
+                if (auto_tuning != AutoTuneState.Fault)
+                    auto_tuning = AutoTuneState.Idle;
+
+                chkTUN.Text = "TUN";
+                chkTUN.Checked = false;
+            }
+
+            return returnCode;
+        }
+
+        private IOBoard ioBoard = null;
+
+        // MI0BOT: I/O Board polling worker — polls hardware version, then loops servicing
+        // antenna selection, ATU state, mode, frequency, and LED-strip updates.
+        private async void UpdateIOBoard()
+        {
+            long currentFreq, lastFreq = 0;
+            byte readData = 0;
+            byte state = 0;
+            byte old_IOBoardAerialPorts = 0;
+            byte old_IOBoardAerialMode = 0;
+            byte old_IOBoardMode = (byte)DSPMode.LAST;
+            byte timeout = 0;
+            int status = 0;
+
+            ioBoard = IOBoard.getIOBoard(this);
+
+            // Read the hardware revision on bus 2 at address 0x41, register 0
+            while (0 != ioBoard.readRequest(IOBoard.Registers.HardwareVersion))
+            {
+                await Task.Delay(1);
+                if (timeout++ >= 20) return;
+            }
+
+            timeout = 0;
+
+            do
+            {
+                await Task.Delay(1);
+                if (timeout++ >= 20) return;
+            } while (1 == ioBoard.readResponse());
+
+            if (ioBoard.hardwareVersion == (byte)IOBoard.HardwareVersion.Version_1)
+            {
+                if (!SetupForm.HL2IOBoardPresent)
+                {
+                    if (this.InvokeRequired)
+                        this.Invoke((Action)(() => SetupForm.HL2IOBoardPresent = true));
+                    else
+                        auto_tuning = AutoTuneState.Disabled;
+                }
+
+                lastFreq = 0;
+                bool reset = true;
+                auto_tuning = AutoTuneState.Idle;
+
+                while (chkPower.Checked && SetupForm.HL2IOBoardPresent)
+                {
+                    if (reset)
+                    {
+                        reset = false;
+                        ioBoard.writeRequest(IOBoard.Registers.REG_CONTROL, 1);
+                        await Task.Delay(1);
+                    }
+
+                    if (chkVFOATX.Checked)
+                        currentFreq = (long)(VFOAFreq * 1000000.0);
+                    else
+                        currentFreq = (long)(VFOBFreq * 1000000.0);
+
+                    switch (state++)
+                    {
+                        case 3:
+                        case 6:
+                            if (IOBoardAerialMode != old_IOBoardAerialMode)
+                            {
+                                ioBoard.writeRequest(IOBoard.Registers.REG_RF_INPUTS, IOBoardAerialMode);
+                                old_IOBoardAerialMode = IOBoardAerialMode;
+                            }
+                            break;
+
+                        case 1:
+                        case 4:
+                        case 7:
+                        case 10:
+                            while (0 != ioBoard.readRequest(IOBoard.Registers.REG_INPUT_PINS))
+                            {
+                                await Task.Delay(1);
+                                if (timeout++ >= 20) return;
+                            }
+
+                            timeout = 0;
+                            do
+                            {
+                                await Task.Delay(1);
+                                status = ioBoard.readResponse();
+                                if (timeout++ >= 20) break;
+                            } while (1 == status);
+
+                            if (status == 0)
+                            {
+                                if (0 != ioBoard.readRegister(IOBoard.Registers.REG_FAULT))
+                                {
+                                    TXInhibit = true;
+                                    infoBar.Warning("I/O Board: Fault Code " + ioBoard.readRegister(IOBoard.Registers.REG_FAULT).ToString());
+                                    AutoTuningHL2(ProtocolEvent.Idle);
+                                }
+                                else
+                                {
+                                    AutoTuningHL2((ProtocolEvent)ioBoard.readRegister(IOBoard.Registers.REG_ANTENNA_TUNER));
+                                }
+
+                                SetupForm.UpdateIOLedStrip(MOX, ioBoard.readRegister(IOBoard.Registers.REG_INPUT_PINS));
+                            }
+                            break;
+
+                        case 8:
+                        case 2:
+                            ioBoard.setFrequency(currentFreq);
+                            break;
+
+                        case 9:
+                        case 5:
+                            if (IOBoardAerialPorts != old_IOBoardAerialPorts)
+                            {
+                                ioBoard.writeRequest(IOBoard.Registers.REG_ANTENNA, IOBoardAerialPorts);
+                                old_IOBoardAerialPorts = IOBoardAerialPorts;
+                            }
+                            break;
+
+                        case 0:
+                            byte CurrentMode;
+                            if (VFOATX)
+                                CurrentMode = (byte)_rx1_dsp_mode;
+                            else
+                                CurrentMode = (byte)_rx2_dsp_mode;
+
+                            if (CurrentMode != old_IOBoardMode)
+                            {
+                                ioBoard.writeRequest(IOBoard.Registers.REG_OP_MODE, CurrentMode);
+                                old_IOBoardMode = CurrentMode;
+                            }
+                            break;
+
+                        case 11:
+                        default:
+                            state = 0;
+                            break;
+                    }
+
+                    do
+                    {
+                        await Task.Delay(40);
+                    }
+                    while (I2CPollingPause);
+                }
+            }
+
+            if (this.InvokeRequired)
+                this.Invoke((Action)(() => SetupForm.HL2IOBoardPresent = false));
+            else
+                auto_tuning = AutoTuneState.Disabled;
         }
 
         private float sql_data = -200.0f;
@@ -26293,25 +26737,34 @@ namespace Thetis
                 if (!toolStripStatusLabel_Volts.Visible) toolStripStatusLabel_Volts.Visible = true;
                 if (!toolStripStatusLabel_Amps.Visible) toolStripStatusLabel_Amps.Visible = true;
 
-                //MW0LGE [2.9.0.7] added to prevent edge case flicker due to rounding
-                if (Math.Abs(_MKIIPAVolts - _oldMKIIPAVolts) >= 0.1f)
+                if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
                 {
-                    toolStripStatusLabel_Volts.Text = String.Format("{0:#0.0}V", _MKIIPAVolts);
-                    _oldMKIIPAVolts = _MKIIPAVolts;
+                    // MI0BOT: HL2 has no PA-volts; reuse the Volts label to show LM75 temperature
+                    toolStripStatusLabel_Volts.Text = String.Format("{0:#0.0}C", _MKIIHL2Temp);
+                    toolStripStatusLabel_Amps.Text = String.Format("{0:#0.00}A", _MKIIPAAmps);
                 }
                 else
                 {
-                    toolStripStatusLabel_Volts.Text = String.Format("{0:#0.0}V", _oldMKIIPAVolts);
-                }
+                    //MW0LGE [2.9.0.7] added to prevent edge case flicker due to rounding
+                    if (Math.Abs(_MKIIPAVolts - _oldMKIIPAVolts) >= 0.1f)
+                    {
+                        toolStripStatusLabel_Volts.Text = String.Format("{0:#0.0}V", _MKIIPAVolts);
+                        _oldMKIIPAVolts = _MKIIPAVolts;
+                    }
+                    else
+                    {
+                        toolStripStatusLabel_Volts.Text = String.Format("{0:#0.0}V", _oldMKIIPAVolts);
+                    }
 
-                if (Math.Abs(_MKIIPAAmps - _oldMKIIPAAmps) >= 0.1f)
-                {
-                    toolStripStatusLabel_Amps.Text = String.Format("{0:#0.0}A", _MKIIPAAmps);
-                    _oldMKIIPAAmps = _MKIIPAAmps;
-                }
-                else
-                {
-                    toolStripStatusLabel_Amps.Text = String.Format("{0:#0.0}A", _oldMKIIPAAmps);
+                    if (Math.Abs(_MKIIPAAmps - _oldMKIIPAAmps) >= 0.1f)
+                    {
+                        toolStripStatusLabel_Amps.Text = String.Format("{0:#0.0}A", _MKIIPAAmps);
+                        _oldMKIIPAAmps = _MKIIPAAmps;
+                    }
+                    else
+                    {
+                        toolStripStatusLabel_Amps.Text = String.Format("{0:#0.0}A", _oldMKIIPAAmps);
+                    }
                 }
 
             }
@@ -27344,7 +27797,10 @@ namespace Thetis
                 if (m_bATTonTX)
                 {
                     int txatt = getTXstepAttenuatorForBand(_tx_band);
-                    NetworkIO.SetTxAttenData(txatt); //[2.10.3.6]MW0LGE att_fixes
+                    if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                        NetworkIO.SetTxAttenData(31 - txatt); // MI0BOT: Greater range for HL2
+                    else
+                        NetworkIO.SetTxAttenData(txatt); //[2.10.3.6]MW0LGE att_fixes
                     Display.TXAttenuatorOffset = txatt;
                 }
                 else
@@ -27382,6 +27838,20 @@ namespace Thetis
                         IsBackground = true
                     };
                     multimeter2_thread_rx1.Start();
+                }
+
+                if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)        // MI0BOT: HL2 I/O Board worker thread
+                {
+                    if (IOBoard_update_thread == null || !IOBoard_update_thread.IsAlive)
+                    {
+                        IOBoard_update_thread = new Thread(new ThreadStart(UpdateIOBoard))
+                        {
+                            Name = "I/O Board Thread",
+                            Priority = ThreadPriority.Normal,
+                            IsBackground = true
+                        };
+                        IOBoard_update_thread.Start();
+                    }
                 }
                 //
 
@@ -27617,6 +28087,14 @@ namespace Thetis
                 {
                     if (!rx2_meter_thread.Join(/*500*/Math.Max(meter_delay, meter_dig_delay) + 50)) //MW0LGE change to meter delay
                         rx2_meter_thread.Abort();
+                }
+                if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                {
+                    if (IOBoard_update_thread != null)  // MI0BOT: Tidy up the IO board thread
+                    {
+                        if (!IOBoard_update_thread.Join(500))
+                            IOBoard_update_thread.Abort();
+                    }
                 }
                 //MW0LGE_[2.9.0.7]
                 if (multimeter2_thread_rx1 != null)
@@ -28924,6 +29402,29 @@ namespace Thetis
 
                 //[2.10.3.9]MW0LGE fix for when mic is disabled
                 setAudioMicGain((double)ptbMic.Value);
+
+                // MI0BOT:  For HL2 Audio control is based on VFO and Mode
+                if (!IsSetupFormNull && HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                {
+                    if (!(chkRX2.Checked && chkVAC2.Checked && chkVFOBTX.Checked))
+                    {
+                        if (_rx1_dsp_mode != DSPMode.DIGU && _rx1_dsp_mode != DSPMode.DIGL)
+                        {
+                            lblMicVal.Text = "A " + ptbMic.Value.ToString() + " dB";
+                            SetupForm.VACTXGain = ptbMic.Value;
+                            vac_tx_gain = ptbMic.Value;
+                        }
+                    }
+                    else
+                    {
+                        if (_rx2_dsp_mode != DSPMode.DIGU && _rx2_dsp_mode != DSPMode.DIGL)
+                        {
+                            lblMicVal.Text = "B " + ptbMic.Value.ToString() + " dB";
+                            SetupForm.VAC2TXGain = ptbMic.Value;
+                            vac2_tx_gain = ptbMic.Value;
+                        }
+                    }
+                }
             }
 
             if (sender.GetType() == typeof(PrettyTrackBar))
@@ -28937,11 +29438,28 @@ namespace Thetis
         {
             if (chkMicMute.Checked) // although it is called chkMicMute, checked = mic in use
             {
-                Audio.MicPreamp = Math.Pow(10.0, gain_db / 20.0); // convert to scalar 
+                if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)      // MI0BOT:  For HL2 Audio control is based on VFO and Mode
+                {
+                    if (ptbMic.Tag != null)
+                    {
+                        Audio.VACPreamp = (double)ptbMic.Tag;
+                        ptbMic.Tag = null;
+                    }
+                    ptbMic.Enabled = true;
+                }
+
+                Audio.MicPreamp = Math.Pow(10.0, gain_db / 20.0); // convert to scalar
                 _mic_muted = false;
             }
             else
             {
+                if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)      // MI0BOT:  For HL2 Audio control is based on VFO and Mode
+                {
+                    ptbMic.Enabled = false;
+                    ptbMic.Tag = Audio.VACPreamp;
+                    Audio.VACPreamp = 0.0;
+                }
+
                 Audio.MicPreamp = 0.0;
                 _mic_muted = true;
             }
@@ -34752,6 +35270,12 @@ namespace Thetis
                 lblModeBigLabel.Text = radiobut;
             }
 
+            if (HardwareSpecific.Model == HPSDRModel.HERMESLITE &&
+                cmaster.GetCMAstate() == 0)                         // MI0BOT:  For HL2 Audio control is based on VFO and Mode - correct label
+            {
+                ptbMic_Scroll(sender, e);
+            }
+
             lSBToolStripMenuItem.Checked = radModeLSB.Checked;
             uSBToolStripMenuItem.Checked = radModeUSB.Checked;
             dSBToolStripMenuItem.Checked = radModeDSB.Checked;
@@ -35729,7 +36253,14 @@ namespace Thetis
                 {
                     txtVFOABand.Font = new Font("Microsoft Sans Sarif", 14.0f, FontStyle.Regular);
 
-                    VFOASubFreq = saved_vfoa_sub_freq;
+                    if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)     // MI0BOT:  Start with the two VFOs on the same frequency
+                    {
+                        VFOASubFreq = VFOAFreq;
+                    }
+                    else
+                    {
+                        VFOASubFreq = saved_vfoa_sub_freq;
+                    }
 
                     if (chkPower.Checked) txtVFOABand.ForeColor = vfo_text_light_color;
                     else txtVFOABand.ForeColor = vfo_text_dark_color;
@@ -36952,9 +37483,6 @@ namespace Thetis
         //    get { return _updated_from_wave_form; }
         //    set { _updated_from_wave_form = value; }
         //}
-        // [v2.10.3.16] FreeDV RADEV1 -- the user-facing toggle now lives in
-        // Setup -> Audio -> Options as chkRADAE. Console exposes a getter
-        // backed by the C-side flag so audio.cs can query it from the MOX setter.
         public bool RadaeEnabled
         {
             get { return cmaster.GetRadaeRxEnabled() != 0 || cmaster.GetRadaeTxEnabled() != 0; }
@@ -38165,6 +38693,9 @@ namespace Thetis
 
             _rx2_dsp_mode = new_mode;
 
+            if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                SelectModeDependentPanel();     // MI0BOT:  For HL2 Audio control is based on VFO and Mode
+
             if (_rx2_dsp_mode != DSPMode.FM && _rx2_dsp_mode != DSPMode.DRM)
             {
                 RX2Filter = rx2_filters[(int)new_mode].LastFilter;
@@ -38260,6 +38791,12 @@ namespace Thetis
 
             //setRX2ModeLabels(radiobut); //MW0LGE_21j
             setSmallRX2ModeFilterLabels();
+
+            if (HardwareSpecific.Model == HPSDRModel.HERMESLITE &&
+                cmaster.GetCMAstate() == 0)                         // MI0BOT:  For HL2 Audio control is based on VFO and Mode - correct label
+            {
+                ptbMic_Scroll(sender, e);
+            }
 
             lSBToolStripMenuItem1.Checked = radRX2ModeLSB.Checked;
             uSBToolStripMenuItem1.Checked = radRX2ModeUSB.Checked;
@@ -39804,6 +40341,15 @@ namespace Thetis
 
                     chkVACStereo.Checked = vac_stereo;
                 }
+
+                if (HardwareSpecific.Model == HPSDRModel.HERMESLITE &&
+                    cmaster.GetCMAstate() == 0)                         // MI0BOT:  For HL2 Audio control is based on VFO and Mode
+                {
+                    bool scroll = ptbMic.Value == vac_tx_gain;          // if the same, no scroll event will occur when ptbMic value set, so force one if needed
+                    ptbMic.Value = vac_tx_gain;
+
+                    if (scroll) ptbMic_Scroll(sender, e);
+                }
             }
             else
             {
@@ -39816,6 +40362,9 @@ namespace Thetis
             if (chkVFOATX.Checked) VFOTXChangedHandlers?.Invoke(false, m_bLastVFOATXsetting, true);  // MW0LGE_21k9c
 
             m_bLastVFOATXsetting = chkVFOATX.Checked; // MW0LGE_21k9d rc3
+
+            if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                Alex.getAlex().UpdateAlexAntSelection(Band.LAST, MOX, alex_ant_ctrl_enabled, false);    // MI0BOT: Need to let Alex know in case there is a different band ant
         }
 
         private bool psstate = false;
@@ -39846,6 +40395,10 @@ namespace Thetis
         {
             if (chkVFOBTX.Focused && !chkVFOBTX.Checked) chkVFOBTX.Checked = true;
             Display.TXOnVFOB = chkVFOBTX.Checked;
+
+            if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                Penny.getPenny().VFOBTX = chkVFOBTX.Checked; // MI0BOT: Needs to be set early
+
             if (chkVFOBTX.Checked)
             {
                 if (chkVFOATX.Checked) chkVFOATX.Checked = false;
@@ -39887,6 +40440,15 @@ namespace Thetis
 
                         chkVACStereo.Checked = vac2_stereo;
                     }
+
+                    if (HardwareSpecific.Model == HPSDRModel.HERMESLITE &&
+                        cmaster.GetCMAstate() == 0)                         // MI0BOT:  For HL2 Audio control is based on VFO and Mode
+                    {
+                        bool scroll = ptbMic.Value == vac2_tx_gain;         // if the same, no scroll event will occur when ptbMic value set, so force one if needed
+                        ptbMic.Value = vac2_tx_gain;
+
+                        if (scroll) ptbMic_Scroll(sender, e);
+                    }
                 }
             }
             else // button is unchecked
@@ -39926,6 +40488,9 @@ namespace Thetis
             if (chkVFOBTX.Checked) VFOTXChangedHandlers?.Invoke(true, m_bLastVFOBTXsetting, true); // MW0LGE_21k9c
 
             m_bLastVFOBTXsetting = chkVFOBTX.Checked; // MW0LGE_21k9d rc3
+
+            if (HardwareSpecific.Model == HPSDRModel.HERMESLITE)
+                Alex.getAlex().UpdateAlexAntSelection(Band.LAST, MOX, alex_ant_ctrl_enabled, false);    // MI0BOT: Need to let Alex know in case there is a different band ant
         }
 
         private void toolStripMenuItemRX1FilterConfigure_Click(object sender, EventArgs e)
@@ -40927,6 +41492,7 @@ namespace Thetis
 
                     break;
                 case HPSDRModel.HERMES:
+                case HPSDRModel.HERMESLITE:         // MI0BOT: HL2
                     if (alexpresent)
                     {
                         comboPreamp.Items.AddRange(on_off_preamp_settings);
@@ -46891,6 +47457,7 @@ namespace Thetis
             //constrain power
             if(bConstrain) new_pwr = slider.ConstrainAValue(new_pwr);
             //
+            double hl2Power = (double)new_pwr;  // MI0BOT: Just use the slider value for HL2
 
             double target_dbm = 10 * (double)Math.Log10((double)new_pwr * 1000);
             double gbb;
@@ -46919,7 +47486,7 @@ namespace Thetis
                 _lastPower = new_pwr;
             }
 
-            if (new_pwr == 0)
+            if (new_pwr == 0 && HardwareSpecific.Model != HPSDRModel.HERMESLITE)     // MI0BOT: HL2 always does the else
             {
                 Audio.RadioVolume = 0.0;
                 if (chkTUN.Checked)
@@ -46929,7 +47496,17 @@ namespace Thetis
             {
                 if (chkTUN.Checked)
                     radio.GetDSPTX(0).TXPostGenRun = 1;
-                Audio.RadioVolume = (double)Math.Min((target_volts / 0.8), 1.0);
+
+                if (HardwareSpecific.Model != HPSDRModel.HERMESLITE)
+                {
+                    Audio.RadioVolume = (double)Math.Min((target_volts / 0.8), 1.0);
+                }
+                else
+                {
+                    // MI0BOT: Want to jump in steps of 16 but getting 6. Drive value is 0-255 but only top 4 bits used.
+                    //         Correct for multiplication of 1.02 in Radio volume — formula: 1/((16/6)/(255/1.02)).
+                    Audio.RadioVolume = (double)Math.Min((hl2Power * (gbb / 100)) / 93.75, 1.0);
+                }
             }
 
             return new_pwr;
