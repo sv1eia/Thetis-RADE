@@ -132,6 +132,11 @@ PORT void  SetRadaeMicScale(double scale);
 PORT void  SetRadaeRxScale(double scale);
 PORT void  SetRadaeRxDialScale(double scale);
 
+/* RX1 AF post-decode multiplier.  Captured at the C# side and applied
+ * in pipe.c after xradae_rx returns. */
+PORT void  SetRadaeRx1AFGain(double gain);
+PORT float GetRadaeRx1AFGain(void);
+
 /* Pre-encoder mic conditioning (FreeDV-GUI parity).  Each stage has an
  * enable + parameters.  All three off by default.  Chain runs in
  * radae_micdsp.c as RNNoise -> AGC -> 3-band biquad EQ + Vol, in

@@ -202,6 +202,15 @@ namespace Thetis
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeRxDialScale", CallingConvention = CallingConvention.Cdecl)]
         public static extern void SetRadaeRxDialScale(double scale);
 
+        // RX1 AF post-decode multiplier.  Captured by the C# side
+        // (DSPRX.RXOutputGain setter) whenever RADE RX is on; applied in
+        // pipe.c after xradae_rx returns so RX1 AF becomes a clean
+        // post-decode level knob and the decoder input is unscaled.
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeRx1AFGain", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeRx1AFGain(double gain);
+        [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeRx1AFGain", CallingConvention = CallingConvention.Cdecl)]
+        public static extern float GetRadaeRx1AFGain();
+
         // RADE pre-encoder mic conditioning (FreeDV-GUI parity):
         // RNNoise + ITU-R BS.1770 K-weighted AGC + 3-band biquad EQ.
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicRNNoiseEnabled", CallingConvention = CallingConvention.Cdecl)]

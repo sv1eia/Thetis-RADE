@@ -191,6 +191,24 @@ void xpipe (int stream, int pos, double** buffs)
 			xradae_rx(rx, buffs[0]);															// [v2.10.3.16] FreeDV RADEV1 RX splice -- in-place on the rcvr audio buffer
 																								// so that BOTH the speaker path (xMixAudio in xcmaster) AND
 																								// the VAC/TCI/scope/recorder branches below see the decoded speech.
+			/* RX1 AF post-decode multiply.  When RADE RX is on, the C#
+			 * RXOutputGain setter forces WDSP xpanel.gain1 to 1.0 so the
+			 * decoder input is unscaled, and pushes the slider value into
+			 * g_radae_rx1_af_gain.  Apply that scalar to the decoded buffer
+			 * here so RX1 AF is a clean post-decode level knob.  The xvacOUT /
+			 * xtciOUT / xrecordwave branches below read ppip->rbuff[rx], which
+			 * is memcpy'd from the post-multiply buffs[0], so they all hear
+			 * RX1 AF as well. */
+			if (GetRadaeRxEnabled() != 0)
+			{
+				const float g_rx1_af = GetRadaeRx1AFGain();
+				if (g_rx1_af != 1.0f)
+				{
+					const double gd = (double)g_rx1_af;
+					const int n = 2 * pcm->rcvr[rx].ch_outsize;
+					for (j = 0; j < n; j++) buffs[0][j] *= gd;
+				}
+			}
 			memcpy (ppip->rbuff[rx], buffs[0], pcm->rcvr[rx].ch_outsize * sizeof (complex));
 			for (i = 1; i < pcm->cmSubRCVR; i++)
 				for (j = 0; j < 2 * pcm->rcvr[rx].ch_outsize; j++)

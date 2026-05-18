@@ -19998,6 +19998,16 @@ namespace Thetis
                     grpIOPinState.Visible = true;
                     ucIOPinsLedStripHF.Enabled = true;
                     ucIOPinsLedStripHF.Visible = true;
+                    // MI0BOT: HL2 -- chkApolloPresent and chkHL2IOBoardPresent share
+                    //         Point(4, 23) inside pnlAlexApollo, so the HL2 checkbox
+                    //         must hide Apollo while HL2 is the active model.  Also
+                    //         match the disable+uncheck hygiene the other non-HERMES
+                    //         arms apply to chkApolloPresent.  removeHL2Options()
+                    //         restores both controls to their Designer defaults when
+                    //         the user switches away from HL2.
+                    chkApolloPresent.Visible = false;
+                    chkApolloPresent.Enabled = false;
+                    chkApolloPresent.Checked = false;
                     chkHL2IOBoardPresent.Enabled = true;
                     chkHL2IOBoardPresent.Visible = true;
                     udATTOnTX.Minimum = (decimal)-28;
@@ -22095,6 +22105,25 @@ namespace Thetis
                 active));
             cmaster.SetRadaeTxEnabled(active);
 
+            // Re-apply current RX1 AF through the DSPRX setter so the WDSP
+            // xpanel.gain1 and the C-side g_radae_rx1_af_gain end up
+            // consistent with the just-flipped RADE-RX flag.  Setter handles
+            // both edges: RADE-on forces xpanel.gain1 to 1.0 and pushes the
+            // slider value to the post-decode multiply; RADE-off restores the
+            // slider value to xpanel.gain1 and leaves the post-decode scalar
+            // idle.  Try/catch keeps a missing console reference from
+            // breaking the RADE toggle.
+            try
+            {
+                if (console != null && console.radio != null)
+                {
+                    var dspRx1 = console.radio.GetDSPRX(0, 0);
+                    if (dspRx1 != null)
+                        dspRx1.RXOutputGain = dspRx1.RXOutputGain;
+                }
+            }
+            catch { }
+
             // [v2.10.3.16] When RADE is being enabled, force-disable VAC1
             // and snap the operating mode by frequency:
             //   5.0 - 5.5 MHz (60 m) -> DIGU  (regulatory upper-sideband
@@ -22216,14 +22245,15 @@ namespace Thetis
         }
 
         // RADE Rx level (dB) -> g_radae_rx_dial_scale.  Dedicated
-        // RX-input gain at the RADE decoder.  Functionally equivalent
-        // to VAC1 RXGain but on a separate code path (a second linear
-        // multiplier in xradae_rx step 1, in series with
-        // g_radae_rx_scale).  Range -40..+40 dB, 1 dB step, default 0
-        // dB (unity).  Has effect only while RADE is enabled.  While
-        // RADE is enabled, VAC1 RXGain is greyed and forced to 0 dB
-        // so g_radae_rx_scale = 1.0 and this dial carries the full
-        // RX-side gain.
+        // RX-input gain at the RADE decoder.  Range -40..+40 dB, 1 dB
+        // step, default 0 dB (unity).  Has effect only while RADE is
+        // enabled.  This is the decoder INPUT trim -- it scales the
+        // signal the modem sees, so it owns SNR / overload of the
+        // decode.  The console-face RX1 AF slider is a post-decode
+        // level knob (it scales the decoded speech in pipe.c after
+        // xradae_rx returns), so the two controls are mutually
+        // independent: this dial = pre-decode trim, RX1 AF = post-
+        // decode level.
         private void udRadaeRxLevel_ValueChanged(object sender, EventArgs e)
         {
             double db = (double)udRadaeRxLevel.Value;

@@ -1084,10 +1084,29 @@ namespace Thetis
 				rx_output_gain = value;
 				if(update)
 				{
-                    if (value != rx_output_gain_dsp || force)
-					{
+                    // When RADE RX is on AND this is the RX1 DSP (channel 0),
+                    // the slider value drives the C-side post-decode multiplier
+                    // g_radae_rx1_af_gain instead of WDSP xpanel.gain1.
+                    // xpanel.gain1 is forced to 1.0 so the decoder input is
+                    // unscaled.  The wave recorder reads ppip->rbuff[rx]
+                    // downstream of the new pipe.c multiply, so RecordGain
+                    // stays at 1.0 to avoid double-scaling.
+                    bool rade_rx1 = cmaster.GetRadaeRxEnabled() != 0 && WDSP.id(thread, subrx) == 0;
+                    if (rade_rx1)
+                    {
+                        cmaster.SetRadaeRx1AFGain(value);
+                        if (1.0 != rx_output_gain_dsp || force)
+                        {
+                            WDSP.SetRXAPanelGain1(WDSP.id(thread, subrx), 1.0);
+                            rx_output_gain_dsp = 1.0;
+                        }
+                        if (WaveThing.wave_file_writer[0] != null)
+                            WaveThing.wave_file_writer[0].RecordGain = 1.0f;
+                    }
+                    else if (value != rx_output_gain_dsp || force)
+                    {
                         WDSP.SetRXAPanelGain1(WDSP.id(thread, subrx), value);
-						rx_output_gain_dsp = value;
+                        rx_output_gain_dsp = value;
 
                         //[2.10.3.5]MW0LGE wave recorder volume normalise
                         switch(WDSP.id(thread, subrx))

@@ -39,19 +39,52 @@ namespace Thetis
 
         // MI0BOT: Hide HL2-only ancillary controls AND restore every relabelled
         //         mainline control back to its Setup.Designer.cs default text /
-        //         tooltip / visibility, so that switching FROM HL2 to any other
-        //         radio model leaves the form in the same state mainline
-        //         Thetis-RADE shows for that model. (For controls already
-        //         re-set per-arm by mainline — labelRXAntControl, chkRxOutOnTx,
-        //         tpOtherHW, tpPennyCtrl, tpAlexControl, chkEXT*OutOnTx,
-        //         chkAutoATTRx{1,2}.Enabled — no reset is needed here because
-        //         the model-switch arm will overwrite them anyway.)
+        //         tooltip / visibility / value, so that switching FROM HL2 to
+        //         any other radio model leaves the form in the same state
+        //         mainline Thetis-RADE shows for that model.  For controls
+        //         already re-set per-arm by mainline (labelRXAntControl,
+        //         chkRxOutOnTx, tpOtherHW, tpPennyCtrl, tpAlexControl,
+        //         chkEXT*OutOnTx, chkAutoATTRx{1,2}.Enabled) no reset is needed
+        //         here because the model-switch arm overwrites them.  Anything
+        //         the HL2 arm touches that mainline arms do NOT re-set must be
+        //         reverted here -- otherwise HL2 values leak into other models
+        //         on a model switch.
         private void removeHL2Options()
         {
+            // chkCATtoVFOB lives in grpCatControlBox -- always shown.  Hide it
+            // for non-HL2 models so the HL2-only VFO-B redirect is invisible.
             chkCATtoVFOB.Enabled = false;
             chkCATtoVFOB.Visible = false;
 
-            // Designer defaults restored (mainline never re-sets these):
+            // chkApolloPresent / chkHL2IOBoardPresent share Point(4, 23) inside
+            // pnlAlexApollo.  HL2 arm hides Apollo and shows HL2 I/O Board;
+            // restore the Designer defaults here so non-HL2 models see Apollo
+            // again (the model arm that follows will overwrite .Enabled /
+            // .Checked appropriately).
+            chkApolloPresent.Visible = true;
+            chkHL2IOBoardPresent.Visible = false;
+            chkHL2IOBoardPresent.Enabled = false;
+            chkHL2IOBoardPresent.Checked = false;
+
+            // Value-typed controls the HL2 arm widens.  Other model arms do
+            // not touch these, so restore Designer defaults explicitly.
+            //   udATTOnTX:                  Minimum 0  (HL2 sets -28)
+            //   udHermesStepAttenuatorDataRX2: Minimum 0 (HL2 sets -28)
+            //   udTXTunePower: percentage in [0..100], integer step
+            //                  (HL2 sets dB scale [-16.5..0], 0.5 step, 1 dp)
+            try
+            {
+                udATTOnTX.Minimum = (decimal)0;
+                udHermesStepAttenuatorDataRX2.Minimum = (decimal)0;
+                udTXTunePower.Minimum = (decimal)0;
+                udTXTunePower.Maximum = (decimal)100;
+                udTXTunePower.Increment = (decimal)1;
+                udTXTunePower.DecimalPlaces = 0;
+            }
+            catch { /* clamp guards a transient inversion when Min/Max overlap */ }
+
+            // Designer-default text / tooltip / visibility (mainline never
+            // re-sets these):
             chkApolloFilter.Text = "Enable Filters";
             chkApolloTuner.Text = "Enable Tuner";
             grpApolloCtrl.Text = "Apollo Control";

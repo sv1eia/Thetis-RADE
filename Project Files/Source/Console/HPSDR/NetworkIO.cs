@@ -146,7 +146,7 @@ namespace Thetis
                 rl.UpdateSelectedDetails(scan_result, scan_result.Radios[0]);
             }
 
-            ret = nativeInitMetis(radioIP, ratioPort, hostIP, hostPort, protocol, model_id);
+            ret = nativeInitMetis(radioIP, ratioPort, hostIP, hostPort, protocol, model_id, 0);
 
             if(ret == 0)
             {

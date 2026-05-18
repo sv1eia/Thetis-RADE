@@ -19,7 +19,7 @@ namespace Thetis
         public static extern void DeInitMetisSockets();
 
         [DllImport("ChannelMaster.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int nativeInitMetis(String netaddr, int port, String localaddr, int localport, int protocol, int model_id);
+        public static extern int nativeInitMetis(String netaddr, int port, String localaddr, int localport, int protocol, int model_id, int p2hw_uses_different_ports);
 
         [DllImport("ChannelMaster.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int SetXVTREnable(int enable);

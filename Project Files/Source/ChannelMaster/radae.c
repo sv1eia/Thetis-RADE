@@ -90,13 +90,13 @@ static volatile long g_radae_sync             = 0;
 static volatile long g_radae_snr_db           = 0;
 static          float g_radae_freq_off   = 0.0f;
 
-/* Linear gain factors at the RADE encoder input / decoder input.
- *   g_radae_rx_scale       -- driven by VAC1 RXGain spinner; existing
- *                             original wiring.  Forced to 1.0 (0 dB)
- *                             while chkRADAE is checked because the
- *                             VAC1 RXGain spinner is greyed and zeroed
- *                             on RADE enable, so this path is neutral
- *                             whenever the new dial is in use.
+/* Linear gain factors at the RADE encoder input / decoder input / decoder
+ * OUTPUT.
+ *   g_radae_rx_scale       -- legacy VAC1 RXGain coupling; pinned to 1.0
+ *                             after the VAC1/RADE separation pass.  Kept
+ *                             as a separate volatile so older paths that
+ *                             still call SetRadaeRxScale do not break.
+ *                             Applied at the decoder INPUT.
  *   g_radae_mic_scale      -- driven by the dedicated "RADE Mic level"
  *                             spinner in Setup -> Audio -> Options
  *                             (FreeDV-GUI's "Mic level" equivalent).
@@ -108,12 +108,26 @@ static          float g_radae_freq_off   = 0.0f;
  *                             separate code -- the two multiplications
  *                             collapse to a single combined multiply
  *                             pre-loop for cache friendliness).
+ *   g_radae_rx1_af_gain    -- post-decode RX1 AF multiplier.  Captures
+ *                             the console RX1 AF slider value at the C#
+ *                             RXOutputGain setter when RADE RX is on.
+ *                             Applied at the decoder OUTPUT in pipe.c
+ *                             AFTER xradae_rx returns, so RX1 AF behaves
+ *                             as a normal speaker-level knob while RADE
+ *                             is the active demod.  When RADE RX is on,
+ *                             WDSP xpanel.gain1 is held at 1.0 so the
+ *                             decoder INPUT is unscaled by RX1 AF -- the
+ *                             modem sees a clean signal and the user's
+ *                             slider only affects the decoded speech.
+ *
+ * Pre-decode levels:  g_radae_rx_scale * g_radae_rx_dial_scale
+ * Post-decode level:  g_radae_rx1_af_gain
  *
  * Independent of VAC1 TXGain.  As of the VAC1/RADE separation pass,
  * VAC1 spinners drive ONLY the VAC1 path; RADE has its own dedicated
- * dials (g_radae_mic_scale, g_radae_rx_dial_scale).  The VAC1 spinners
- * are NOT greyed when RADE is enabled.  On the TX side,
- * CMSetTXAPanelGain1 short-circuits to xpanel.gain1 = 1.0 whenever
+ * dials (g_radae_mic_scale, g_radae_rx_dial_scale, g_radae_rx1_af_gain).
+ * The VAC1 spinners are NOT greyed when RADE is enabled.  On the TX
+ * side, CMSetTXAPanelGain1 short-circuits to xpanel.gain1 = 1.0 whenever
  * RADE TX is on, so VAC1 TX Gain cannot leak into the modem output
  * level via the legacy VACPreamp branch.
  *
@@ -123,6 +137,7 @@ static          float g_radae_freq_off   = 0.0f;
 static volatile float g_radae_mic_scale      = 1.0f;
 static volatile float g_radae_rx_scale       = 1.0f;
 static volatile float g_radae_rx_dial_scale  = 1.0f;
+static volatile float g_radae_rx1_af_gain    = 1.0f;
 
 /* Per-second peak |sample| of the radae decoder input (post-rx scale).
  * Reset after each rx_diag print so the line shows the last second's
@@ -814,6 +829,23 @@ PORT void SetRadaeRxDialScale(double scale)
     if (!(scale > 0.0))      scale = 1.0;
     if (scale > 100.0)       scale = 100.0;
     g_radae_rx_dial_scale = (float)scale;
+}
+
+/* RX1 AF post-decode multiplier.  Captured at the C# side
+ * (DSPRX.RXOutputGain setter) whenever RADE RX is on and applied in
+ * pipe.c after xradae_rx returns.  Range matches the slider's normalised
+ * [0..1] but the setter accepts up to 100.0 for safety; clamp negatives
+ * to 0.0 so a malformed write cannot invert the audio. */
+PORT void SetRadaeRx1AFGain(double gain)
+{
+    if (!(gain >= 0.0))     gain = 0.0;
+    if (gain > 100.0)       gain = 100.0;
+    g_radae_rx1_af_gain = (float)gain;
+}
+
+PORT float GetRadaeRx1AFGain(void)
+{
+    return g_radae_rx1_af_gain;
 }
 
 /* ============================================================

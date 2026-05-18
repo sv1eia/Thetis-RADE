@@ -8489,6 +8489,7 @@ namespace Thetis
                     }
                     break;
                 case HPSDRModel.HERMES:
+                case HPSDRModel.HERMESLITE:     // MI0BOT: HL2 -- single-DDC radio that streams in HERMES wire format
                 case HPSDRModel.ANAN_G2E: //N1GP G2E added
                 case HPSDRModel.ANAN10:
                 case HPSDRModel.ANAN100:
@@ -14899,6 +14900,11 @@ namespace Thetis
                     chkDX.Visible = false;
                     _rx2_preamp_present = false;
                     break;
+                case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
+                    chkDX.Checked = false;
+                    chkDX.Visible = false;
+                    _rx2_preamp_present = false;
+                    break;
                 case HPSDRModel.ANAN10:
                     chkDX.Checked = false;
                     chkDX.Visible = false;
@@ -14968,6 +14974,7 @@ namespace Thetis
                 case HPSDRModel.HPSDR:
                     break;
                 case HPSDRModel.HERMES:
+                case HPSDRModel.HERMESLITE:     // MI0BOT: HL2
                 case HPSDRModel.ANAN10:
                 case HPSDRModel.ANAN10E:
                 case HPSDRModel.ANAN100:
@@ -15514,6 +15521,7 @@ namespace Thetis
             switch (HardwareSpecific.Model)
             {
                 case HPSDRModel.HERMES:
+                case HPSDRModel.HERMESLITE:     // MI0BOT: HL2 -- single DDC, route freq to DDC0 only
                 case HPSDRModel.ANAN10:
                 case HPSDRModel.ANAN10E:
                 case HPSDRModel.ANAN100:
@@ -15553,6 +15561,7 @@ namespace Thetis
             switch (HardwareSpecific.Model)
             {
                 case HPSDRModel.HERMES:
+                case HPSDRModel.HERMESLITE:     // MI0BOT: HL2 -- RX2 freq via DDC1 in HERMES wire format
                 case HPSDRModel.ANAN_G2E: //N1GP G2E added
                 case HPSDRModel.ANAN10:
                 case HPSDRModel.ANAN10E:
@@ -25194,6 +25203,11 @@ namespace Thetis
                     refvoltage = 5.0f;
                     adc_cal_offset = 16;
                     break;
+                case HPSDRModel.HERMESLITE:     // MI0BOT: HL2 -- AD9866 12-bit ADC, 3.3 V ref, low-bridge PA
+                    bridge_volt = 1.5f;
+                    refvoltage = 3.3f;
+                    adc_cal_offset = 6;
+                    break;
                 default:
                     bridge_volt = 0.09f;
                     if (_tx_band == Band.B6M)
@@ -25263,6 +25277,11 @@ namespace Thetis
                     bridge_volt = 0.08f;
                     refvoltage = 5.0f;
                     adc_cal_offset = 18;
+                    break;
+                case HPSDRModel.HERMESLITE:     // MI0BOT: HL2 -- AD9866 12-bit ADC, 3.3 V ref, low-bridge PA
+                    bridge_volt = 1.5f;
+                    refvoltage = 3.3f;
+                    adc_cal_offset = 6;
                     break;
                 default:
                     bridge_volt = 0.09f;
@@ -28209,6 +28228,7 @@ namespace Thetis
                             break;
                         // 4 & 5 DDC Models
                         case HPSDRModel.HERMES:
+                        case HPSDRModel.HERMESLITE:     // MI0BOT: HL2 -- HERMES-format streaming
                         case HPSDRModel.ANAN_G2E: //N1GP G2E added
                         case HPSDRModel.ANAN10:
                         case HPSDRModel.ANAN100:
@@ -37298,6 +37318,12 @@ namespace Thetis
         private int _old_rx2_gain = -1;
         private void ptbRX0Gain_Scroll(object sender, System.EventArgs e)
         {
+            // With RADE RX on, this slider is applied POST-decode (in
+            // pipe.c after xradae_rx), not pre-decode through WDSP
+            // xpanel.gain1.  The DSPRX.RXOutputGain setter routes the
+            // value to the C-side g_radae_rx1_af_gain and holds
+            // xpanel.gain1 at 1.0 while RADE RX is active.  With RADE
+            // RX off, behaviour is byte-identical to xpanel.gain1=value.
             lblRX1Vol.Text = "Vol";
 
             //MWLGE_21k9 re-worked //[2.10.1.0] MW0LGE added eventargs empty
