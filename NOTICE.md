@@ -14,6 +14,7 @@ Credits of people whose code is used in this repository (please forgive me if I'
 - Chris Codella (W2PA)
 - Richard Koch (N1GP)
 - Richard Samphire (MW0LGE)
+- Reid Campbell (MI0BOT)
 
 ## WDSP / ChannelMaster
 
