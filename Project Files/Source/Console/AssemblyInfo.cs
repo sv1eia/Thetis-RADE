@@ -73,7 +73,7 @@ using System.Runtime.CompilerServices;
 // by using the '*' as shown below:
 
 [assembly: AssemblyVersion("2.10.3.19")]
-[assembly: AssemblyInformationalVersion("2.10.3.19-dev")]
+[assembly: AssemblyInformationalVersion("2.10.3.19")]
 
 //
 // In order to sign your assembly you must specify a key to use. Refer to the 
