@@ -29948,6 +29948,13 @@ namespace Thetis
         }
 
         private bool _mox = false;
+        // RADE-bypass TX profile swap: captured at the MOX 0->1 edge in
+        // chkMOX_CheckedChanged2 when the over is going out as plain voice
+        // on VFO B + RX2 while chkRADAE is on, so the matching 1->0 edge
+        // knows to restore RX1's RADE-forced mode.  See the report in the
+        // cpu-branch conversation history for the rationale.
+        private DSPMode _radae_saved_rx1_mode      = DSPMode.FIRST;
+        private bool    _radae_bypass_mode_swapped = false;
         private PreampMode temp_mode = PreampMode.HPSDR_OFF; // HPSDR preamp mode
         private PreampMode temp_mode2 = PreampMode.HPSDR_OFF; // HPSDR preamp mode
 
@@ -29989,6 +29996,27 @@ namespace Thetis
             }
 
             bool bOldMox = _mox; //MW0LGE_21b used for state change delgates at end of fn
+
+            // RADE-bypass mode swap (mirror of audio.cs's per-over predicate).
+            // When MOX is firing on VFO B with RX2 enabled while chkRADAE is
+            // on, the audio thread bypasses the encoder so this over goes out
+            // as plain voice -- but the shared TXA chain's TX profile (mic
+            // EQ, compander, leveler, CFC) is tied to _rx1_dsp_mode, which
+            // chkRADAE forced to DIGU/DIGL.  Swap RX1 to RX2's current mode
+            // here so SetRX1Mode reloads the matching voice profile from the
+            // database before the TX engine comes up; the tail of this
+            // handler restores RX1 using the same freq-driven DIGU/DIGL rule
+            // chkRADAE_CheckedChanged uses.  The RX1DSPMode guard at this
+            // file's line ~17854 already permits the change in this VFO/RX2
+            // state (RX1 is not the actively keyed receiver here).
+            if (chkMOX.Checked && !bOldMox &&
+                RadaeEnabled && chkVFOBTX.Checked && chkRX2.Checked)
+            {
+                _radae_saved_rx1_mode      = _rx1_dsp_mode;
+                _radae_bypass_mode_swapped = true;
+                if (_rx1_dsp_mode != _rx2_dsp_mode)
+                    RX1DSPMode = _rx2_dsp_mode;
+            }
 
             MoxPreChangeHandlers?.Invoke(rx2_enabled && VFOBTX ? 2 : 1, _mox, chkMOX.Checked); // MW0LGE_21k8
 
@@ -30342,6 +30370,35 @@ namespace Thetis
             AndromedaIndicatorCheck(EIndicatorActions.eINMOX, false, tx);
 
             _pause_DisplayThread = false; //MW0LGE_21k8 re-enable
+
+            // Restore RX1 after a RADE-bypass over.  Recomputed from VFOAFreq
+            // (not the saved value) so a band change during the over still
+            // lands on the right DIGU/DIGL -- matches the rule in
+            // chkRADAE_CheckedChanged at setup.cs.  If chkRADAE was disabled
+            // mid-over we fall back to the original saved mode so the user
+            // doesn't get an unexpected DIG forcing.
+            if (!chkMOX.Checked && bOldMox && _radae_bypass_mode_swapped)
+            {
+                _radae_bypass_mode_swapped = false;
+                try
+                {
+                    DSPMode want;
+                    if (RadaeEnabled)
+                    {
+                        double f = VFOAFreq;
+                        if      (f >= 5.0 && f < 5.5) want = DSPMode.DIGU;
+                        else if (f < 12.0)            want = DSPMode.DIGL;
+                        else                          want = DSPMode.DIGU;
+                    }
+                    else
+                    {
+                        want = _radae_saved_rx1_mode;
+                    }
+                    if (want != DSPMode.FIRST && _rx1_dsp_mode != want)
+                        RX1DSPMode = want;
+                }
+                catch { }
+            }
 
             if (bOldMox != tx) MoxChangeHandlers?.Invoke(rx2_enabled && VFOBTX ? 2 : 1, bOldMox, tx); // MW0LGE_21a
         }
