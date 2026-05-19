@@ -311,12 +311,18 @@ static int    g_rx_outrate_fifo_cap = 0;
 static float  g_rx_pending_features[NB_TOTAL_FEATURES];
 static int    g_rx_pending_features_n = 0;
 
-/* TX path -- r8brain on both ends, rmatchV after the encoder-output r8brain */
-static int        g_tx_outrate_cached  = 0;
-static int        g_tx_outsize_cached  = 0;
-static r8b_handle g_tx_resamp_down     = NULL;   /* r8brain: outrate -> 16 kHz */
-static r8b_handle g_tx_resamp_up       = NULL;   /* r8brain: 8 kHz   -> outrate */
-static void*      g_tx_rmatch          = NULL;   /* rmatchV: outrate -> outrate */
+/* TX path -- WDSP xresampleFV on both ends.  The previous r8brain
+ * CDSPResampler24 multistage resampler delivered ~140 dB stopband which
+ * is far beyond what downstream WDSP TXA's SSB filter (~3 kHz wide,
+ * ~80 dB stopband) actually carries onto the air.  See
+ * /mnt/i/Thetis/RADE_tasks_CPU_utilization.md §6.6.  The rmatchV instance
+ * after the encoder-output is no longer driven from the hot path (see
+ * §6.3) but the allocation is kept so the diagnostics tab is undisturbed. */
+static int   g_tx_outrate_cached  = 0;
+static int   g_tx_outsize_cached  = 0;
+static void* g_tx_resamp_down     = NULL;   /* xresampleFV: outrate -> 16 kHz */
+static void* g_tx_resamp_up       = NULL;   /* xresampleFV: 8 kHz   -> outrate */
+static void* g_tx_rmatch          = NULL;   /* rmatchV (no longer driven) */
 
 static float* g_tx_in_mono        = NULL;
 static float* g_tx_speech_16k     = NULL;
@@ -422,21 +428,15 @@ static void rebuild_rx_resamplers(int new_outrate)
 
 static void rebuild_tx_resamplers(int new_outrate, int outsize)
 {
-    if (g_tx_resamp_down) { r8b_destroy(g_tx_resamp_down); g_tx_resamp_down = NULL; }
-    if (g_tx_resamp_up)   { r8b_destroy(g_tx_resamp_up);   g_tx_resamp_up   = NULL; }
-    if (g_tx_rmatch)      { destroy_rmatchV(g_tx_rmatch);  g_tx_rmatch      = NULL; }
+    if (g_tx_resamp_down) { destroy_resampleFV(g_tx_resamp_down); g_tx_resamp_down = NULL; }
+    if (g_tx_resamp_up)   { destroy_resampleFV(g_tx_resamp_up);   g_tx_resamp_up   = NULL; }
+    if (g_tx_rmatch)      { destroy_rmatchV(g_tx_rmatch);         g_tx_rmatch      = NULL; }
 
-    /* r8brain encoder-input: outrate -> 16 kHz speech.  max_in_len sized
-     * for any reasonable mic block (well above outsize). */
-    g_tx_resamp_down = r8b_create((double)new_outrate,
-                                  (double)RADE_SPEECH_SAMPLE_RATE,
-                                  RADAE_MAX_BLOCK);
+    /* Encoder-input: outrate -> 16 kHz LPCNet speech rate. */
+    g_tx_resamp_down = create_resampleFV(new_outrate, RADE_SPEECH_SAMPLE_RATE);
 
-    /* r8brain encoder-output: 8 kHz modem -> outrate.  max_in_len bounded
-     * to 1024 modem samples per call (matches our drain cap). */
-    g_tx_resamp_up = r8b_create((double)RADE_MODEM_SAMPLE_RATE,
-                                (double)new_outrate,
-                                1024);
+    /* Encoder-output: 8 kHz modem rate -> outrate. */
+    g_tx_resamp_up   = create_resampleFV(RADE_MODEM_SAMPLE_RATE, new_outrate);
 
     /* rmatchV outrate -> outrate at the mic block size.  Same arrangement
      * VAC uses on its IN path, just with both ends on the radio clock so
@@ -633,8 +633,8 @@ void destroy_radae(void)
 
     if (g_rx_resamp_down) { destroy_resampleFV(g_rx_resamp_down); g_rx_resamp_down = NULL; }
     if (g_rx_resamp_up)   { destroy_resampleFV(g_rx_resamp_up);   g_rx_resamp_up   = NULL; }
-    if (g_tx_resamp_down) { r8b_destroy(g_tx_resamp_down);        g_tx_resamp_down = NULL; }
-    if (g_tx_resamp_up)   { r8b_destroy(g_tx_resamp_up);          g_tx_resamp_up   = NULL; }
+    if (g_tx_resamp_down) { destroy_resampleFV(g_tx_resamp_down); g_tx_resamp_down = NULL; }
+    if (g_tx_resamp_up)   { destroy_resampleFV(g_tx_resamp_up);   g_tx_resamp_up   = NULL; }
     if (g_tx_rmatch)      { destroy_rmatchV(g_tx_rmatch);         g_tx_rmatch      = NULL; }
 
     if (g_rx_in_mono)        { _aligned_free(g_rx_in_mono);        g_rx_in_mono = NULL; }
@@ -1429,8 +1429,9 @@ void xradae_tx(double* mic_io)
         }
         if (n_dsp > 0)
         {
-            int n16 = r8b_process_ff(g_tx_resamp_down, g_tx_in_mono, n_dsp,
-                                     g_tx_speech_16k, RADAE_MAX_RESAMP_OUT);
+            int n16 = 0;
+            xresampleFV(g_tx_in_mono, g_tx_speech_16k, n_dsp,
+                        &n16, g_tx_resamp_down);
             if (n16 > 0)
                 fifo_push_check(g_tx_speech_fifo, &g_tx_speech_fifo_n, g_tx_speech_fifo_cap,
                                 g_tx_speech_16k, n16,
@@ -1543,18 +1544,17 @@ void xradae_tx(double* mic_io)
         }
     }
 
-    /* 5) ENCODER OUTPUT RESAMPLER: r8brain 8 kHz modem -> outrate, push to outrate FIFO */
+    /* 5) ENCODER OUTPUT RESAMPLER: xresampleFV 8 kHz modem -> outrate, push to outrate FIFO */
     {
         const int MODEM_POP_CAP = 1024;
-        const int OUT_CAP       = RADAE_MAX_RESAMP_OUT;
         while (g_tx_modem_fifo_n > 0)
         {
             int take = g_tx_modem_fifo_n;
             int nout = 0;
             if (take > MODEM_POP_CAP) take = MODEM_POP_CAP;
             fifo_pop(g_tx_modem_fifo, &g_tx_modem_fifo_n, g_tx_modem_8k, take);
-            nout = r8b_process_ff(g_tx_resamp_up, g_tx_modem_8k, take,
-                                  g_tx_modem_outrate, OUT_CAP);
+            xresampleFV(g_tx_modem_8k, g_tx_modem_outrate, take,
+                        &nout, g_tx_resamp_up);
             if (nout > 0)
                 fifo_push_check(g_tx_outrate_fifo, &g_tx_outrate_fifo_n, g_tx_outrate_fifo_cap,
                                 g_tx_modem_outrate, nout,
