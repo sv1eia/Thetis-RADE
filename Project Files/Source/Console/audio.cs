@@ -352,6 +352,14 @@ namespace Thetis
         #region Local Copies of External Properties
 
         private static bool mox = false;
+        // Per-over capture: true if this over should drive the RADE encoder.
+        // Decided once at the MOX 0 -> 1 edge from RadaeEnabled + RX2Enabled +
+        // VFOBTX, then read again at the matching 1 -> 0 edge so the EOO
+        // notify and the C-side state push stay symmetric.  See the report
+        // in the conversation history (cpu-branch notes) for the predicate
+        // derivation.  Plain bool -- only the audio-thread MOX setter writes
+        // it, and reads on the same thread are atomic for word-sized types.
+        private static bool radae_active_this_over = false;
         public static bool MOX
         {
             get { return mox; }
@@ -360,35 +368,38 @@ namespace Thetis
                 bool was_mox = mox;
                 mox = value;
 
-                // [v2.10.3.16] FreeDV: emit EOO frame on TX -> RX flip while RADAE is active.
-                // The audio thread will pick the flag up on its next xradae_tx call.
-                if (was_mox && !mox)
+                // RADE per-over gate.  Use the encoder unless the user is
+                // transmitting on VFO B WITH RX2 enabled -- in that case VFO B
+                // represents RX2's RF path which is not on the RADE chain, so
+                // the over should be a plain SSB/voice transmission with the
+                // current mode on RX2.  When chkRADAE is off the predicate is
+                // simply false and the C-side gates fall through to today's
+                // pass-through behaviour.
+                if (was_mox && !mox)               // 1 -> 0 edge
                 {
-                    Console c = Console.getConsole();
-                    if (c != null && c.RadaeEnabled)
-                        cmaster.RadaeNotifyEndOfOver();
+                    if (radae_active_this_over)
+                        cmaster.RadaeNotifyEndOfOver();    // sets eoo_pending
+                    radae_active_this_over = false;
                 }
-                // [audit] RX -> TX edge: notify radae so the audio thread fires
-                // #4 / #5 / #6 / #9 audit logs once at the start of this over,
-                // plus a one-shot snapshot of TX-side state.  The audit's old
-                // gap-detection heuristic could not see this edge because
-                // xradae_tx is called continuously regardless of MOX state.
-                if (!was_mox && mox)
+                if (!was_mox && mox)               // 0 -> 1 edge
                 {
                     Console c = Console.getConsole();
-                    if (c != null && c.RadaeEnabled)
+                    radae_active_this_over =
+                        (c != null && c.RadaeEnabled) &&
+                        !(rx2_enabled && vfob_tx);
+                    if (radae_active_this_over)
                         cmaster.RadaeNotifyBeginOver();
                 }
 
-                // Push the new MOX state to the C side gate.  Pushed every
-                // edge regardless of RadaeEnabled so the C-side mirror is
-                // always current; the audio-thread gates are downstream of
-                // their own enable checks so they are no-ops when chkRADAE
-                // is off.  Order matters at the 1 -> 0 edge: the EOO flag
-                // above must be raised BEFORE we drop the MOX state so the
-                // next xradae_tx call sees eoo_pending=1 and passes the
-                // gate to run the EOO emission.
-                try { cmaster.SetRadaeMoxState(mox ? 1 : 0); } catch { }
+                // Push the per-over decision to the C-side gate.  Only raise
+                // mox_state when this over is RADE-active; for a bypassed
+                // over the gate stays at 0 so xradae_tx returns at the MOX
+                // gate and the mic audio passes through to TXA untouched.
+                // Order matters at the 1 -> 0 edge for a RADE-active over:
+                // RadaeNotifyEndOfOver above must raise eoo_pending BEFORE
+                // we drop mox_state, so the next xradae_tx call still passes
+                // the gate (via the eoo branch) and emits the EOO frame.
+                try { cmaster.SetRadaeMoxState(radae_active_this_over ? 1 : 0); } catch { }
 
                 if (mox)
                 {
