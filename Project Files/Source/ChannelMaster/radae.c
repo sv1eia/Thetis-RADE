@@ -1562,103 +1562,63 @@ void xradae_tx(double* mic_io)
         }
     }
 
-    /* 6) RMATCH-V LAYER: every block, push exactly rmatch_blksz samples
-     *    to rmatchV via xrmatchIN; then xrmatchOUT directly into mic_io.
+    /* 6) FIFO-DRAIN LAYER: pop outsize samples from the outrate FIFO
+     *    directly into mic_io.  Both endpoints (the encoder's logical
+     *    48 kHz output and the radio's TX 48 kHz input) are driven by
+     *    the same audio-thread clock, so there is no clock drift to
+     *    compensate -- the prior identity-rate rmatchV pass (linear-
+     *    interp polyphase varsamp at R=1024 coefficient density) was
+     *    doing real per-sample work for zero gain.  See
+     *    /mnt/i/Thetis/RADE_tasks_CPU_utilization.md §6.3.
      *
-     *    If outrate FIFO doesn't have a full block ready (the typical
-     *    case during the ~120 ms preamble gap at the start of every
-     *    over while LPCNet accumulates 12 feature frames before the
-     *    first rade_tx() fires), push ZEROS instead of skipping the
-     *    xrmatchIN.  This keeps rmatchV's ring at steady fill so
-     *    xrmatchOUT does not trigger dslew (a 3 ms Hann fade-to-zero
-     *    + zero-fill of the rest of the block) on every block.  The
-     *    dslew transients, repeated at the audio-block rate (~750 Hz
-     *    at outsize=64), are what produces the broadband splatter on
-     *    the SSB output at the start of each over.  Spectrally clean
-     *    silence is far better than a comb of Hann-tapered transients.
-     *    Diag counter still increments so the rate-limited log line
-     *    reflects how often the zero-feed kicks in. */
-    if (g_tx_rmatch != NULL && g_tx_rmatch_blksz > 0 &&
-        g_tx_rmatch_blksz <= outsize)   /* must match how we configured rmatchV */
+     *    Zero-feed semantics (same intent as the legacy fix-A path):
+     *    if the FIFO holds fewer than outsize samples (typical during
+     *    the ~120 ms cold start while LPCNet accumulates its first 12
+     *    feature frames before the first rade_tx fires), write a full-
+     *    block silence to mic_io and leave the FIFO content for the
+     *    next block.  Spectrally clean idle behaviour, no per-block
+     *    dslew transients to splatter the SSB skirts.
+     *
+     *    g_radae_bypass_rmatch becomes a no-op under this design --
+     *    every block is the bypass path now -- and is left as a UI
+     *    knob without effect, to keep the diagnostics tab stable.
+     *    The pre-allocated rmatchV instance + scratch buffers remain
+     *    in the build but are never invoked from the hot path. */
     {
-        const int blk = g_tx_rmatch_blksz;
+        float scratch[RADAE_MAX_BLOCK];
+        int have = 0;
         int i;
-
-        /* DIAGNOSTIC bypass_rmatch: skip xrmatchIN/xrmatchOUT entirely;
-         * copy the outrate FIFO directly into mic_io.  If the skirt
-         * bumps disappear here, rmatchV's varsamp linear interpolation
-         * is the source.  Pad with silence when the FIFO is short
-         * (same zero-feed semantics as fix A -- spectrally clean). */
-        if (bypass_rmatch)
+        if (g_tx_outrate_fifo_n >= outsize)
         {
-            float scratch[RADAE_MAX_BLOCK];
-            int have = (g_tx_outrate_fifo_n < blk) ? g_tx_outrate_fifo_n : blk;
-            if (have > 0)
-                fifo_pop(g_tx_outrate_fifo, &g_tx_outrate_fifo_n, scratch, have);
-            for (i = 0; i < have; i++)
-            {
-                /* I = modem real, Q = 0 (see comment above the bypass_encoder
-                 * branch).  Writing modem to both slots makes WDSP SSB
-                 * generate spurious products. */
-                mic_io[2 * i]     = (double)scratch[i];
-                mic_io[2 * i + 1] = 0.0;
-            }
-            for (; i < outsize; i++)
-            {
-                mic_io[2 * i]     = 0.0;
-                mic_io[2 * i + 1] = 0.0;
-            }
-            LeaveCriticalSection(&g_radae_tx_cs);
-            return;
-        }
-
-        if (g_tx_outrate_fifo_n >= blk)
-        {
-            float scratch[RADAE_MAX_BLOCK];
-            fifo_pop(g_tx_outrate_fifo, &g_tx_outrate_fifo_n, scratch, blk);
-            for (i = 0; i < blk; i++)
-            {
-                double v = (double)scratch[i];
-                g_tx_rmatch_in[2 * i]     = v;
-                g_tx_rmatch_in[2 * i + 1] = v;
-            }
+            fifo_pop(g_tx_outrate_fifo, &g_tx_outrate_fifo_n, scratch, outsize);
+            have = outsize;
         }
         else
         {
-            long c;
-            memset(g_tx_rmatch_in, 0, (size_t)(2 * blk) * sizeof(double));
-            c = ++g_tx_outrate_underrun_count;
+            long c = ++g_tx_outrate_underrun_count;
             if (c == 1 || (c % 50) == 0)
             {
                 char log[140];
                 sprintf_s(log, sizeof(log),
-                    "[RADAE] outrate->rmatch UNDR have=%d need=%d total=%ld (zero-fed)\n",
-                    g_tx_outrate_fifo_n, blk, c);
+                    "[RADAE] outrate->mic_io UNDR have=%d need=%d total=%ld (zero-fed)\n",
+                    g_tx_outrate_fifo_n, outsize, c);
                 OutputDebugStringA(log);
             }
         }
-        xrmatchIN(g_tx_rmatch, g_tx_rmatch_in);
-        /* xrmatchOUT writes 2*blk doubles into our scratch.  blk == outsize
-         * by configuration. */
-        xrmatchOUT(g_tx_rmatch, g_tx_rmatch_out);
 
-        /* LOOPBACK: divert L of rmatchV output into the bridge ring; mic_io
+        /* LOOPBACK: divert the modem audio into the bridge ring; mic_io
          * stays silent so the radio does not transmit while looping. */
         if (_InterlockedAnd(&g_radae_loopback_enabled, 0xffffffff))
         {
-            float bridge_scratch[RADAE_MAX_BLOCK];
-            int avail, take;
-            for (i = 0; i < blk; i++)
-                bridge_scratch[i] = (float)g_tx_rmatch_out[2 * i];
-            avail = RADAE_LOOP_BRIDGE_CAP - g_loop_bridge_n;
-            take  = (blk < avail) ? blk : avail;
+            int avail = RADAE_LOOP_BRIDGE_CAP - g_loop_bridge_n;
+            int take  = (have < avail) ? have : avail;
             if (take > 0)
             {
-                memcpy(g_loop_bridge + g_loop_bridge_n, bridge_scratch,
+                memcpy(g_loop_bridge + g_loop_bridge_n, scratch,
                        (size_t)take * sizeof(float));
                 g_loop_bridge_n += take;
             }
-            if (take < blk)
+            if (take < have)
             {
                 long c = ++g_loop_bridge_ovrun_count;
                 if (c == 1 || (c % 50) == 0)
@@ -1666,7 +1626,7 @@ void xradae_tx(double* mic_io)
                     char log[120];
                     sprintf_s(log, sizeof(log),
                         "[RADAE] loop_bridge OVRUN dropped=%d total=%ld\n",
-                        blk - take, c);
+                        have - take, c);
                     OutputDebugStringA(log);
                 }
             }
@@ -1678,29 +1638,23 @@ void xradae_tx(double* mic_io)
         }
         else
         {
-            for (i = 0; i < blk; i++)
+            /* I = real modem audio, Q = 0.  Matches the network mic
+             * handler's (real, 0) convention -- WDSP TXA's SSB modulator
+             * generates the analytic signal internally via its Hilbert
+             * filter and expects Q=0.  Writing modem to both slots
+             * creates spurious in-band products that show up as skirt
+             * bumps on the panadapter and audible clicks on the
+             * receiving decoder. */
+            for (i = 0; i < have; i++)
             {
-                /* I = real modem audio, Q = 0.  Matches the network
-                 * mic handler's (real, 0) convention -- WDSP TXA's SSB
-                 * modulator generates the analytic signal internally via
-                 * its Hilbert filter and expects Q=0.  Writing modem on
-                 * both slots creates spurious in-band products that
-                 * appear as skirt bumps on the panadapter and audible
-                 * clicks on the receiver decoder.  rmatchV processed
-                 * both slots above (L=R=modem) but only L is used here. */
-                mic_io[2 * i]     = g_tx_rmatch_out[2 * i];
+                mic_io[2 * i]     = (double)scratch[i];
                 mic_io[2 * i + 1] = 0.0;
             }
-        }
-    }
-    else
-    {
-        /* rmatch not yet built (very first call): fill mic_io with silence. */
-        int i;
-        for (i = 0; i < outsize; i++)
-        {
-            mic_io[2 * i]     = 0.0;
-            mic_io[2 * i + 1] = 0.0;
+            for (; i < outsize; i++)
+            {
+                mic_io[2 * i]     = 0.0;
+                mic_io[2 * i + 1] = 0.0;
+            }
         }
     }
 
