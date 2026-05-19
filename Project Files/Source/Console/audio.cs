@@ -380,6 +380,16 @@ namespace Thetis
                         cmaster.RadaeNotifyBeginOver();
                 }
 
+                // Push the new MOX state to the C side gate.  Pushed every
+                // edge regardless of RadaeEnabled so the C-side mirror is
+                // always current; the audio-thread gates are downstream of
+                // their own enable checks so they are no-ops when chkRADAE
+                // is off.  Order matters at the 1 -> 0 edge: the EOO flag
+                // above must be raised BEFORE we drop the MOX state so the
+                // next xradae_tx call sees eoo_pending=1 and passes the
+                // gate to run the EOO emission.
+                try { cmaster.SetRadaeMoxState(mox ? 1 : 0); } catch { }
+
                 if (mox)
                 {
                     if (rx2_enabled && vfob_tx)  //[2.10.0.4]MW0LGE fix issue with no RX2 audio when tx'ing on rx1

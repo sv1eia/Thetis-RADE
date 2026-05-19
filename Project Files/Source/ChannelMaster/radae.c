@@ -86,6 +86,21 @@ static volatile long g_radae_tx_enabled       = 0;
 static volatile long g_radae_eoo_pending      = 0;
 static volatile long g_radae_box_pending      = 0;   /* RX->MOX edge flag */
 static volatile long g_radae_loopback_enabled = 0;   /* divert rmatchV output -> RX xresampleFV input (chkRADAE+chkRADAELoopback both ON) */
+/* CPU-utilisation gate (see /mnt/i/Thetis/RADE_tasks_CPU_utilization.md §6.0).
+ *   g_radae_mox_state    -- mirror of the console MOX flag, pushed by C#
+ *                           on every MOX edge via SetRadaeMoxState.
+ *                           xradae_tx skips during MOX=0 and xradae_rx
+ *                           skips during MOX=1, so only one half of the
+ *                           pipeline is active outside of loopback.
+ *   g_radae_drain_blocks -- block-countdown seeded at the MOX 1->0 edge
+ *                           by SetRadaeMoxState.  Keeps xradae_tx alive
+ *                           long enough for the EOO modem audio that
+ *                           rade_tx_eoo just pushed to the modem FIFO
+ *                           to drain through r8brain-up + rmatchV into
+ *                           mic_io.  Decremented inside xradae_tx; the
+ *                           gate engages once it reaches zero. */
+static volatile long g_radae_mox_state        = 0;
+static volatile long g_radae_drain_blocks     = 0;
 static volatile long g_radae_sync             = 0;
 static volatile long g_radae_snr_db           = 0;
 static          float g_radae_freq_off   = 0.0f;
@@ -804,6 +819,31 @@ PORT int GetRadaeLoopbackEnabled(void)
     return (int)_InterlockedAnd(&g_radae_loopback_enabled, 0xffffffff);
 }
 
+/* Pushed by C# audio.cs MOX setter on every MOX edge.  The audio
+ * thread reads it as the master TX/RX gate inside xradae_tx and
+ * xradae_rx so only one half of the RADE pipeline is active outside
+ * of loopback.  At the 1->0 edge we also seed a drain window so the
+ * trailing EOO modem audio finishes flowing into mic_io before the
+ * TX path gates off. */
+PORT void SetRadaeMoxState(int mox)
+{
+    const long new_state = mox ? 1 : 0;
+    const long prev      = _InterlockedExchange(&g_radae_mox_state, new_state);
+    if (prev && !new_state)
+    {
+        /* 320 audio blocks @ 64 samples / 48 kHz ~= 427 ms -- covers
+         * the EOO frame after r8brain 8->48 (~180 ms in the outrate
+         * FIFO) plus the rmatchV ring delay (~85 ms) with margin. */
+        _InterlockedExchange(&g_radae_drain_blocks, 320);
+        OutputDebugStringA("[RADAE] MOX 1->0 gate: drain window 320 blocks\n");
+    }
+    else if (!prev && new_state)
+    {
+        _InterlockedExchange(&g_radae_drain_blocks, 0);
+        OutputDebugStringA("[RADAE] MOX 0->1 gate: TX path enabled\n");
+    }
+}
+
 PORT void SetRadaeMicScale(double scale)
 {
     /* Clamp to a sane range; UI sliders cap well within this. */
@@ -966,6 +1006,16 @@ void xradae_rx(int rx, double* rbuff_io)
     const int outrate = pcm->rcvr[rx].ch_outrate;
     const int outsize = pcm->rcvr[rx].ch_outsize;
     if (outrate <= 0 || outsize <= 0) return;
+
+    /* MOX-state gating.  Skip the RX pipeline while the radio is in TX,
+     * except when loopback is requested (chkRADAELoopback routes the
+     * encoder output into the decoder input, so both halves run in
+     * parallel).  See g_radae_mox_state comment block. */
+    {
+        const long mox = _InterlockedAnd(&g_radae_mox_state,        1);
+        const long lpb = _InterlockedAnd(&g_radae_loopback_enabled, 1);
+        if (mox && !lpb) return;
+    }
 
     EnterCriticalSection(&g_radae_cs);
 
@@ -1209,6 +1259,28 @@ void xradae_tx(double* mic_io)
      * something xradae_tx itself touches; if they remain, the cause
      * is in those side-effects (most likely a mode-driven TXA stage). */
     if (_InterlockedAnd(&g_radae_bypass_all, 1)) return;
+
+    /* MOX-state gating.  Skip the TX pipeline while the radio is in RX,
+     * except when
+     *   (a) loopback is requested -- both halves run in parallel,
+     *   (b) an EOO frame is pending -- the one-shot EOO emission at the
+     *       MOX 1->0 edge must run after the state flip, OR
+     *   (c) the drain window seeded by SetRadaeMoxState is still open --
+     *       trailing EOO modem audio must finish flowing through
+     *       r8brain-up + rmatchV into mic_io before we gate off.
+     * Drain is consumed one block per call; the audio thread calls
+     * xradae_tx every ~1.33 ms so 320 decrements ~= 427 ms. */
+    {
+        const long mox = _InterlockedAnd(&g_radae_mox_state,        1);
+        const long lpb = _InterlockedAnd(&g_radae_loopback_enabled, 1);
+        const long eoo = _InterlockedAnd(&g_radae_eoo_pending,      1);
+        if (!mox && !lpb && !eoo)
+        {
+            const long drain = _InterlockedAnd(&g_radae_drain_blocks, 0xffffffff);
+            if (drain <= 0) return;
+            _InterlockedDecrement(&g_radae_drain_blocks);
+        }
+    }
 
     /* TX-side lock only -- xradae_rx and the UI use g_radae_cs which
      * is held briefly when needed (e.g. around rade_text access in

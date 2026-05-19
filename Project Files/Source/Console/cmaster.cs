@@ -192,6 +192,9 @@ namespace Thetis
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeLoopbackEnabled", CallingConvention = CallingConvention.Cdecl)]
         public static extern int GetRadaeLoopbackEnabled();
 
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMoxState", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeMoxState(int mox);
+
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeEooCallsign", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         public static extern void SetRadaeEooCallsign([MarshalAs(UnmanagedType.LPStr)] string callsign);
 

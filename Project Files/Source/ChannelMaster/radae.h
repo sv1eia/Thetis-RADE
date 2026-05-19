@@ -123,6 +123,15 @@ PORT void  SetRadaeEooCallsign(const char* callsign);
 PORT void  SetRadaeLoopbackEnabled(int enable);
 PORT int   GetRadaeLoopbackEnabled(void);
 
+/* MOX-state mirror, pushed by audio.cs on every MOX edge.  Drives the
+ * TX/RX-only gates at the top of xradae_tx / xradae_rx so the two
+ * halves of the RADE pipeline never run simultaneously outside of
+ * loopback (a measurable CPU saving on the receive side during TX
+ * and on the transmit side during RX).  At the 1 -> 0 edge the C
+ * side also seeds a short drain window so the trailing EOO modem
+ * audio finishes flowing into mic_io before the TX path gates off. */
+PORT void  SetRadaeMoxState(int mox);
+
 /* Sample-amplitude scaling.  The C# Setup tab pushes the linear scale
  * factor (= 10^(dB/20)) of the VAC1 TXGain / RXGain spinners here so
  * the user can drive the radae encoder mic input and the radae decoder
