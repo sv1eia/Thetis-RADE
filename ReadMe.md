@@ -21,6 +21,9 @@ Reporter client to the existing Thetis SDR application.
 - RADE meters — Sync, SNR, RX level (dBFS), Clip, EOO Decodes (text
   meter showing the last decoded callsign), TX Mic Level, TX Mic Clip;
   available from the Meters/Gadgets system.
+- TX mic-conditioning DSP on the RADE transmit path
+  RNNoise denoiser, AGC, 3-band biquad equaliser.
+- Hermes Lite 2 hardware support
 
 
 ## Additional Libraries
