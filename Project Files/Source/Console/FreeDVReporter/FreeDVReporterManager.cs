@@ -183,7 +183,19 @@ namespace Thetis.FreeDVReporter
 
         private static bool ComputeRealTx(Console console)
         {
-            try { return console.MOX && !console.TUN && !console.TwoTone; }
+            try
+            {
+                if (!console.MOX || console.TUN || console.TwoTone) return false;
+                // RADE-bypass over: when transmitting on VFO B with RX2
+                // enabled while chkRADAE is on, audio.cs bypasses the
+                // encoder and this over goes out as plain SSB voice on
+                // RX2's frequency -- not a RADE transmission, so it
+                // should not be reported to qso.freedv.org.  Matches
+                // the per-over predicate in audio.cs::MOX setter.
+                if (console.RadaeEnabled && console.RX2Enabled && console.VFOBTX)
+                    return false;
+                return true;
+            }
             catch { return false; }
         }
 
