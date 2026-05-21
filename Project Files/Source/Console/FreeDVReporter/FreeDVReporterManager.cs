@@ -38,6 +38,7 @@ namespace Thetis.FreeDVReporter
         private static Console.VFOBFrequencyChanged   _vfobHandler;
         private static Console.TuneChanged            _tuneHandler;
         private static Console.TwoToneChanged         _twoToneHandler;
+        private static Console.RX2EnabledChanged      _rx2EnabledHandler;
 
         /* Last value we sent to the server.  Recomputed from
          * MOX && !TUN && !TwoTone whenever any of those flips. */
@@ -205,11 +206,20 @@ namespace Thetis.FreeDVReporter
                 }
                 catch { }
             };
+            // RX2 enable transitions -- the second qso.freedv.org client
+            // must close when RX2 is disabled entirely (no RX2 means no
+            // RX2 frequency / SNR to publish) and re-open when RX2 comes
+            // back, gated by the user's "RX2 enable reporting" choice.
+            _rx2EnabledHandler = (enabled) =>
+            {
+                try { ApplyRx2ClientState(); } catch { }
+            };
             console.MoxChangeHandlers           += _moxHandler;
             console.TuneChangedHandlers         += _tuneHandler;
             console.TwoToneChangedHandlers      += _twoToneHandler;
             console.VFOAFrequencyChangeHandlers += _vfoaHandler;
             console.VFOBFrequencyChangeHandlers += _vfobHandler;
+            console.RX2EnabledChangedHandlers   += _rx2EnabledHandler;
 
             _radaePollTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             _radaePollTimer.Tick += OnRadaePoll;
@@ -298,17 +308,24 @@ namespace Thetis.FreeDVReporter
         {
             try
             {
+                /* RX1 client: emit when its own predicate flips.  Debounce
+                 * per-client, NOT globally -- a transmit on VFO B with RX2
+                 * RADE active leaves the RX1 predicate at "false" (the
+                 * bypass guard), and a global early-return would skip the
+                 * RX2 emit below. */
                 bool now = ComputeRealTx(console);
-                if (now == _lastReportedTransmitting) return;   /* debounce */
-                _lastReportedTransmitting = now;
-                /* Always call EmitTxReport so the client's cached
-                 * _lastTransmitting is current; client suppresses the
-                 * wire send when role=="view". */
-                _client?.EmitTxReport(MODE_TAG, now);
+                if (now != _lastReportedTransmitting)
+                {
+                    _lastReportedTransmitting = now;
+                    /* Always call EmitTxReport so the client's cached
+                     * _lastTransmitting is current; client suppresses
+                     * the wire send when role=="view". */
+                    _client?.EmitTxReport(MODE_TAG, now);
+                }
 
-                /* RX2 TX-report: the symmetric predicate -- RX2 reports
-                 * "transmitting" only when transmitting via VFO B on RX2
-                 * with chkRADAERX2 on. */
+                /* RX2 client: independent predicate, independent debounce.
+                 * Fires when transmitting via VFO B on RX2 with chkRADAERX2
+                 * on, regardless of whether the RX1 predicate moved. */
                 if (_clientRx2 != null)
                 {
                     bool rx2Now = ComputeRealTxRx2(console);
@@ -348,19 +365,30 @@ namespace Thetis.FreeDVReporter
             try { _clientRx2?.EmitMessageUpdate(_rx2Message); } catch { }
         }
 
-        /* RX2 reporting (VIS) enable.  When true, opens (or maintains) a
-         * second connection to qso.freedv.org dedicated to RX2 frequency
-         * + SNR.  When false, closes that connection.  The primary
-         * RX1 connection is unaffected and uses chkRADAEReporting (RX1
-         * VIS) -- the two are independent. */
+        /* RX2 reporting (VIS) enable.  The actual open/close of the
+         * second qso.freedv.org client is decided by ApplyRx2ClientState,
+         * which gates on BOTH this flag AND console.RX2Enabled so the
+         * second connection follows the receiver itself: disabling RX2
+         * closes the connection even if the VIS checkbox is still set,
+         * and re-enabling RX2 brings it back automatically. */
         public static void SetRx2ReportingEnabled(bool enabled)
         {
             if (_rx2ReportingEnabled == enabled) return;
             _rx2ReportingEnabled = enabled;
             Log("SetRx2ReportingEnabled(" + enabled + ")");
-            if (_console == null) return;
+            ApplyRx2ClientState();
+        }
 
-            if (enabled)
+        /* Open / close the RX2 client to match the effective state
+         * (_rx2ReportingEnabled AND console.RX2Enabled).  Called from
+         * SetRx2ReportingEnabled and from the RX2EnabledChangedHandlers
+         * subscription installed in Enable(). */
+        private static void ApplyRx2ClientState()
+        {
+            if (_console == null) return;
+            bool wantOpen = _rx2ReportingEnabled && _console.RX2Enabled;
+
+            if (wantOpen)
             {
                 if (_clientRx2 == null)
                 {
@@ -391,6 +419,9 @@ namespace Thetis.FreeDVReporter
             }
             else
             {
+                if (_clientRx2 != null)
+                    Log("RX2 client closing (rx2_reporting=" + _rx2ReportingEnabled
+                        + ", RX2Enabled=" + (_console != null && _console.RX2Enabled) + ")");
                 try { _clientRx2?.Stop(); _clientRx2?.Dispose(); } catch { }
                 _clientRx2 = null;
             }
@@ -403,15 +434,17 @@ namespace Thetis.FreeDVReporter
             {
                 if (_console != null)
                 {
-                    if (_moxHandler     != null) _console.MoxChangeHandlers           -= _moxHandler;
-                    if (_tuneHandler    != null) _console.TuneChangedHandlers         -= _tuneHandler;
-                    if (_twoToneHandler != null) _console.TwoToneChangedHandlers      -= _twoToneHandler;
-                    if (_vfoaHandler    != null) _console.VFOAFrequencyChangeHandlers -= _vfoaHandler;
-                    if (_vfobHandler    != null) _console.VFOBFrequencyChangeHandlers -= _vfobHandler;
+                    if (_moxHandler        != null) _console.MoxChangeHandlers           -= _moxHandler;
+                    if (_tuneHandler       != null) _console.TuneChangedHandlers         -= _tuneHandler;
+                    if (_twoToneHandler    != null) _console.TwoToneChangedHandlers      -= _twoToneHandler;
+                    if (_vfoaHandler       != null) _console.VFOAFrequencyChangeHandlers -= _vfoaHandler;
+                    if (_vfobHandler       != null) _console.VFOBFrequencyChangeHandlers -= _vfobHandler;
+                    if (_rx2EnabledHandler != null) _console.RX2EnabledChangedHandlers   -= _rx2EnabledHandler;
                 }
             }
             catch { }
-            _moxHandler = null; _tuneHandler = null; _twoToneHandler = null; _vfoaHandler = null; _vfobHandler = null;
+            _moxHandler = null; _tuneHandler = null; _twoToneHandler = null;
+            _vfoaHandler = null; _vfobHandler = null; _rx2EnabledHandler = null;
 
             try { _radaePollTimer?.Stop(); _radaePollTimer?.Dispose(); } catch { }
             _radaePollTimer = null;

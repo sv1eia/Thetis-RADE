@@ -47744,17 +47744,23 @@ namespace Thetis
                         _RX1MeterValues[Reading.RADAE_CLIP] = (float)cmaster.GetRadaeClip(0);
                     if (MeterManager.RequiresUpdate(1, Reading.RADAE_EOO_DECODE))
                         _RX1MeterValues[Reading.RADAE_EOO_DECODE] = (float)cmaster.GetRadaeEooDecodePulse(0);
-                    // RX2 RADE meters -- updated in the sub/RX2 block when RX2 RADE is active.
+                    // RX2 RADE meters use the SAME Reading enum values as
+                    // RX1; the per-RX dispatch is the container's RX index
+                    // ("RX1 data" / "RX2 data" radio button in Setup →
+                    // Display → Meters).  We populate _RX2MeterValues so
+                    // a container bound to RX2 sees RX2's RADE state.
                     if (RadaeRx2Enabled)
                     {
-                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_SYNC_RX2))
-                            _RX2MeterValues[Reading.RADAE_SYNC_RX2] = (float)cmaster.GetRadaeSync(1);
-                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_SNR_DB_RX2))
-                            _RX2MeterValues[Reading.RADAE_SNR_DB_RX2] = (float)cmaster.GetRadaeSnrDb(1);
-                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_RX_LEVEL_DB_RX2))
-                            _RX2MeterValues[Reading.RADAE_RX_LEVEL_DB_RX2] = (float)cmaster.GetRadaeRxLevelDb(1);
-                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_CLIP_RX2))
-                            _RX2MeterValues[Reading.RADAE_CLIP_RX2] = (float)cmaster.GetRadaeClip(1);
+                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_SYNC))
+                            _RX2MeterValues[Reading.RADAE_SYNC] = (float)cmaster.GetRadaeSync(1);
+                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_SNR_DB))
+                            _RX2MeterValues[Reading.RADAE_SNR_DB] = (float)cmaster.GetRadaeSnrDb(1);
+                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_RX_LEVEL_DB))
+                            _RX2MeterValues[Reading.RADAE_RX_LEVEL_DB] = (float)cmaster.GetRadaeRxLevelDb(1);
+                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_CLIP))
+                            _RX2MeterValues[Reading.RADAE_CLIP] = (float)cmaster.GetRadaeClip(1);
+                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_EOO_DECODE))
+                            _RX2MeterValues[Reading.RADAE_EOO_DECODE] = (float)cmaster.GetRadaeEooDecodePulse(1);
                     }
 
                     ////[2.10.3.9]MW0LGE sub rx (future)

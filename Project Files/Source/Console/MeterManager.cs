@@ -177,7 +177,10 @@ namespace Thetis
 
         ADC_MAX_MAG = 73,
 
-        // RADE V1 modem readings (RX1 side -- legacy enum values kept stable)
+        // RADE V1 modem readings.  Per-RX selection lives in the meter
+        // container's "RX1 data" / "RX2 data" radio button -- the same
+        // Reading enum value is used for both receivers, written into
+        // _RX1MeterValues or _RX2MeterValues by the console update loop.
         RADAE_SYNC = 80,        // 0 or 1
         RADAE_SNR_DB,           // dB SNR estimate, typically -10..30
         RADAE_RX_LEVEL_DB,      // dBFS of decoder input peak, -120..0
@@ -185,12 +188,6 @@ namespace Thetis
         RADAE_EOO_DECODE,       // pulses to 1 for ~500 ms after each successful EOO callsign decode
         RADAE_TX_MIC_LEVEL_DB,  // dBFS of post-TXGain mic input peak, -120..0 (TX side)
         RADAE_TX_MIC_CLIP,      // 1 if TX mic peak crossed 0.8 fullscale within ~500 ms (TX side)
-        // RADE V1 modem readings (RX2 side) -- per-receiver duplication.
-        RADAE_SYNC_RX2,
-        RADAE_SNR_DB_RX2,
-        RADAE_RX_LEVEL_DB_RX2,
-        RADAE_CLIP_RX2,
-        RADAE_EOO_DECODE_RX2,   // RX2 pulse companion -- the "RADE EOO Decodes" Reading-side label stays untouched.
 
         LAST
     }
@@ -257,12 +254,6 @@ namespace Thetis
         RADAE_EOO_DECODE,
         RADAE_TX_MIC_LEVEL_DB,
         RADAE_TX_MIC_CLIP,
-        // RADE V1 modem meters (RX2 side -- mirror per receiver)
-        RADAE_SYNC_RX2,
-        RADAE_SNR_DB_RX2,
-        RADAE_RX_LEVEL_DB_RX2,
-        RADAE_CLIP_RX2,
-        RADAE_EOO_DECODE_RX2,
         LAST
     }
     public enum BandGroups
@@ -824,11 +815,6 @@ namespace Thetis
                 _all_readings.Add(Reading.RADAE_EOO_DECODE);
                 _all_readings.Add(Reading.RADAE_TX_MIC_LEVEL_DB);
                 _all_readings.Add(Reading.RADAE_TX_MIC_CLIP);
-                _all_readings.Add(Reading.RADAE_SYNC_RX2);
-                _all_readings.Add(Reading.RADAE_SNR_DB_RX2);
-                _all_readings.Add(Reading.RADAE_RX_LEVEL_DB_RX2);
-                _all_readings.Add(Reading.RADAE_CLIP_RX2);
-                _all_readings.Add(Reading.RADAE_EOO_DECODE_RX2);
 
                 // text
                 _all_readings_text.Add("time_utc");
@@ -2202,31 +2188,6 @@ namespace Thetis
                         value = 0f;
                     }
                     break;
-                case Reading.RADAE_SYNC_RX2:
-                    {
-                        value = 0f;
-                    }
-                    break;
-                case Reading.RADAE_SNR_DB_RX2:
-                    {
-                        value = 0f;
-                    }
-                    break;
-                case Reading.RADAE_RX_LEVEL_DB_RX2:
-                    {
-                        value = -120f;
-                    }
-                    break;
-                case Reading.RADAE_CLIP_RX2:
-                    {
-                        value = 0f;
-                    }
-                    break;
-                case Reading.RADAE_EOO_DECODE_RX2:
-                    {
-                        value = 0f;
-                    }
-                    break;
                 case Reading.VOLTS:
                     {
                         value = 0f;
@@ -2270,11 +2231,6 @@ namespace Thetis
                 case MeterType.RADAE_TX_MIC_LEVEL_DB: return 1;
                 case MeterType.RADAE_TX_MIC_CLIP: return 1;
 
-                case MeterType.RADAE_SYNC_RX2: return 0;
-                case MeterType.RADAE_SNR_DB_RX2: return 0;
-                case MeterType.RADAE_RX_LEVEL_DB_RX2: return 0;
-                case MeterType.RADAE_CLIP_RX2: return 0;
-                case MeterType.RADAE_EOO_DECODE_RX2: return 0;
 
                 case MeterType.MIC: return 1;
                 case MeterType.PWR: return 1;
@@ -2348,18 +2304,13 @@ namespace Thetis
                 case MeterType.CFC_GAIN: return "CFC Compression Gain";
                 case MeterType.MAGIC_EYE: return "Magic Eye";
                 case MeterType.ESTIMATED_PBSNR: return "Estimated PBSNR";
-                case MeterType.RADAE_SYNC: return "RX1RADE Sync";
-                case MeterType.RADAE_SNR_DB: return "RX1RADE SNR";
-                case MeterType.RADAE_RX_LEVEL_DB: return "RX1RADE RX Level";
-                case MeterType.RADAE_CLIP: return "RX1RADE Clip";
-                case MeterType.RADAE_EOO_DECODE: return "RX1RADE Last Callsign";
+                case MeterType.RADAE_SYNC: return "RADE Sync";
+                case MeterType.RADAE_SNR_DB: return "RADE SNR";
+                case MeterType.RADAE_RX_LEVEL_DB: return "RADE RX Level";
+                case MeterType.RADAE_CLIP: return "RADE Clip";
+                case MeterType.RADAE_EOO_DECODE: return "RADE Last Callsign";
                 case MeterType.RADAE_TX_MIC_LEVEL_DB: return "RADE TX Mic Level";
                 case MeterType.RADAE_TX_MIC_CLIP: return "RADE TX Mic Clip";
-                case MeterType.RADAE_SYNC_RX2: return "RX2RADE Sync";
-                case MeterType.RADAE_SNR_DB_RX2: return "RX2RADE SNR";
-                case MeterType.RADAE_RX_LEVEL_DB_RX2: return "RX2RADE RX Level";
-                case MeterType.RADAE_CLIP_RX2: return "RX2RADE Clip";
-                case MeterType.RADAE_EOO_DECODE_RX2: return "RX2RADE Last Callsign";
                 case MeterType.ANANMM: return "Anan Multi Meter";
                 case MeterType.CROSS: return "Cross Meter";
                 case MeterType.SWR: return "SWR";
@@ -2404,20 +2355,13 @@ namespace Thetis
                 case Reading.ALC_G: return "ALC Compression";
                 case Reading.ALC_GROUP: return "ALC Group";
                 case Reading.ESTIMATED_PBSNR: return "Estimated PBSNR";
-                case Reading.RADAE_SYNC: return "RX1RADE Sync";
-                case Reading.RADAE_SNR_DB: return "RX1RADE SNR";
-                case Reading.RADAE_RX_LEVEL_DB: return "RX1RADE RX Level";
-                case Reading.RADAE_CLIP: return "RX1RADE Clip";
-                // Per user spec, the "RADE EOO Decodes" Reading-side label is
-                // not shown on the Meters/Gadgets list -- left untouched.
+                case Reading.RADAE_SYNC: return "RADE Sync";
+                case Reading.RADAE_SNR_DB: return "RADE SNR";
+                case Reading.RADAE_RX_LEVEL_DB: return "RADE RX Level";
+                case Reading.RADAE_CLIP: return "RADE Clip";
                 case Reading.RADAE_EOO_DECODE: return "RADE EOO Decodes";
                 case Reading.RADAE_TX_MIC_LEVEL_DB: return "RADE TX Mic Level";
                 case Reading.RADAE_TX_MIC_CLIP: return "RADE TX Mic Clip";
-                case Reading.RADAE_SYNC_RX2: return "RX2RADE Sync";
-                case Reading.RADAE_SNR_DB_RX2: return "RX2RADE SNR";
-                case Reading.RADAE_RX_LEVEL_DB_RX2: return "RX2RADE RX Level";
-                case Reading.RADAE_CLIP_RX2: return "RX2RADE Clip";
-                case Reading.RADAE_EOO_DECODE_RX2: return "RADE EOO Decodes";
                 case Reading.ALC_PK: return "ALC (pk)";// Peak";
                 case Reading.AMPS: return "Amps";
                 case Reading.AVG_SIGNAL_STRENGTH: return "Signal Average";
@@ -2486,11 +2430,6 @@ namespace Thetis
                 case Reading.RADAE_EOO_DECODE: return "";
                 case Reading.RADAE_TX_MIC_LEVEL_DB: return "dBFS";
                 case Reading.RADAE_TX_MIC_CLIP: return "";
-                case Reading.RADAE_SYNC_RX2: return "";
-                case Reading.RADAE_SNR_DB_RX2: return "dB";
-                case Reading.RADAE_RX_LEVEL_DB_RX2: return "dBFS";
-                case Reading.RADAE_CLIP_RX2: return "";
-                case Reading.RADAE_EOO_DECODE_RX2: return "";
                 case Reading.ALC_PK: return "dB";
                 case Reading.AMPS: return "A";
                 case Reading.AVG_SIGNAL_STRENGTH: return "dBm";
@@ -15666,7 +15605,6 @@ namespace Thetis
             private float _fontSize;
             private bool _showLabel;
             private System.Drawing.Color _labelColour;
-            private int _rxIndex;   // 0 = RX1, 1 = RX2
 
             public clsRadaeCallText()
             {
@@ -15677,7 +15615,6 @@ namespace Thetis
                 _emptyColour = System.Drawing.Color.FromArgb(96, 96, 96);
                 _labelColour = System.Drawing.Color.Gray;
                 _showLabel = true;
-                _rxIndex = 0;
 
                 ItemType = MeterItemType.RADAE_CALL_TEXT;
                 StoreSettings = false;
@@ -15691,7 +15628,6 @@ namespace Thetis
             public FontStyle            Style        { get { return _fontStyle; }    set { _fontStyle = value; } }
             public float                FontSize     { get { return _fontSize; }     set { _fontSize = value; } }
             public bool                 ShowLabel    { get { return _showLabel; }    set { _showLabel = value; } }
-            public int                  RxIndex      { get { return _rxIndex; }      set { _rxIndex = value; } }
         }
         internal class clsWebImage : clsMeterItem
         {
@@ -22870,11 +22806,6 @@ namespace Thetis
                     case MeterType.RADAE_EOO_DECODE: ret = Reading.RADAE_EOO_DECODE.ToString(); break;
                     case MeterType.RADAE_TX_MIC_LEVEL_DB: ret = Reading.RADAE_TX_MIC_LEVEL_DB.ToString(); break;
                     case MeterType.RADAE_TX_MIC_CLIP: ret = Reading.RADAE_TX_MIC_CLIP.ToString(); break;
-                    case MeterType.RADAE_SYNC_RX2: ret = Reading.RADAE_SYNC_RX2.ToString(); break;
-                    case MeterType.RADAE_SNR_DB_RX2: ret = Reading.RADAE_SNR_DB_RX2.ToString(); break;
-                    case MeterType.RADAE_RX_LEVEL_DB_RX2: ret = Reading.RADAE_RX_LEVEL_DB_RX2.ToString(); break;
-                    case MeterType.RADAE_CLIP_RX2: ret = Reading.RADAE_CLIP_RX2.ToString(); break;
-                    case MeterType.RADAE_EOO_DECODE_RX2: ret = Reading.RADAE_EOO_DECODE_RX2.ToString(); break;
                     //TODO !!!case MeterType.ANANMM: ret = 7.ToString(); break;
                     case MeterType.CROSS: ret = variable_index == 0 ? Reading.PWR.ToString() : Reading.REVERSE_PWR.ToString(); break;
                     case MeterType.SWR: ret = Reading.SWR.ToString(); break;
@@ -22937,11 +22868,6 @@ namespace Thetis
                     case MeterType.RADAE_EOO_DECODE: return 1;
                     case MeterType.RADAE_TX_MIC_LEVEL_DB: return 1;
                     case MeterType.RADAE_TX_MIC_CLIP: return 1;
-                    case MeterType.RADAE_SYNC_RX2: return 1;
-                    case MeterType.RADAE_SNR_DB_RX2: return 1;
-                    case MeterType.RADAE_RX_LEVEL_DB_RX2: return 1;
-                    case MeterType.RADAE_CLIP_RX2: return 1;
-                    case MeterType.RADAE_EOO_DECODE_RX2: return 1;
                     case MeterType.ANANMM: return 7;
                     case MeterType.CROSS: return 2;
                     case MeterType.SWR: return 1;
@@ -23009,11 +22935,6 @@ namespace Thetis
                     case MeterType.RADAE_EOO_DECODE: AddRadaeEooDecodeBar(nDelay, 0, out bBottom, restoreIg); break;
                     case MeterType.RADAE_TX_MIC_LEVEL_DB: AddRadaeTxMicLevelBar(nDelay, 0, out bBottom, restoreIg); break;
                     case MeterType.RADAE_TX_MIC_CLIP: AddRadaeTxMicClipBar(nDelay, 0, out bBottom, restoreIg); break;
-                    case MeterType.RADAE_SYNC_RX2: AddRadaeSyncBarRX2(nDelay, 0, out bBottom, restoreIg); break;
-                    case MeterType.RADAE_SNR_DB_RX2: AddRadaeSnrBarRX2(nDelay, 0, out bBottom, restoreIg); break;
-                    case MeterType.RADAE_RX_LEVEL_DB_RX2: AddRadaeRxLevelBarRX2(nDelay, 0, out bBottom, restoreIg); break;
-                    case MeterType.RADAE_CLIP_RX2: AddRadaeClipBarRX2(nDelay, 0, out bBottom, restoreIg); break;
-                    case MeterType.RADAE_EOO_DECODE_RX2: AddRadaeEooDecodeBarRX2(nDelay, 0, out bBottom, restoreIg); break;
                     case MeterType.ANANMM: AddAnanMM(nDelay, 0, out bBottom, restoreIg); break;
                     case MeterType.CROSS: AddCrossNeedle(nDelay, 0, out bBottom, restoreIg); break;
                     case MeterType.SWR: AddSWRBar(nDelay, 0, out bBottom, restoreIg); break;
@@ -23937,77 +23858,6 @@ namespace Thetis
                 if (fc != null) addMeterItem(fc);
                 addMeterItem(ig);
                 return t.ID;
-            }
-
-            // ----------------------------------------------------------
-            //  RADE V1 RX2 meters.  Same templates as the RX1 variants
-            //  above, just keyed to the RX2 Reading + MeterType entries
-            //  so the gadget builder dispatches correctly when the user
-            //  picks "RX2RADE Sync / SNR / RX Level / Clip / Last Callsign"
-            //  from the meter dropdown.
-            // ----------------------------------------------------------
-            public string AddRadaeSyncBarRX2(int nMSupdate, float fTop, out float fBottom, clsItemGroup restoreIg = null)
-            {
-                string id = AddRadaeSyncBar(nMSupdate, fTop, out fBottom, restoreIg);
-                retargetLastRadaeGroup(id, Reading.RADAE_SYNC_RX2, MeterType.RADAE_SYNC_RX2);
-                return id;
-            }
-            public string AddRadaeSnrBarRX2(int nMSupdate, float fTop, out float fBottom, clsItemGroup restoreIg = null)
-            {
-                string id = AddRadaeSnrBar(nMSupdate, fTop, out fBottom, restoreIg);
-                retargetLastRadaeGroup(id, Reading.RADAE_SNR_DB_RX2, MeterType.RADAE_SNR_DB_RX2);
-                return id;
-            }
-            public string AddRadaeRxLevelBarRX2(int nMSupdate, float fTop, out float fBottom, clsItemGroup restoreIg = null)
-            {
-                string id = AddRadaeRxLevelBar(nMSupdate, fTop, out fBottom, restoreIg);
-                retargetLastRadaeGroup(id, Reading.RADAE_RX_LEVEL_DB_RX2, MeterType.RADAE_RX_LEVEL_DB_RX2);
-                return id;
-            }
-            public string AddRadaeClipBarRX2(int nMSupdate, float fTop, out float fBottom, clsItemGroup restoreIg = null)
-            {
-                string id = AddRadaeClipBar(nMSupdate, fTop, out fBottom, restoreIg);
-                retargetLastRadaeGroup(id, Reading.RADAE_CLIP_RX2, MeterType.RADAE_CLIP_RX2);
-                return id;
-            }
-            public string AddRadaeEooDecodeBarRX2(int nMSupdate, float fTop, out float fBottom, clsItemGroup restoreIg = null)
-            {
-                string id = AddRadaeEooDecodeBar(nMSupdate, fTop, out fBottom, restoreIg);
-                // Last Callsign is text-based -- retarget the text item's
-                // RxIndex and the containing group's MeterType.
-                lock (_meterItemsLock)
-                {
-                    if (_meterItems.ContainsKey(id) && _meterItems[id] is clsRadaeCallText t)
-                    {
-                        t.RxIndex = 1;
-                        if (_meterItems.ContainsKey(t.ParentID) && _meterItems[t.ParentID] is clsItemGroup ig2)
-                            ig2.MeterType = MeterType.RADAE_EOO_DECODE_RX2;
-                    }
-                }
-                return id;
-            }
-
-            /* Swap the ReadingSource of the just-created bar item + scale
-             * item to the RX2 reading, and the containing group's MeterType
-             * to the RX2 meter type.  Used by the AddRadae*BarRX2 thin
-             * wrappers above. */
-            private void retargetLastRadaeGroup(string barId, Reading rdg, MeterType mt)
-            {
-                lock (_meterItemsLock)
-                {
-                    if (!_meterItems.ContainsKey(barId)) return;
-                    clsMeterItem bar = _meterItems[barId];
-                    if (!(bar is clsBarItem)) return;
-                    ((clsBarItem)bar).ReadingSource = rdg;
-                    string parentId = bar.ParentID;
-                    foreach (clsMeterItem mi in _meterItems.Values)
-                    {
-                        if (mi.ParentID == parentId && mi is clsScaleItem)
-                            ((clsScaleItem)mi).ReadingSource = rdg;
-                    }
-                    if (_meterItems.ContainsKey(parentId) && _meterItems[parentId] is clsItemGroup ig3)
-                        ig3.MeterType = mt;
-                }
             }
 
             public string AddAGCGainBar(int nMSupdate, float fTop, out float fBottom,  clsItemGroup restoreIg = null)
@@ -41342,11 +41192,15 @@ namespace Thetis
                 float w = rect.Width  * (mi.Size.Width  / m.XRatio);
                 float h = rect.Height * (mi.Size.Height / m.YRatio);
 
-                /* Pull the live string from the C-side using the per-meter
-                 * RxIndex (0 for "RX1RADE Last Callsign", 1 for "RX2RADE
-                 * Last Callsign"). */
+                /* Pull the live string from the C-side using the owning
+                 * meter's RX index (1 = RX1 → C-side rx=0, 2 = RX2 → C-side
+                 * rx=1).  The container's "RX1 data" / "RX2 data" radio
+                 * button in Setup → Display → Meters drives m.RX, so the
+                 * same "RADE Last Callsign" meter type follows whichever
+                 * receiver the container is bound to. */
+                int radeRx = (m != null && m.RX == 2) ? 1 : 0;
                 var sb = new System.Text.StringBuilder(16);
-                cmaster.GetRadaeRemoteCallsign(t.RxIndex, sb, sb.Capacity);
+                cmaster.GetRadaeRemoteCallsign(radeRx, sb, sb.Capacity);
                 string sCall = sb.ToString().Trim();
                 bool empty = string.IsNullOrEmpty(sCall);
                 string sDraw = empty ? "------" : sCall;
