@@ -112,6 +112,13 @@ namespace Thetis.FreeDVReporter
          * radio without us re-firing events. */
         public static ulong CurrentFrequencyHz { get; private set; }
 
+        /* Dual-RX: VFOB frequency mirror, kept current by the _vfobHandler
+         * subscription installed in Enable().  Exposed read-only so the
+         * reporter form's "Track RX2" toggle can drive its band/frequency
+         * filter from VFOB the same way "Track RX1" uses CurrentFrequencyHz
+         * (VFOA). */
+        public static ulong CurrentFrequencyRx2Hz { get { return _currentFrequencyRx2Hz; } }
+
         public static Action OnFormClosedByUser;   /* set by Setup so the X
                                                      button can untick chkRADAEReporter */
 
@@ -152,6 +159,12 @@ namespace Thetis.FreeDVReporter
             {
                 CurrentFrequencyHz = (ulong)Math.Round(console.VFOAFreq * 1e6);
                 _client.EmitFreqChange(CurrentFrequencyHz);
+                /* Seed the VFOB cache too so "Track RX2" has a starting
+                 * frequency before the user touches VFOB.  The wire-side
+                 * EmitFreqChange is harmless if _clientRx2 is still null
+                 * here (the per-RX VIS opens that client later). */
+                _currentFrequencyRx2Hz = (ulong)Math.Round(console.VFOBFreq * 1e6);
+                _clientRx2?.EmitFreqChange(_currentFrequencyRx2Hz);
                 _lastReportedTransmitting = ComputeRealTx(console);
                 _client.EmitTxReport(MODE_TAG, _lastReportedTransmitting);
                 if (!string.IsNullOrEmpty(msg)) _client.EmitMessageUpdate(msg);
@@ -444,7 +457,14 @@ namespace Thetis.FreeDVReporter
             if (_client == null) return;
             if (_form == null || _form.IsDisposed)
             {
-                _form = new FreeDVReporterForm(_client);
+                /* Pass the console explicitly -- Console.getConsole() is
+                 * not safe here at the very first startup because the
+                 * Console ctor is still on the stack (its _theConsole
+                 * static assignment happens after the ctor returns), and
+                 * this form is constructed transitively via Setup's
+                 * post-init rehydrate of chkRADAEReporter inside that
+                 * Console ctor. */
+                _form = new FreeDVReporterForm(_client, _console);
                 _form.OnUserClose = () => { OnFormClosedByUser?.Invoke(); };
             }
             /* Show without an owner so the form is a top-level window with

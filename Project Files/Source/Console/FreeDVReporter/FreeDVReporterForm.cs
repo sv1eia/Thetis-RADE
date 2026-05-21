@@ -39,9 +39,17 @@ namespace Thetis.FreeDVReporter
         private ToolStripLabel lblBand;
         private ToolStripComboBox cmbBand;
         private ToolStripLabel lblTrack;
-        private ToolStripButton btnTrack;
+        private ToolStripButton btnTrackRx1;
+        private ToolStripButton btnTrackRx2;
         private ToolStripButton btnTrackFreq;
         private ToolStripButton btnTrackBandMode;
+        private Console.RX2EnabledChanged _rx2EnabledHandler;
+        /* Console reference passed explicitly via the constructor.
+         * Console.getConsole() is not safe at form-construction time
+         * during initial startup because the Console ctor is still on
+         * the stack; this field lets the form read the live console
+         * state without the static-getter race. */
+        private readonly Console _console;
         private DataGridView grid;
         private StatusStrip status;
         private ToolStripStatusLabel lblConn;
@@ -76,6 +84,20 @@ namespace Thetis.FreeDVReporter
          * whole tick; user clicks happen between ticks. */
         private bool _suppressSelectionEvents;
 
+        /* Sticky-top scroll behaviour.  When true, SyncRowsInner snaps
+         * the visible top of the grid to the first visible row after
+         * every refresh tick (so new stations sorting at the top stay
+         * on screen, including on a small window).  Disengaged whenever
+         * the user scrolls the grid away from the top; re-engaged when
+         * they scroll back to the top.  Both transitions are detected
+         * by inspecting the post-scroll FirstDisplayedScrollingRowIndex
+         * in the grid.Scroll handler.  _suppressScrollEvent gates the
+         * Scroll handler against our own programmatic scroll-to-top
+         * inside SyncRowsInner -- otherwise that synthetic scroll would
+         * be interpreted as a user gesture. */
+        private bool _stickToTop = true;
+        private bool _suppressScrollEvent = false;
+
         /* Column index constants -- keep in sync with BuildColumns(). */
         private const int COL_CALL = 0;
         private const int COL_GRID = 1;
@@ -104,17 +126,22 @@ namespace Thetis.FreeDVReporter
          * re-opened by the chkRADAEReporter checkbox. */
         private static readonly bool[] _colVisible = InitColVisible();
         private static HamBand _bandFilter = HamBand.All;       /* default: All */
-        private static bool    _trackBand  = false;             /* default: don't track radio */
         private static int     _idleMinutes = 0;                /* 0 = disabled */
 
-        /* When _trackBand is on, _trackMode picks how the radio's
-         * VFOA frequency drives the row filter:
-         *   Band      -- show stations on the same ham band (legacy
-         *                behaviour, default).
+        /* Dual-RX: which receiver's frequency drives the band/frequency
+         * filter.  Tri-state replacement for the legacy _trackBand bool --
+         *   Off  = no tracking, cmbBand selection is honoured;
+         *   Rx1  = track VFOA (the legacy behaviour);
+         *   Rx2  = track VFOB.  btnTrackRx2 is greyed unless Console.RX2Enabled. */
+        private enum TrackTarget { Off, Rx1, Rx2 }
+        private static TrackTarget _trackTarget = TrackTarget.Off;
+
+        /* When tracking is on, _trackMode picks how the tracked receiver's
+         * frequency drives the row filter:
+         *   Band      -- show stations on the same ham band (default).
          *   Frequency -- show only stations whose reported FrequencyHz
-         *                is within +/- TRACK_FREQ_TOL_HZ of the
-         *                radio's current frequency.  Useful for
-         *                "everyone on this same channel right now". */
+         *                is within +/- TRACK_FREQ_TOL_HZ of the tracked
+         *                radio's frequency. */
         private enum TrackMode { Band, Frequency }
         private static TrackMode _trackMode = TrackMode.Band;
         private const long TRACK_FREQ_TOL_HZ = 100;             /* +/- 100 Hz */
@@ -135,15 +162,42 @@ namespace Thetis.FreeDVReporter
 
         public Action OnUserClose;
 
-        public FreeDVReporterForm(FreeDVReporterClient client)
+        public FreeDVReporterForm(FreeDVReporterClient client, Console console)
         {
             _client = client;
+            _console = console;
             BuildUi();
             ApplyColumnVisibility();
             ApplyBandToCombo();
 
             _client.StationsChanged        += OnStationsChanged;
             _client.ConnectionStateChanged += OnConnStateChanged;
+
+            /* Subscribe to RX2 enable changes so the "Track RX2" button
+             * follows the console chkRX2 state.  Uses the explicit _console
+             * field (passed to the ctor) rather than Console.getConsole(),
+             * which is unsafe during the very first startup -- see field
+             * comment. */
+            try
+            {
+                if (_console != null)
+                {
+                    _rx2EnabledHandler = (enabled) =>
+                    {
+                        if (IsDisposed) return;
+                        if (InvokeRequired)
+                        {
+                            try { BeginInvoke(new Action(() => UpdateRx2Track(enabled))); } catch { }
+                        }
+                        else
+                        {
+                            UpdateRx2Track(enabled);
+                        }
+                    };
+                    _console.RX2EnabledChangedHandlers += _rx2EnabledHandler;
+                }
+            }
+            catch { }
 
             FormClosing += (s, e) =>
             {
@@ -165,6 +219,12 @@ namespace Thetis.FreeDVReporter
                     _client.StationsChanged        -= OnStationsChanged;
                     _client.ConnectionStateChanged -= OnConnStateChanged;
                     refreshTimer?.Stop();
+                    if (_rx2EnabledHandler != null)
+                    {
+                        if (_console != null)
+                            _console.RX2EnabledChangedHandlers -= _rx2EnabledHandler;
+                        _rx2EnabledHandler = null;
+                    }
                 }
                 catch { }
             }
@@ -303,57 +363,107 @@ namespace Thetis.FreeDVReporter
                 _bandFilter = (HamBand)cmbBand.SelectedIndex;
             };
 
-            btnTrack = new ToolStripButton("Track radio") { CheckOnClick = true, Checked = _trackBand };
+            /* Dual-RX: "Track RX1" / "Track RX2" mutually-exclusive radio
+             * buttons replace the legacy single "Track radio" toggle.
+             * btnTrackRx2 is greyed unless the console reports RX2
+             * enabled.  Click-the-active-button toggles tracking off
+             * (parity with the legacy btnTrack toggle semantics). */
+            bool rx2InitiallyEnabled = false;
+            try { rx2InitiallyEnabled = _console?.RX2Enabled ?? false; } catch { }
+            btnTrackRx1 = new ToolStripButton("Track RX1")
+            {
+                CheckOnClick = false,
+                Checked = (_trackTarget == TrackTarget.Rx1),
+            };
+            btnTrackRx2 = new ToolStripButton("Track RX2")
+            {
+                CheckOnClick = false,
+                Checked = (_trackTarget == TrackTarget.Rx2),
+                Enabled = rx2InitiallyEnabled,
+            };
 
-            /* Sub-mode radio buttons -- only meaningful while btnTrack
-             * is checked.  Mutually exclusive: clicking either one
-             * sets _trackMode and clears the other; clicking the
-             * already-checked one is a no-op (one mode must always be
-             * selected).  Use Click instead of CheckedChanged to
-             * avoid feedback loops while we set Checked
-             * programmatically. */
+            /* Sub-mode radio buttons -- only meaningful while a tracking
+             * target is selected.  Use Click instead of CheckedChanged to
+             * avoid feedback loops while we set Checked programmatically. */
             btnTrackFreq = new ToolStripButton("Frequency")
             {
                 CheckOnClick = false,
                 Checked = (_trackMode == TrackMode.Frequency),
-                Enabled = _trackBand,
+                Enabled = (_trackTarget != TrackTarget.Off),
             };
             btnTrackBandMode = new ToolStripButton("Band")
             {
                 CheckOnClick = false,
                 Checked = (_trackMode == TrackMode.Band),
-                Enabled = _trackBand,
+                Enabled = (_trackTarget != TrackTarget.Off),
             };
             btnTrackFreq.Click += (s, e) =>
             {
-                if (!_trackBand) return;
+                if (_trackTarget == TrackTarget.Off) return;
                 _trackMode = TrackMode.Frequency;
                 btnTrackFreq.Checked = true;
                 btnTrackBandMode.Checked = false;
             };
             btnTrackBandMode.Click += (s, e) =>
             {
-                if (!_trackBand) return;
+                if (_trackTarget == TrackTarget.Off) return;
                 _trackMode = TrackMode.Band;
                 btnTrackBandMode.Checked = true;
                 btnTrackFreq.Checked = false;
             };
 
-            btnTrack.CheckedChanged += (s, e) =>
+            btnTrackRx1.Click += (s, e) =>
             {
-                _trackBand = btnTrack.Checked;
-                cmbBand.Enabled = !_trackBand;
-                btnTrackFreq.Enabled = _trackBand;
-                btnTrackBandMode.Enabled = _trackBand;
+                _trackTarget = (_trackTarget == TrackTarget.Rx1)
+                               ? TrackTarget.Off
+                               : TrackTarget.Rx1;
+                SyncTrackButtons();
             };
-            cmbBand.Enabled = !_trackBand;
+            btnTrackRx2.Click += (s, e) =>
+            {
+                if (!btnTrackRx2.Enabled) return;
+                _trackTarget = (_trackTarget == TrackTarget.Rx2)
+                               ? TrackTarget.Off
+                               : TrackTarget.Rx2;
+                SyncTrackButtons();
+            };
+            SyncTrackButtons();   /* sets cmbBand.Enabled + sub-button enables */
 
             toolbar.Items.Add(lblBand);
             toolbar.Items.Add(cmbBand);
             toolbar.Items.Add(new ToolStripSeparator());
-            toolbar.Items.Add(btnTrack);
+            toolbar.Items.Add(btnTrackRx1);
+            toolbar.Items.Add(btnTrackRx2);
             toolbar.Items.Add(btnTrackFreq);
             toolbar.Items.Add(btnTrackBandMode);
+        }
+
+        /* Centralised visual + dependent-control sync for the dual-RX
+         * track buttons.  Called whenever _trackTarget changes and from
+         * UpdateRx2Track when the RX2 enable state flips. */
+        private void SyncTrackButtons()
+        {
+            if (btnTrackRx1 == null || btnTrackRx2 == null) return;
+            btnTrackRx1.Checked = (_trackTarget == TrackTarget.Rx1);
+            btnTrackRx2.Checked = (_trackTarget == TrackTarget.Rx2);
+            bool tracking = _trackTarget != TrackTarget.Off;
+            if (cmbBand != null)            cmbBand.Enabled            = !tracking;
+            if (btnTrackFreq != null)       btnTrackFreq.Enabled       = tracking;
+            if (btnTrackBandMode != null)   btnTrackBandMode.Enabled   = tracking;
+        }
+
+        /* Called when console.RX2EnabledChangedHandlers fires.  When RX2
+         * goes away while it was the tracking target, fall back silently
+         * to Track RX1 so the user's "tracking is on" intent is preserved. */
+        private void UpdateRx2Track(bool rx2Enabled)
+        {
+            if (btnTrackRx2 == null) return;
+            btnTrackRx2.Enabled = rx2Enabled;
+            if (!rx2Enabled && _trackTarget == TrackTarget.Rx2)
+            {
+                _trackTarget = TrackTarget.Rx1;
+                SyncTrackButtons();
+            }
         }
 
         private void BuildGrid()
@@ -398,6 +508,25 @@ namespace Thetis.FreeDVReporter
                 if (!_client.Stations.TryGetValue(sid, out st)) return;
                 if (st.FrequencyHz == 0) return;
                 FreeDVReporterManager.TuneToFrequency(st.FrequencyHz);
+            };
+
+            /* Sticky-top scroll tracking.  User scroll gestures (wheel,
+             * scrollbar drag, keyboard) fire this handler with the new
+             * FirstDisplayedScrollingRowIndex.  When the visible top is
+             * row 0 (or no visible rows) we engage stickiness; when the
+             * user has scrolled away from the top we disengage.  Our own
+             * programmatic scroll-to-top inside SyncRowsInner sets
+             * _suppressScrollEvent first, so it isn't mistaken for user
+             * intent. */
+            grid.Scroll += (s, e) =>
+            {
+                if (_suppressScrollEvent) return;
+                try
+                {
+                    int idx = grid.FirstDisplayedScrollingRowIndex;
+                    _stickToTop = (idx <= 0);
+                }
+                catch { _stickToTop = true; }
             };
 
             /* Right-click on the Msg cell -> "Copy Message" context menu.
@@ -528,21 +657,29 @@ namespace Thetis.FreeDVReporter
              * blue flash.  User clicks happen between ticks (UI thread
              * is single-threaded), so wrapping the whole tick is safe. */
             _suppressSelectionEvents = true;
+            _suppressScrollEvent = true;
             try { SyncRowsInner(); }
-            finally { _suppressSelectionEvents = false; }
+            finally
+            {
+                _suppressSelectionEvents = false;
+                _suppressScrollEvent = false;
+            }
         }
 
         private void SyncRowsInner()
         {
 
-            /* "Track radio" mode: pull the radio's current VFOA freq
-             * from the manager.  In TrackMode.Band, snap _bandFilter
-             * to the matching ham band so the existing band-filter
-             * code paths keep working.  In TrackMode.Frequency the
-             * band combo is irrelevant and is left alone -- visibility
-             * is decided per-row below by an exact-frequency match. */
-            ulong trackFreq = _trackBand ? FreeDVReporterManager.CurrentFrequencyHz : 0UL;
-            if (_trackBand && trackFreq > 0 && _trackMode == TrackMode.Band)
+            /* "Track RX1/RX2" mode: pull the tracked receiver's frequency
+             * from the manager.  In TrackMode.Band, snap _bandFilter to
+             * the matching ham band so the existing band-filter code
+             * paths keep working.  In TrackMode.Frequency the band combo
+             * is irrelevant and is left alone -- visibility is decided
+             * per-row below by an exact-frequency match. */
+            ulong trackFreq = 0UL;
+            if      (_trackTarget == TrackTarget.Rx1) trackFreq = FreeDVReporterManager.CurrentFrequencyHz;
+            else if (_trackTarget == TrackTarget.Rx2) trackFreq = FreeDVReporterManager.CurrentFrequencyRx2Hz;
+            bool tracking = _trackTarget != TrackTarget.Off;
+            if (tracking && trackFreq > 0 && _trackMode == TrackMode.Band)
             {
                 HamBand b = BandPlan.FromHz(trackFreq);
                 if (b != _bandFilter)
@@ -585,7 +722,7 @@ namespace Thetis.FreeDVReporter
                     }
 
                     bool inFilter;
-                    if (_trackBand && _trackMode == TrackMode.Frequency)
+                    if (tracking && _trackMode == TrackMode.Frequency)
                     {
                         /* Show only stations within +/- TRACK_FREQ_TOL_HZ
                          * of the radio's current VFOA frequency.  When
@@ -707,6 +844,26 @@ namespace Thetis.FreeDVReporter
                 int n = 0;
                 foreach (DataGridViewRow r in grid.Rows) if (r.Visible) n++;
                 lblCount.Text = n + (n == 1 ? " station" : " stations");
+
+                /* Sticky-top scroll.  Keeps the visual top anchored at
+                 * the first visible row after every refresh so new
+                 * stations sorting near the top don't push existing
+                 * top rows off the top edge on a small window.  The
+                 * stickiness disengages the moment the user scrolls
+                 * away from the top (see grid.Scroll handler in
+                 * BuildGrid) and re-engages the moment they scroll
+                 * back to it -- so manual browsing is preserved. */
+                if (_stickToTop)
+                {
+                    try
+                    {
+                        int top = 0;
+                        while (top < grid.Rows.Count && !grid.Rows[top].Visible) top++;
+                        if (top < grid.Rows.Count && grid.FirstDisplayedScrollingRowIndex != top)
+                            grid.FirstDisplayedScrollingRowIndex = top;
+                    }
+                    catch { }
+                }
             }
             finally { grid.ResumeLayout(); }
         }
