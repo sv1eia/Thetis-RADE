@@ -1251,6 +1251,11 @@ namespace Thetis
         public System.Windows.Forms.CheckBoxTS chkRADEMirror { get { return chkRADE; } }
         public System.Windows.Forms.CheckBoxTS chkREPRMirror { get { return chkREPR; } }
         public System.Windows.Forms.CheckBoxTS chkVISMirror  { get { return chkVIS;  } }
+        // Dual-RX RADE additions -- console-side RX2 mirrors used by the
+        // Setup tab to push state back from the right-column controls.
+        public System.Windows.Forms.CheckBoxTS chkRADERX2Mirror { get { return chkRADERX2; } }
+        public System.Windows.Forms.CheckBoxTS chkREPRRX2Mirror { get { return chkREPRRX2; } }
+        public System.Windows.Forms.CheckBoxTS chkVISRX2Mirror  { get { return chkVISRX2;  } }
         // Console-face VAC1 TX/RX Gain trackbar mirrors.  Enabled
         // state is independent from the Setup-side spinners (the
         // value-mirror only flows through the VAC*Gain property
@@ -1284,6 +1289,37 @@ namespace Thetis
             {
                 if (!IsSetupFormNull && SetupForm.RADAEReporting != chkVIS.Checked)
                     SetupForm.RADAEReporting = chkVIS.Checked;
+            }
+            catch { }
+        }
+        private void chkRADERX2_CheckedChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (!IsSetupFormNull && SetupForm.RADAERX2 != chkRADERX2.Checked)
+                    SetupForm.RADAERX2 = chkRADERX2.Checked;
+            }
+            catch { }
+        }
+        private void chkREPRRX2_CheckedChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                // Four-way REPR mirror: route through Setup's shared flag.
+                if (!IsSetupFormNull && SetupForm.RADAEReporter != chkREPRRX2.Checked)
+                    SetupForm.RADAEReporter = chkREPRRX2.Checked;
+                /* VIS gating: chkVISRX2 is meaningful only when REPR is on. */
+                if (chkVISRX2.Enabled != chkREPRRX2.Checked)
+                    chkVISRX2.Enabled = chkREPRRX2.Checked;
+            }
+            catch { }
+        }
+        private void chkVISRX2_CheckedChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (!IsSetupFormNull && SetupForm.RADAEReportingRX2 != chkVISRX2.Checked)
+                    SetupForm.RADAEReportingRX2 = chkVISRX2.Checked;
             }
             catch { }
         }
@@ -30009,8 +30045,14 @@ namespace Thetis
             // chkRADAE_CheckedChanged uses.  The RX1DSPMode guard at this
             // file's line ~17854 already permits the change in this VFO/RX2
             // state (RX1 is not the actively keyed receiver here).
+            // Bypass over: VFO B TX + RX2 enabled + RX1 RADE armed (chkRADAE)
+            // BUT NOT RX2 RADE armed (chkRADAERX2).  If chkRADAERX2 is on, the
+            // over is a RADE RX2 transmission -- no plain-voice mode swap
+            // needed (and would actually be wrong: the encoder needs RX2's
+            // DIG mode for the TXA profile).
             if (chkMOX.Checked && !bOldMox &&
-                RadaeEnabled && chkVFOBTX.Checked && chkRX2.Checked)
+                chkVFOBTX.Checked && chkRX2.Checked &&
+                RadaeRx1Enabled && !RadaeRx2Enabled)
             {
                 _radae_saved_rx1_mode      = _rx1_dsp_mode;
                 _radae_bypass_mode_swapped = true;
@@ -37566,9 +37608,20 @@ namespace Thetis
         //    get { return _updated_from_wave_form; }
         //    set { _updated_from_wave_form = value; }
         //}
+        // Per-RX enables (RX1 = index 0, RX2 = index 1).  RadaeEnabled is
+        // the any-RX summary used by legacy call sites; RadaeRx1Enabled /
+        // RadaeRx2Enabled expose the specific channel state.
+        public bool RadaeRx1Enabled
+        {
+            get { return cmaster.GetRadaeRxEnabled(0) != 0 || cmaster.GetRadaeTxEnabled() != 0; }
+        }
+        public bool RadaeRx2Enabled
+        {
+            get { return cmaster.GetRadaeRxEnabled(1) != 0; }
+        }
         public bool RadaeEnabled
         {
-            get { return cmaster.GetRadaeRxEnabled() != 0 || cmaster.GetRadaeTxEnabled() != 0; }
+            get { return RadaeRx1Enabled || RadaeRx2Enabled; }
         }
 
         private void ckQuickRec_CheckedChanged(object sender, System.EventArgs e)
@@ -47682,15 +47735,27 @@ namespace Thetis
                     // [v2.10.3.16] RADE V1 modem readings.  Cheap C-side getters,
                     // safe to poll every meter tick.
                     if (MeterManager.RequiresUpdate(1, Reading.RADAE_SYNC))
-                        _RX1MeterValues[Reading.RADAE_SYNC] = (float)cmaster.GetRadaeSync();
+                        _RX1MeterValues[Reading.RADAE_SYNC] = (float)cmaster.GetRadaeSync(0);
                     if (MeterManager.RequiresUpdate(1, Reading.RADAE_SNR_DB))
-                        _RX1MeterValues[Reading.RADAE_SNR_DB] = (float)cmaster.GetRadaeSnrDb();
+                        _RX1MeterValues[Reading.RADAE_SNR_DB] = (float)cmaster.GetRadaeSnrDb(0);
                     if (MeterManager.RequiresUpdate(1, Reading.RADAE_RX_LEVEL_DB))
-                        _RX1MeterValues[Reading.RADAE_RX_LEVEL_DB] = (float)cmaster.GetRadaeRxLevelDb();
+                        _RX1MeterValues[Reading.RADAE_RX_LEVEL_DB] = (float)cmaster.GetRadaeRxLevelDb(0);
                     if (MeterManager.RequiresUpdate(1, Reading.RADAE_CLIP))
-                        _RX1MeterValues[Reading.RADAE_CLIP] = (float)cmaster.GetRadaeClip();
+                        _RX1MeterValues[Reading.RADAE_CLIP] = (float)cmaster.GetRadaeClip(0);
                     if (MeterManager.RequiresUpdate(1, Reading.RADAE_EOO_DECODE))
-                        _RX1MeterValues[Reading.RADAE_EOO_DECODE] = (float)cmaster.GetRadaeEooDecodePulse();
+                        _RX1MeterValues[Reading.RADAE_EOO_DECODE] = (float)cmaster.GetRadaeEooDecodePulse(0);
+                    // RX2 RADE meters -- updated in the sub/RX2 block when RX2 RADE is active.
+                    if (RadaeRx2Enabled)
+                    {
+                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_SYNC_RX2))
+                            _RX2MeterValues[Reading.RADAE_SYNC_RX2] = (float)cmaster.GetRadaeSync(1);
+                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_SNR_DB_RX2))
+                            _RX2MeterValues[Reading.RADAE_SNR_DB_RX2] = (float)cmaster.GetRadaeSnrDb(1);
+                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_RX_LEVEL_DB_RX2))
+                            _RX2MeterValues[Reading.RADAE_RX_LEVEL_DB_RX2] = (float)cmaster.GetRadaeRxLevelDb(1);
+                        if (MeterManager.RequiresUpdate(2, Reading.RADAE_CLIP_RX2))
+                            _RX2MeterValues[Reading.RADAE_CLIP_RX2] = (float)cmaster.GetRadaeClip(1);
+                    }
 
                     ////[2.10.3.9]MW0LGE sub rx (future)
                     //if (SubRXEnabled)

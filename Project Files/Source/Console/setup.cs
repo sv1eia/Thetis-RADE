@@ -2322,6 +2322,18 @@ namespace Thetis
             udRadaeMicEQVol_ValueChanged(this, e);
             chkRADAEReporter_CheckedChanged(this, e);
             chkRADAEReporting_CheckedChanged(this, e);
+            // RX2 RADE rehydrate -- equivalents of the RX1 lines above so the
+            // C-side gates and the second-reporter-client lifecycle pick up
+            // the DB-restored values without the user having to uncheck/check.
+            // txtRadaeReporterMsgRX2 must fire BEFORE chkRADAEReportingRX2 so
+            // FreeDVReporterManager's _rx2Message cache is populated by the
+            // time the second client opens.
+            chkRADAERX2_CheckedChanged(this, e);
+            chkRADAELoopbackRX2_CheckedChanged(this, e);
+            udRadaeRxLevelRX2_ValueChanged(this, e);
+            chkRADAEReporterRX2_CheckedChanged(this, e);
+            txtRadaeReporterMsgRX2_TextChanged(this, e);
+            chkRADAEReportingRX2_CheckedChanged(this, e);
 
             chkLogEnable_CheckedChanged(this, e);
             chkReporterLogEnable_CheckedChanged(this, e);
@@ -22094,16 +22106,11 @@ namespace Thetis
                 "[RADAE] chkRADAE_CheckedChanged: initializing={0} Checked={1} -> active={2}",
                 initializing, chkRADAE.Checked, active));
             if (initializing) return;
-            cmaster.SetRadaeRxEnabled(active);
-            // Between this line and the next, RADAE RX is set to its new state
-            // while RADAE TX is still on the OLD state. Audio thread sampling
-            // here will see RX != TX. console.cs::RadaeEnabled returns the OR
-            // of the two, so audio.cs::MOX-edge logic may fire for an "enabled"
-            // state that is in transition.
-            System.Diagnostics.Debug.Print(string.Format(
-                "[RADAE-AUDIT-#14 LATENT] chkRADAE non-atomic transition window: RX flag = {0}, TX flag still pending. console.RadaeEnabled may report inconsistent state for ~1 microsecond. If audio.MOX edge handler samples right now it sees a transient \"enabled\" state.",
-                active));
-            cmaster.SetRadaeTxEnabled(active);
+            cmaster.SetRadaeRxEnabled(0, active);
+            // TX-side enable mirrors "any RX RADE on".  Both chkRADAE (RX1)
+            // and chkRADAERX2 (RX2) handlers re-evaluate this OR.
+            int txActive = (chkRADAE.Checked || (chkRADAERX2 != null && chkRADAERX2.Checked)) ? 1 : 0;
+            cmaster.SetRadaeTxEnabled(txActive);
 
             // Re-apply current RX1 AF through the DSPRX setter so the WDSP
             // xpanel.gain1 and the C-side g_radae_rx1_af_gain end up
@@ -22160,7 +22167,7 @@ namespace Thetis
                 // udAudioVACGainRX -> SetRadaeRxScale push may have left a
                 // non-unity value in the static.  Fresh process start
                 // already initialises it to 1.0f.
-                try { cmaster.SetRadaeRxScale(1.0); } catch { }
+                try { cmaster.SetRadaeRxScale(0, 1.0); } catch { }
 
                 try
                 {
@@ -22217,7 +22224,7 @@ namespace Thetis
         {
             int active = chkRADAELoopback.Checked ? 1 : 0;
             if (initializing) return;
-            cmaster.SetRadaeLoopbackEnabled(active);
+            cmaster.SetRadaeLoopbackEnabled(0, active);
 
             // When loopback is enabled, also uncheck the
             // RADE reporting checkbox so nothing is sent to qso.freedv.org.
@@ -22258,7 +22265,7 @@ namespace Thetis
         {
             double db = (double)udRadaeRxLevel.Value;
             double scale = Math.Pow(10.0, db / 20.0);
-            cmaster.SetRadaeRxDialScale(scale);
+            cmaster.SetRadaeRxDialScale(0, scale);
         }
 
         // ------------------------------------------------------------
@@ -22470,18 +22477,33 @@ namespace Thetis
         // background connection is torn down.
         private void chkRADAEReporter_CheckedChanged(object sender, EventArgs e)
         {
-            // Greyed-out state of "RADE enable reporting" tracks the master.
+            // Greyed-out state of "RX1RADE enable reporting" tracks the master.
             chkRADAEReporting.Enabled = chkRADAEReporter.Checked;
+            // RX2 VIS gated symmetrically -- with four-way REPR coupling
+            // chkRADAEReporterRX2.Checked tracks chkRADAEReporter.Checked.
+            if (chkRADAEReportingRX2 != null)
+                chkRADAEReportingRX2.Enabled = chkRADAEReporter.Checked;
 
-            // Mirror to console-side chkREPR + greyed-out state of chkVIS.
+            // Four-way REPR mirror: chkRADAEReporter <-> chkRADAEReporterRX2
+            // (Setup tabs) <-> chkREPR / chkREPRRX2 (Console).  Same recursion-
+            // safe pattern -- assignment is a WinForms no-op when value matches.
             try
             {
+                if (chkRADAEReporterRX2 != null &&
+                    chkRADAEReporterRX2.Checked != chkRADAEReporter.Checked)
+                    chkRADAEReporterRX2.Checked = chkRADAEReporter.Checked;
                 if (console != null && console.chkREPRMirror != null &&
                     console.chkREPRMirror.Checked != chkRADAEReporter.Checked)
                     console.chkREPRMirror.Checked = chkRADAEReporter.Checked;
+                if (console != null && console.chkREPRRX2Mirror != null &&
+                    console.chkREPRRX2Mirror.Checked != chkRADAEReporter.Checked)
+                    console.chkREPRRX2Mirror.Checked = chkRADAEReporter.Checked;
                 if (console != null && console.chkVISMirror != null &&
                     console.chkVISMirror.Enabled != chkRADAEReporter.Checked)
                     console.chkVISMirror.Enabled = chkRADAEReporter.Checked;
+                if (console != null && console.chkVISRX2Mirror != null &&
+                    console.chkVISRX2Mirror.Enabled != chkRADAEReporter.Checked)
+                    console.chkVISRX2Mirror.Enabled = chkRADAEReporter.Checked;
             }
             catch { }
 
@@ -22563,6 +22585,175 @@ namespace Thetis
 
             if (initializing) return;
             Thetis.FreeDVReporter.FreeDVReporterManager.SetReportingEnabled(chkRADAEReporting.Checked);
+        }
+
+        // ============================================================
+        // Dual-RX RADE additions -- RX2 handlers + four-way REPR mirror.
+        // ============================================================
+        private void chkRADAERX2_CheckedChanged(object sender, EventArgs e)
+        {
+            int active = chkRADAERX2.Checked ? 1 : 0;
+            if (initializing) return;
+            cmaster.SetRadaeRxEnabled(1, active);
+            // TX-side enable is the OR of the two RX RADE enables.
+            int txActive = (chkRADAE.Checked || chkRADAERX2.Checked) ? 1 : 0;
+            cmaster.SetRadaeTxEnabled(txActive);
+
+            // Re-apply RX2's AF gain consistent with the just-flipped flag.
+            try
+            {
+                if (console != null && console.radio != null)
+                {
+                    var dspRx2 = console.radio.GetDSPRX(1, 0);
+                    if (dspRx2 != null)
+                        dspRx2.RXOutputGain = dspRx2.RXOutputGain;
+                }
+            }
+            catch { }
+
+            // When RX2 RADE is enabled, force RX2's DSP mode to DIGU/DIGL
+            // based on VFOB frequency -- same rule as the RX1 forcing in
+            // chkRADAE_CheckedChanged.  Skip if RX2 isn't enabled (the
+            // mode change would have no effect on the inactive receiver).
+            if (chkRADAERX2.Checked)
+            {
+                try { cmaster.SetRadaeRxScale(1, 1.0); } catch { }
+                try
+                {
+                    if (console != null && console.RX2Enabled)
+                    {
+                        double f = console.VFOBFreq;
+                        DSPMode want;
+                        if      (f >= 5.0 && f < 5.5) want = DSPMode.DIGU;
+                        else if (f < 12.0)            want = DSPMode.DIGL;
+                        else                          want = DSPMode.DIGU;
+                        if (console.RX2DSPMode != want) console.RX2DSPMode = want;
+                    }
+                }
+                catch { }
+            }
+
+            // Mirror to the console-side chkRADERX2.
+            try
+            {
+                if (console != null && console.chkRADERX2Mirror != null &&
+                    console.chkRADERX2Mirror.Checked != chkRADAERX2.Checked)
+                    console.chkRADERX2Mirror.Checked = chkRADAERX2.Checked;
+            }
+            catch { }
+        }
+
+        private void chkRADAELoopbackRX2_CheckedChanged(object sender, EventArgs e)
+        {
+            int active = chkRADAELoopbackRX2.Checked ? 1 : 0;
+            if (initializing) return;
+            cmaster.SetRadaeLoopbackEnabled(1, active);
+
+            if (chkRADAELoopbackRX2.Checked && chkRADAEReportingRX2.Checked)
+                chkRADAEReportingRX2.Checked = false;
+        }
+
+        private void udRadaeRxLevelRX2_ValueChanged(object sender, EventArgs e)
+        {
+            double db = (double)udRadaeRxLevelRX2.Value;
+            double scale = Math.Pow(10.0, db / 20.0);
+            cmaster.SetRadaeRxDialScale(1, scale);
+        }
+
+        // Four-way REPR mirror sibling.  The actual reporter lifecycle lives
+        // in chkRADAEReporter_CheckedChanged; here we just propagate the
+        // shared flag so all four UIs stay in lockstep.  Recursion is
+        // suppressed by WinForms' same-value no-op behaviour.
+        private void chkRADAEReporterRX2_CheckedChanged(object sender, EventArgs e)
+        {
+            if (chkRADAEReporter != null &&
+                chkRADAEReporter.Checked != chkRADAEReporterRX2.Checked)
+                chkRADAEReporter.Checked = chkRADAEReporterRX2.Checked;
+        }
+
+        // RX2 reporter message -- pushed only when the RX2 second client
+        // is up.  The manager handles "client not yet created" silently.
+        private void txtRadaeReporterMsgRX2_TextChanged(object sender, EventArgs e)
+        {
+            if (initializing) return;
+            try
+            {
+                Thetis.FreeDVReporter.FreeDVReporterManager.SetRx2Message(
+                    txtRadaeReporterMsgRX2.Text ?? "");
+            }
+            catch { }
+        }
+
+        // RX2 reporting (the "VIS" enable for the second connection).
+        // Per the dual-client design, this opens/closes a second
+        // FreeDVReporterClient instance dedicated to RX2's frequency + SNR.
+        private void chkRADAEReportingRX2_CheckedChanged(object sender, EventArgs e)
+        {
+            // Same validation gate as chkRADAEReporting.
+            if (!initializing && chkRADAEReportingRX2.Checked)
+            {
+                string call = txtRadaeReporterCallsign.Text == null
+                              ? "" : txtRadaeReporterCallsign.Text.Trim();
+                string grid = txtRadaeReporterGrid.Text == null
+                              ? "" : txtRadaeReporterGrid.Text.Trim();
+                bool callOk = IsValidRadaeCallsign(call);
+                bool gridOk = IsValidRadaeGrid(grid);
+                if (!callOk || !gridOk)
+                {
+                    try
+                    {
+                        System.Windows.Forms.MessageBox.Show(this,
+                            "RX2 RADE reporting requires both a valid callsign "
+                            + "and a valid Maidenhead locator.",
+                            "RADE Reporter",
+                            System.Windows.Forms.MessageBoxButtons.OK,
+                            System.Windows.Forms.MessageBoxIcon.Information);
+                    }
+                    catch { }
+                    chkRADAEReportingRX2.Checked = false;
+                    return;
+                }
+            }
+
+            // Mirror to console-side chkVISRX2.
+            try
+            {
+                if (console != null && console.chkVISRX2Mirror != null &&
+                    console.chkVISRX2Mirror.Checked != chkRADAEReportingRX2.Checked)
+                    console.chkVISRX2Mirror.Checked = chkRADAEReportingRX2.Checked;
+            }
+            catch { }
+
+            if (initializing) return;
+            // Belt-and-braces: push the current Msg text to the manager
+            // cache before opening the second client, so any earlier
+            // initialising-skip of txtRadaeReporterMsgRX2_TextChanged still
+            // results in the right initial message being emitted.
+            try
+            {
+                Thetis.FreeDVReporter.FreeDVReporterManager.SetRx2Message(
+                    txtRadaeReporterMsgRX2.Text ?? "");
+            }
+            catch { }
+            Thetis.FreeDVReporter.FreeDVReporterManager.SetRx2ReportingEnabled(
+                chkRADAEReportingRX2.Checked);
+        }
+
+        // Public accessors used by console-side mirrors.
+        public bool RADAERX2
+        {
+            get { return chkRADAERX2.Checked; }
+            set { if (chkRADAERX2.Checked != value) chkRADAERX2.Checked = value; }
+        }
+        public bool RADAEReporterRX2
+        {
+            get { return chkRADAEReporterRX2.Checked; }
+            set { if (chkRADAEReporterRX2.Checked != value) chkRADAEReporterRX2.Checked = value; }
+        }
+        public bool RADAEReportingRX2
+        {
+            get { return chkRADAEReportingRX2.Checked; }
+            set { if (chkRADAEReportingRX2.Checked != value) chkRADAEReportingRX2.Checked = value; }
         }
 
         // Re-entrancy guards for the sanitising TextChanged handlers --

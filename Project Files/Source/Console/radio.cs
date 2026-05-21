@@ -1084,24 +1084,29 @@ namespace Thetis
 				rx_output_gain = value;
 				if(update)
 				{
-                    // When RADE RX is on AND this is the RX1 DSP (channel 0),
-                    // the slider value drives the C-side post-decode multiplier
-                    // g_radae_rx1_af_gain instead of WDSP xpanel.gain1.
-                    // xpanel.gain1 is forced to 1.0 so the decoder input is
-                    // unscaled.  The wave recorder reads ppip->rbuff[rx]
-                    // downstream of the new pipe.c multiply, so RecordGain
-                    // stays at 1.0 to avoid double-scaling.
-                    bool rade_rx1 = cmaster.GetRadaeRxEnabled() != 0 && WDSP.id(thread, subrx) == 0;
-                    if (rade_rx1)
+                    // When RADE RX is on for this DSP channel (RX1 = WDSP id 0,
+                    // RX2 = WDSP id 2), the slider drives the C-side
+                    // per-RX post-decode multiplier g_radae_rx_af_gain[rx]
+                    // instead of WDSP xpanel.gain1.  xpanel.gain1 is forced
+                    // to 1.0 so the decoder input is unscaled.  The wave
+                    // recorder reads ppip->rbuff[rx] downstream of the
+                    // pipe.c multiply, so RecordGain stays at 1.0 to avoid
+                    // double-scaling.
+                    int rade_idx = -1;
+                    int dsp_id = WDSP.id(thread, subrx);
+                    if (dsp_id == 0 && cmaster.GetRadaeRxEnabled(0) != 0) rade_idx = 0;
+                    else if (dsp_id == 2 && cmaster.GetRadaeRxEnabled(1) != 0) rade_idx = 1;
+                    if (rade_idx >= 0)
                     {
-                        cmaster.SetRadaeRx1AFGain(value);
+                        cmaster.SetRadaeRxAFGain(rade_idx, value);
                         if (1.0 != rx_output_gain_dsp || force)
                         {
-                            WDSP.SetRXAPanelGain1(WDSP.id(thread, subrx), 1.0);
+                            WDSP.SetRXAPanelGain1(dsp_id, 1.0);
                             rx_output_gain_dsp = 1.0;
                         }
-                        if (WaveThing.wave_file_writer[0] != null)
-                            WaveThing.wave_file_writer[0].RecordGain = 1.0f;
+                        int wave_idx = (rade_idx == 0) ? 0 : 1;
+                        if (WaveThing.wave_file_writer[wave_idx] != null)
+                            WaveThing.wave_file_writer[wave_idx].RecordGain = 1.0f;
                     }
                     else if (value != rx_output_gain_dsp || force)
                     {

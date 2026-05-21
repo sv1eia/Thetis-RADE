@@ -199,12 +199,12 @@ void xpipe (int stream, int pos, double** buffs)
 			 * xtciOUT / xrecordwave branches below read ppip->rbuff[rx], which
 			 * is memcpy'd from the post-multiply buffs[0], so they all hear
 			 * RX1 AF as well. */
-			if (GetRadaeRxEnabled() != 0)
+			if (GetRadaeRxEnabled(rx) != 0)
 			{
-				const float g_rx1_af = GetRadaeRx1AFGain();
-				if (g_rx1_af != 1.0f)
+				const float g_rx_af = GetRadaeRxAFGain(rx);
+				if (g_rx_af != 1.0f)
 				{
-					const double gd = (double)g_rx1_af;
+					const double gd = (double)g_rx_af;
 					const int n = 2 * pcm->rcvr[rx].ch_outsize;
 					for (j = 0; j < n; j++) buffs[0][j] *= gd;
 				}
@@ -233,6 +233,16 @@ void xpipe (int stream, int pos, double** buffs)
 			break;
 		case 1: // Audio data
 			xradae_rx(rx, buffs[0]);															// [v2.10.3.16] FreeDV RADEV1 RX splice -- same as RX1 path above
+			if (GetRadaeRxEnabled(rx) != 0)
+			{
+				const float g_rx_af = GetRadaeRxAFGain(rx);
+				if (g_rx_af != 1.0f)
+				{
+					const double gd = (double)g_rx_af;
+					const int n = 2 * pcm->rcvr[rx].ch_outsize;
+					for (j = 0; j < n; j++) buffs[0][j] *= gd;
+				}
+			}
 			memcpy (ppip->rbuff[rx], buffs[0], pcm->rcvr[rx].ch_outsize * sizeof (complex));
 			for (i = 1; i < pcm->cmSubRCVR; i++)
 				for (j = 0; j < 2 * pcm->rcvr[rx].ch_outsize; j++)

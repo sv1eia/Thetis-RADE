@@ -142,44 +142,46 @@ namespace Thetis
         public static extern void SetTCIRxAudioMonVol(int id, double vol);
         // end tci
 
-        // radae [v2.10.3.16] FreeDV RADEV1 digital voice integration
+        // radae FreeDV RADEV1 digital voice integration -- dual-RX:
+        // RX-side getters/setters take an `int rx` argument (0 = RX1,
+        // 1 = RX2).  TX-side and global PORTs are parameterless.
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeRxEnabled", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void SetRadaeRxEnabled(int enable);
+        public static extern void SetRadaeRxEnabled(int rx, int enable);
 
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeTxEnabled", CallingConvention = CallingConvention.Cdecl)]
         public static extern void SetRadaeTxEnabled(int enable);
 
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeRxEnabled", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int GetRadaeRxEnabled();
+        public static extern int GetRadaeRxEnabled(int rx);
 
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeTxEnabled", CallingConvention = CallingConvention.Cdecl)]
         public static extern int GetRadaeTxEnabled();
 
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeSync", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int GetRadaeSync();
+        public static extern int GetRadaeSync(int rx);
 
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeSnrDb", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int GetRadaeSnrDb();
+        public static extern int GetRadaeSnrDb(int rx);
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeRxLevelDb", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int GetRadaeRxLevelDb();
+        public static extern int GetRadaeRxLevelDb(int rx);
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeClip", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int GetRadaeClip();
+        public static extern int GetRadaeClip(int rx);
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeRemoteCallsign", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        public static extern int GetRadaeRemoteCallsign(StringBuilder dst, int max);
+        public static extern int GetRadaeRemoteCallsign(int rx, StringBuilder dst, int max);
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeRemoteCallsignSeq", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int GetRadaeRemoteCallsignSeq();
+        public static extern int GetRadaeRemoteCallsignSeq(int rx);
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeEooDecodePulse", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int GetRadaeEooDecodePulse();
+        public static extern int GetRadaeEooDecodePulse(int rx);
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeTxMicLevelDb", CallingConvention = CallingConvention.Cdecl)]
         public static extern int GetRadaeTxMicLevelDb();
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeTxMicClip", CallingConvention = CallingConvention.Cdecl)]
         public static extern int GetRadaeTxMicClip();
 
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeFreqOffset", CallingConvention = CallingConvention.Cdecl)]
-        public static extern float GetRadaeFreqOffset();
+        public static extern float GetRadaeFreqOffset(int rx);
 
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeFreqOffset", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void SetRadaeFreqOffset(float hz);
+        public static extern void SetRadaeFreqOffset(int rx, float hz);
 
         [DllImport("ChannelMaster.dll", EntryPoint = "RadaeNotifyEndOfOver", CallingConvention = CallingConvention.Cdecl)]
         public static extern void RadaeNotifyEndOfOver();
@@ -188,9 +190,9 @@ namespace Thetis
         public static extern void RadaeNotifyBeginOver();
 
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeLoopbackEnabled", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void SetRadaeLoopbackEnabled(int enable);
+        public static extern void SetRadaeLoopbackEnabled(int rx, int enable);
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeLoopbackEnabled", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int GetRadaeLoopbackEnabled();
+        public static extern int GetRadaeLoopbackEnabled(int rx);
 
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMoxState", CallingConvention = CallingConvention.Cdecl)]
         public static extern void SetRadaeMoxState(int mox);
@@ -201,18 +203,17 @@ namespace Thetis
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMicScale", CallingConvention = CallingConvention.Cdecl)]
         public static extern void SetRadaeMicScale(double scale);
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeRxScale", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void SetRadaeRxScale(double scale);
+        public static extern void SetRadaeRxScale(int rx, double scale);
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeRxDialScale", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void SetRadaeRxDialScale(double scale);
+        public static extern void SetRadaeRxDialScale(int rx, double scale);
 
-        // RX1 AF post-decode multiplier.  Captured by the C# side
+        // Per-RX AF post-decode multiplier.  Captured by the C# side
         // (DSPRX.RXOutputGain setter) whenever RADE RX is on; applied in
-        // pipe.c after xradae_rx returns so RX1 AF becomes a clean
-        // post-decode level knob and the decoder input is unscaled.
-        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeRx1AFGain", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void SetRadaeRx1AFGain(double gain);
-        [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeRx1AFGain", CallingConvention = CallingConvention.Cdecl)]
-        public static extern float GetRadaeRx1AFGain();
+        // pipe.c after xradae_rx returns.
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeRxAFGain", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeRxAFGain(int rx, double gain);
+        [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeRxAFGain", CallingConvention = CallingConvention.Cdecl)]
+        public static extern float GetRadaeRxAFGain(int rx);
 
         // RADE pre-encoder mic conditioning (FreeDV-GUI parity):
         // RNNoise + ITU-R BS.1770 K-weighted AGC + 3-band biquad EQ.

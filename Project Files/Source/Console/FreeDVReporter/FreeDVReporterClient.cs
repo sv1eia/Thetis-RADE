@@ -72,6 +72,11 @@ namespace Thetis.FreeDVReporter
 
         public string Hostname { get; set; } = "qso.freedv.org";
         public bool   UseTls   { get; set; } = false;
+        // Dual-RX: when true, drop inbound rx_report station updates so a
+        // second concurrent connection (used for RX2 outbound reporting)
+        // does not duplicate the global station list maintained by the
+        // primary connection.
+        public bool   IgnoreInboundStations { get; set; } = false;
 
         public string Role       { get; set; } = "report";   /* "report" | "report_wo" | "view" */
         public string Callsign   { get; set; } = "";
@@ -414,6 +419,9 @@ namespace Thetis.FreeDVReporter
 
         private void HandleEvent(string name, JToken payload)
         {
+            // Dual-RX: the RX2 client opts out of inbound station updates
+            // so we don't double-process the global station list.
+            if (IgnoreInboundStations) return;
             switch (name)
             {
                 case "new_connection":

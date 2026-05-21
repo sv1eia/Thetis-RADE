@@ -384,9 +384,17 @@ namespace Thetis
                 if (!was_mox && mox)               // 0 -> 1 edge
                 {
                     Console c = Console.getConsole();
+                    // Dual-RX predicate:
+                    //   (a) RX1 RADE armed AND the over is NOT a VFO-B-on-RX2 over
+                    //       -> RX1 RADE over (the prior single-RX behaviour); or
+                    //   (b) RX2 RADE armed AND the over IS a VFO-B-on-RX2 over
+                    //       -> RX2 RADE over (the new dual-RX path).
+                    bool rade_rx1 = c != null && c.RadaeRx1Enabled;
+                    bool rade_rx2 = c != null && c.RadaeRx2Enabled;
+                    bool rx2_overFlag = rx2_enabled && vfob_tx;
                     radae_active_this_over =
-                        (c != null && c.RadaeEnabled) &&
-                        !(rx2_enabled && vfob_tx);
+                        (rade_rx1 && !rx2_overFlag) ||
+                        (rade_rx2 &&  rx2_overFlag);
                     if (radae_active_this_over)
                         cmaster.RadaeNotifyBeginOver();
                 }

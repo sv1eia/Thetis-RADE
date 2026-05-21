@@ -29,17 +29,28 @@ namespace Thetis.FreeDVReporter
     public static class FreeDVReporterManager
     {
         private static FreeDVReporterClient _client;
+        private static FreeDVReporterClient _clientRx2;   // Dual-RX: second connection for RX2 reports.
         private static FreeDVReporterForm   _form;
         private static Console              _console;
 
         private static Console.MoxChanged             _moxHandler;
         private static Console.VFOAFrequencyChanged   _vfoaHandler;
+        private static Console.VFOBFrequencyChanged   _vfobHandler;
         private static Console.TuneChanged            _tuneHandler;
         private static Console.TwoToneChanged         _twoToneHandler;
 
         /* Last value we sent to the server.  Recomputed from
          * MOX && !TUN && !TwoTone whenever any of those flips. */
         private static bool _lastReportedTransmitting;
+        private static bool _lastReportedTransmittingRx2;
+        private static ulong _currentFrequencyRx2Hz;
+        // RX2 reporting (VIS) -- independent of RX1.
+        private static bool _rx2ReportingEnabled = false;
+        // RX2 poll-cache (parallel to the RX1 fields below).
+        private static int    _lastSyncRx2        = 0;
+        private static int    _lastCallsignSeqRx2 = 0;
+        private static string _lastDecodedCallRx2 = "";
+        private static string _rx2Message         = "";
 
         /* RADAE rx-poll: fires every tick (1 Hz).  Polled from a Timer
          * so we don't add another hot subscription to the audio thread.
@@ -169,10 +180,23 @@ namespace Thetis.FreeDVReporter
                 }
                 catch { }
             };
+            // VFOB freq -> RX2 client (when up).
+            _vfobHandler = (oldBand, newBand, oldMode, newMode, oldFilter, newFilter,
+                            oldFreq, newFreq, oldCentreF, newCentreF,
+                            oldCTUN, newCTUN, oldZoom, newZoom, offset, rx) =>
+            {
+                try
+                {
+                    _currentFrequencyRx2Hz = (ulong)Math.Round(newFreq * 1e6);
+                    _clientRx2?.EmitFreqChange(_currentFrequencyRx2Hz);
+                }
+                catch { }
+            };
             console.MoxChangeHandlers           += _moxHandler;
             console.TuneChangedHandlers         += _tuneHandler;
             console.TwoToneChangedHandlers      += _twoToneHandler;
             console.VFOAFrequencyChangeHandlers += _vfoaHandler;
+            console.VFOBFrequencyChangeHandlers += _vfobHandler;
 
             _radaePollTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             _radaePollTimer.Tick += OnRadaePoll;
@@ -268,8 +292,95 @@ namespace Thetis.FreeDVReporter
                  * _lastTransmitting is current; client suppresses the
                  * wire send when role=="view". */
                 _client?.EmitTxReport(MODE_TAG, now);
+
+                /* RX2 TX-report: the symmetric predicate -- RX2 reports
+                 * "transmitting" only when transmitting via VFO B on RX2
+                 * with chkRADAERX2 on. */
+                if (_clientRx2 != null)
+                {
+                    bool rx2Now = ComputeRealTxRx2(console);
+                    if (rx2Now != _lastReportedTransmittingRx2)
+                    {
+                        _lastReportedTransmittingRx2 = rx2Now;
+                        _clientRx2.EmitTxReport(MODE_TAG, rx2Now);
+                    }
+                }
             }
             catch { }
+        }
+
+        private static bool ComputeRealTxRx2(Console c)
+        {
+            try
+            {
+                if (!c.MOX || c.TUN || c.TwoTone) return false;
+                // RX2 reports TX only when VFO B is selected, RX2 is enabled,
+                // and RX2-side RADE is active.  All other overs (VFO A,
+                // VFO B with RX2 disabled, etc.) are RX1's concern.
+                if (!c.RadaeRx2Enabled) return false;
+                if (!c.RX2Enabled || !c.VFOBTX) return false;
+                return true;
+            }
+            catch { return false; }
+        }
+
+        /* ===== Dual-RX additions ===== */
+
+        /* Set RX2's reporter message.  When the RX2 client is up, the
+         * message is published immediately; otherwise it is cached for
+         * the next Enable cycle. */
+        public static void SetRx2Message(string msg)
+        {
+            _rx2Message = msg ?? "";
+            try { _clientRx2?.EmitMessageUpdate(_rx2Message); } catch { }
+        }
+
+        /* RX2 reporting (VIS) enable.  When true, opens (or maintains) a
+         * second connection to qso.freedv.org dedicated to RX2 frequency
+         * + SNR.  When false, closes that connection.  The primary
+         * RX1 connection is unaffected and uses chkRADAEReporting (RX1
+         * VIS) -- the two are independent. */
+        public static void SetRx2ReportingEnabled(bool enabled)
+        {
+            if (_rx2ReportingEnabled == enabled) return;
+            _rx2ReportingEnabled = enabled;
+            Log("SetRx2ReportingEnabled(" + enabled + ")");
+            if (_console == null) return;
+
+            if (enabled)
+            {
+                if (_clientRx2 == null)
+                {
+                    _clientRx2 = new FreeDVReporterClient
+                    {
+                        Callsign   = _client != null ? _client.Callsign   : "",
+                        GridSquare = _client != null ? _client.GridSquare : "",
+                        ClientName = CLIENT_NAME,
+                        RxOnly     = false,
+                        Role       = "report",
+                        // Discard inbound rx_report on the RX2 connection --
+                        // the primary RX1 connection already builds the
+                        // station list; we don't need it duplicated.
+                        IgnoreInboundStations = true,
+                    };
+                    _clientRx2.Start();
+                    try
+                    {
+                        _currentFrequencyRx2Hz = (ulong)Math.Round(_console.VFOBFreq * 1e6);
+                        _clientRx2.EmitFreqChange(_currentFrequencyRx2Hz);
+                        _lastReportedTransmittingRx2 = ComputeRealTxRx2(_console);
+                        _clientRx2.EmitTxReport(MODE_TAG, _lastReportedTransmittingRx2);
+                        if (!string.IsNullOrEmpty(_rx2Message))
+                            _clientRx2.EmitMessageUpdate(_rx2Message);
+                    }
+                    catch { }
+                }
+            }
+            else
+            {
+                try { _clientRx2?.Stop(); _clientRx2?.Dispose(); } catch { }
+                _clientRx2 = null;
+            }
         }
 
         public static void Disable()
@@ -283,16 +394,19 @@ namespace Thetis.FreeDVReporter
                     if (_tuneHandler    != null) _console.TuneChangedHandlers         -= _tuneHandler;
                     if (_twoToneHandler != null) _console.TwoToneChangedHandlers      -= _twoToneHandler;
                     if (_vfoaHandler    != null) _console.VFOAFrequencyChangeHandlers -= _vfoaHandler;
+                    if (_vfobHandler    != null) _console.VFOBFrequencyChangeHandlers -= _vfobHandler;
                 }
             }
             catch { }
-            _moxHandler = null; _tuneHandler = null; _twoToneHandler = null; _vfoaHandler = null;
+            _moxHandler = null; _tuneHandler = null; _twoToneHandler = null; _vfoaHandler = null; _vfobHandler = null;
 
             try { _radaePollTimer?.Stop(); _radaePollTimer?.Dispose(); } catch { }
             _radaePollTimer = null;
 
             try { _client?.Stop(); _client?.Dispose(); } catch { }
             _client = null;
+            try { _clientRx2?.Stop(); _clientRx2?.Dispose(); } catch { }
+            _clientRx2 = null;
 
             try
             {
@@ -346,8 +460,8 @@ namespace Thetis.FreeDVReporter
             if (_client == null) return;
             try
             {
-                int sync = cmaster.GetRadaeSync();
-                int snr  = cmaster.GetRadaeSnrDb();
+                int sync = cmaster.GetRadaeSync(0);
+                int snr  = cmaster.GetRadaeSnrDb(0);
 
                 /* Track the decoded callsign across the sync session.
                  * The rade_text codec only fires on validated decodes
@@ -356,12 +470,12 @@ namespace Thetis.FreeDVReporter
                  * means a fresh EOO has just been decoded -- we use
                  * that edge below to drive the canonical "I received
                  * <callsign>" rx_report independent of the sync gate. */
-                int seq = cmaster.GetRadaeRemoteCallsignSeq();
+                int seq = cmaster.GetRadaeRemoteCallsignSeq(0);
                 bool freshDecode = seq != _lastCallsignSeq;
                 if (freshDecode)
                 {
                     var sb = new System.Text.StringBuilder(16);
-                    cmaster.GetRadaeRemoteCallsign(sb, sb.Capacity);
+                    cmaster.GetRadaeRemoteCallsign(0, sb, sb.Capacity);
                     _lastDecodedCall = sb.ToString().Trim().ToUpperInvariant();
                     _lastCallsignSeq = seq;
                 }
@@ -406,6 +520,31 @@ namespace Thetis.FreeDVReporter
                     _client.EmitRxReport(_lastDecodedCall, MODE_TAG, snr);
                     if (_reportingEnabled)
                         _client.LocalMirrorRxReport(_lastDecodedCall, MODE_TAG, snr);
+                }
+
+                /* Dual-RX: when the RX2 client is up, poll RX2's sync/SNR/
+                 * callsign symmetrically and emit through the second
+                 * connection. */
+                if (_clientRx2 != null)
+                {
+                    int sync2 = cmaster.GetRadaeSync(1);
+                    int snr2  = cmaster.GetRadaeSnrDb(1);
+                    int seq2  = cmaster.GetRadaeRemoteCallsignSeq(1);
+                    bool fresh2 = seq2 != _lastCallsignSeqRx2;
+                    if (fresh2)
+                    {
+                        var sb2 = new System.Text.StringBuilder(16);
+                        cmaster.GetRadaeRemoteCallsign(1, sb2, sb2.Capacity);
+                        _lastDecodedCallRx2 = sb2.ToString().Trim().ToUpperInvariant();
+                        _lastCallsignSeqRx2 = seq2;
+                    }
+                    if (sync2 != 0 && _lastSyncRx2 == 0)
+                        _lastDecodedCallRx2 = "";
+                    _lastSyncRx2 = sync2;
+                    if (sync2 != 0 || fresh2)
+                    {
+                        _clientRx2.EmitRxReport(_lastDecodedCallRx2, MODE_TAG, snr2);
+                    }
                 }
             }
             catch { }

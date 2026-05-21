@@ -1878,6 +1878,15 @@ namespace Thetis
             this.chkRADAELoopback = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReporter = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReporting = new System.Windows.Forms.CheckBoxTS();
+            // Dual-RX RADE additions -- RX2 column mirrors of the RX1 controls.
+            this.chkRADAERX2 = new System.Windows.Forms.CheckBoxTS();
+            this.chkRADAELoopbackRX2 = new System.Windows.Forms.CheckBoxTS();
+            this.chkRADAEReporterRX2 = new System.Windows.Forms.CheckBoxTS();
+            this.chkRADAEReportingRX2 = new System.Windows.Forms.CheckBoxTS();
+            this.lblRadaeRxLevelRX2 = new System.Windows.Forms.LabelTS();
+            this.udRadaeRxLevelRX2 = new System.Windows.Forms.NumericUpDownTS();
+            this.lblRadaeReporterMsgRX2 = new System.Windows.Forms.LabelTS();
+            this.txtRadaeReporterMsgRX2 = new System.Windows.Forms.TextBoxTS();
             this.lblRadaeMicLevel = new System.Windows.Forms.LabelTS();
             this.udRadaeMicLevel = new System.Windows.Forms.NumericUpDownTS();
             this.lblRadaeRxLevel = new System.Windows.Forms.LabelTS();
@@ -30936,7 +30945,7 @@ namespace Thetis
             this.chkRADAE.Name = "chkRADAE";
             this.chkRADAE.Size = new System.Drawing.Size(140, 17);
             this.chkRADAE.TabIndex = 0;
-            this.chkRADAE.Text = "RADE enable/disable";
+            this.chkRADAE.Text = "RX1RADE enable/disable";
             this.toolTip1.SetToolTip(this.chkRADAE, "Enable built-in FreeDV RADEV1 digital voice. RX audio is fed to the RADE decoder before reaching the speakers; mic audio is fed to the RADE encoder after the WDSP audio enhancements (TXEQ / Compander / CFC / Phase / Leveler) which remain under user control. Mode/filter selection are not changed automatically.");
             this.chkRADAE.UseVisualStyleBackColor = true;
             this.chkRADAE.CheckedChanged += new System.EventHandler(this.chkRADAE_CheckedChanged);
@@ -30949,7 +30958,7 @@ namespace Thetis
             this.chkRADAELoopback.Name = "chkRADAELoopback";
             this.chkRADAELoopback.Size = new System.Drawing.Size(210, 17);
             this.chkRADAELoopback.TabIndex = 1;
-            this.chkRADAELoopback.Text = "RADE Loopback Test enable/disable";
+            this.chkRADAELoopback.Text = "RX1RADE Loopback Test enable/disable";
             this.toolTip1.SetToolTip(this.chkRADAELoopback, "Diagnostic loopback. When this AND 'RADE enable/disable' are both ON, the encoder's modem audio (post-rmatchV) is diverted into the decoder's xresampleFV input on its 48 kHz side, bypassing fexchange0/TXA/radio/RXA. mic_io is silenced so no RF is produced.");
             this.chkRADAELoopback.UseVisualStyleBackColor = true;
             this.chkRADAELoopback.CheckedChanged += new System.EventHandler(this.chkRADAELoopback_CheckedChanged);
@@ -30982,7 +30991,7 @@ namespace Thetis
             this.lblRadaeRxLevel.Location = new System.Drawing.Point(10, 92);
             this.lblRadaeRxLevel.Name = "lblRadaeRxLevel";
             this.lblRadaeRxLevel.TabIndex = 4;
-            this.lblRadaeRxLevel.Text = "RADE Rx level (dB):";
+            this.lblRadaeRxLevel.Text = "RX1RADE Rx level";
             //
             // udRadaeRxLevel
             //
@@ -31205,7 +31214,7 @@ namespace Thetis
             this.chkRADAEReporter.Name = "chkRADAEReporter";
             this.chkRADAEReporter.Size = new System.Drawing.Size(180, 17);
             this.chkRADAEReporter.TabIndex = 23;
-            this.chkRADAEReporter.Text = "RADE Reporter (qso.freedv.org)";
+            this.chkRADAEReporter.Text = "RX1RADE Reporter (qso.freedv.org)";
             this.toolTip1.SetToolTip(this.chkRADAEReporter, "Connects to qso.freedv.org as a 'report' client and shows the live FreeDV station list. Uses the Callsign / Locator / Msg fields below. Frequency, TX state and RADE SNR reports are sent automatically while this is enabled.");
             this.chkRADAEReporter.UseVisualStyleBackColor = true;
             this.chkRADAEReporter.CheckedChanged += new System.EventHandler(this.chkRADAEReporter_CheckedChanged);
@@ -31257,11 +31266,11 @@ namespace Thetis
             this.lblRadaeReporterMsg.Name = "lblRadaeReporterMsg";
             this.lblRadaeReporterMsg.Size = new System.Drawing.Size(31, 13);
             this.lblRadaeReporterMsg.TabIndex = 28;
-            this.lblRadaeReporterMsg.Text = "Msg:";
+            this.lblRadaeReporterMsg.Text = "RX1Msg:";
             //
             // txtRadaeReporterMsg
             //
-            this.txtRadaeReporterMsg.Location = new System.Drawing.Point(45, 341);
+            this.txtRadaeReporterMsg.Location = new System.Drawing.Point(75, 341);
             this.txtRadaeReporterMsg.MaxLength = 80;
             this.txtRadaeReporterMsg.Name = "txtRadaeReporterMsg";
             this.txtRadaeReporterMsg.Size = new System.Drawing.Size(245, 20);
@@ -31356,10 +31365,104 @@ namespace Thetis
             this.chkRADAEReporting.Name = "chkRADAEReporting";
             this.chkRADAEReporting.Size = new System.Drawing.Size(140, 17);
             this.chkRADAEReporting.TabIndex = 30;
-            this.chkRADAEReporting.Text = "RADE enable reporting";
+            this.chkRADAEReporting.Text = "RX1RADE enable reporting";
             this.toolTip1.SetToolTip(this.chkRADAEReporting, "When checked, Thetis publishes its own callsign / freq / TX state / RX SNR to qso.freedv.org as a 'report' client. When unchecked, the reporter window still shows the live station list (read-only 'view' role) but no own data is published.");
             this.chkRADAEReporting.UseVisualStyleBackColor = true;
             this.chkRADAEReporting.CheckedChanged += new System.EventHandler(this.chkRADAEReporting_CheckedChanged);
+            //
+            // Dual-RX RADE additions -- RX2 column at X=370 (mirrors RX1 at X=10).
+            //
+            // chkRADAERX2
+            //
+            this.chkRADAERX2.AutoSize = true;
+            this.chkRADAERX2.Image = null;
+            this.chkRADAERX2.Location = new System.Drawing.Point(370, 10);
+            this.chkRADAERX2.Name = "chkRADAERX2";
+            this.chkRADAERX2.Size = new System.Drawing.Size(140, 17);
+            this.chkRADAERX2.TabIndex = 60;
+            this.chkRADAERX2.Text = "RX2RADE enable/disable";
+            this.toolTip1.SetToolTip(this.chkRADAERX2, "Enable built-in FreeDV RADEV1 digital voice on RX2.  Concurrent with RX1 RADE.");
+            this.chkRADAERX2.UseVisualStyleBackColor = true;
+            this.chkRADAERX2.CheckedChanged += new System.EventHandler(this.chkRADAERX2_CheckedChanged);
+            //
+            // chkRADAELoopbackRX2
+            //
+            this.chkRADAELoopbackRX2.AutoSize = true;
+            this.chkRADAELoopbackRX2.Image = null;
+            this.chkRADAELoopbackRX2.Location = new System.Drawing.Point(370, 33);
+            this.chkRADAELoopbackRX2.Name = "chkRADAELoopbackRX2";
+            this.chkRADAELoopbackRX2.Size = new System.Drawing.Size(210, 17);
+            this.chkRADAELoopbackRX2.TabIndex = 61;
+            this.chkRADAELoopbackRX2.Text = "RX2RADE Loopback Test enable/disable";
+            this.toolTip1.SetToolTip(this.chkRADAELoopbackRX2, "Diagnostic loopback on RX2.  Same semantics as the RX1 Loopback Test.");
+            this.chkRADAELoopbackRX2.UseVisualStyleBackColor = true;
+            this.chkRADAELoopbackRX2.CheckedChanged += new System.EventHandler(this.chkRADAELoopbackRX2_CheckedChanged);
+            //
+            // lblRadaeRxLevelRX2
+            //
+            this.lblRadaeRxLevelRX2.AutoSize = true;
+            this.lblRadaeRxLevelRX2.Location = new System.Drawing.Point(370, 92);
+            this.lblRadaeRxLevelRX2.Name = "lblRadaeRxLevelRX2";
+            this.lblRadaeRxLevelRX2.TabIndex = 62;
+            this.lblRadaeRxLevelRX2.Text = "RX2RADE Rx level";
+            //
+            // udRadaeRxLevelRX2
+            //
+            this.udRadaeRxLevelRX2.Location = new System.Drawing.Point(495, 89);
+            this.udRadaeRxLevelRX2.Maximum = new decimal(new int[] { 40, 0, 0, 0 });
+            this.udRadaeRxLevelRX2.Minimum = new decimal(new int[] { 40, 0, 0, System.Int32.MinValue });
+            this.udRadaeRxLevelRX2.Increment = new decimal(new int[] { 1, 0, 0, 0 });
+            this.udRadaeRxLevelRX2.DecimalPlaces = 0;
+            this.udRadaeRxLevelRX2.Name = "udRadaeRxLevelRX2";
+            this.udRadaeRxLevelRX2.Size = new System.Drawing.Size(55, 20);
+            this.udRadaeRxLevelRX2.TabIndex = 63;
+            this.udRadaeRxLevelRX2.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            this.toolTip1.SetToolTip(this.udRadaeRxLevelRX2, "RX2 RADE decoder input level (dB).  Independent of RX1 RxLevel.");
+            this.udRadaeRxLevelRX2.ValueChanged += new System.EventHandler(this.udRadaeRxLevelRX2_ValueChanged);
+            //
+            // chkRADAEReporterRX2
+            //
+            this.chkRADAEReporterRX2.AutoSize = true;
+            this.chkRADAEReporterRX2.Image = null;
+            this.chkRADAEReporterRX2.Location = new System.Drawing.Point(370, 295);
+            this.chkRADAEReporterRX2.Name = "chkRADAEReporterRX2";
+            this.chkRADAEReporterRX2.Size = new System.Drawing.Size(180, 17);
+            this.chkRADAEReporterRX2.TabIndex = 64;
+            this.chkRADAEReporterRX2.Text = "RX2RADE Reporter (qso.freedv.org)";
+            this.toolTip1.SetToolTip(this.chkRADAEReporterRX2, "Mirror of the RX1 Reporter checkbox -- all four reporter UIs (Setup RX1/RX2 + Console RX1/RX2) share one underlying 'reporter ON' flag.");
+            this.chkRADAEReporterRX2.UseVisualStyleBackColor = true;
+            this.chkRADAEReporterRX2.CheckedChanged += new System.EventHandler(this.chkRADAEReporterRX2_CheckedChanged);
+            //
+            // lblRadaeReporterMsgRX2
+            //
+            this.lblRadaeReporterMsgRX2.AutoSize = true;
+            this.lblRadaeReporterMsgRX2.Location = new System.Drawing.Point(370, 344);
+            this.lblRadaeReporterMsgRX2.Name = "lblRadaeReporterMsgRX2";
+            this.lblRadaeReporterMsgRX2.TabIndex = 65;
+            this.lblRadaeReporterMsgRX2.Text = "RX2Msg:";
+            //
+            // txtRadaeReporterMsgRX2
+            //
+            this.txtRadaeReporterMsgRX2.Location = new System.Drawing.Point(445, 341);
+            this.txtRadaeReporterMsgRX2.MaxLength = 80;
+            this.txtRadaeReporterMsgRX2.Name = "txtRadaeReporterMsgRX2";
+            this.txtRadaeReporterMsgRX2.Size = new System.Drawing.Size(245, 20);
+            this.txtRadaeReporterMsgRX2.TabIndex = 66;
+            this.toolTip1.SetToolTip(this.txtRadaeReporterMsgRX2, "Free-form status message for the RX2 reporter connection.  Independent of the RX1 Msg field.");
+            this.txtRadaeReporterMsgRX2.TextChanged += new System.EventHandler(this.txtRadaeReporterMsgRX2_TextChanged);
+            //
+            // chkRADAEReportingRX2
+            //
+            this.chkRADAEReportingRX2.AutoSize = true;
+            this.chkRADAEReportingRX2.Image = null;
+            this.chkRADAEReportingRX2.Location = new System.Drawing.Point(370, 365);
+            this.chkRADAEReportingRX2.Name = "chkRADAEReportingRX2";
+            this.chkRADAEReportingRX2.Size = new System.Drawing.Size(140, 17);
+            this.chkRADAEReportingRX2.TabIndex = 67;
+            this.chkRADAEReportingRX2.Text = "RX2RADE enable reporting";
+            this.toolTip1.SetToolTip(this.chkRADAEReportingRX2, "When checked, a second connection to qso.freedv.org opens dedicated to RX2's frequency + SNR.  Closed when this is unchecked.");
+            this.chkRADAEReportingRX2.UseVisualStyleBackColor = true;
+            this.chkRADAEReportingRX2.CheckedChanged += new System.EventHandler(this.chkRADAEReportingRX2_CheckedChanged);
             //
             // groupBoxTS29
             //
@@ -45489,6 +45592,15 @@ namespace Thetis
             this.tpDSPRADE.Controls.Add(this.lblRadaeReporterMsg);
             this.tpDSPRADE.Controls.Add(this.txtRadaeReporterMsg);
             this.tpDSPRADE.Controls.Add(this.grpRadaeDiagnostics);
+            // Dual-RX RADE additions.
+            this.tpDSPRADE.Controls.Add(this.chkRADAERX2);
+            this.tpDSPRADE.Controls.Add(this.chkRADAELoopbackRX2);
+            this.tpDSPRADE.Controls.Add(this.chkRADAEReporterRX2);
+            this.tpDSPRADE.Controls.Add(this.chkRADAEReportingRX2);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeRxLevelRX2);
+            this.tpDSPRADE.Controls.Add(this.udRadaeRxLevelRX2);
+            this.tpDSPRADE.Controls.Add(this.lblRadaeReporterMsgRX2);
+            this.tpDSPRADE.Controls.Add(this.txtRadaeReporterMsgRX2);
             this.tpDSPRADE.Location = new System.Drawing.Point(4, 22);
             this.tpDSPRADE.Name = "tpDSPRADE";
             this.tpDSPRADE.Padding = new System.Windows.Forms.Padding(3);
@@ -77039,6 +77151,15 @@ namespace Thetis
         private CheckBoxTS chkRADAELoopback;
         private CheckBoxTS chkRADAEReporter;
         private CheckBoxTS chkRADAEReporting;
+        // Dual-RX RADE additions -- RX2 column mirrors.
+        private CheckBoxTS chkRADAERX2;
+        private CheckBoxTS chkRADAELoopbackRX2;
+        private CheckBoxTS chkRADAEReporterRX2;
+        private CheckBoxTS chkRADAEReportingRX2;
+        private LabelTS    lblRadaeRxLevelRX2;
+        private NumericUpDownTS udRadaeRxLevelRX2;
+        private LabelTS    lblRadaeReporterMsgRX2;
+        private TextBoxTS  txtRadaeReporterMsgRX2;
         private LabelTS    lblRadaeMicLevel;
         private NumericUpDownTS udRadaeMicLevel;
         private LabelTS    lblRadaeRxLevel;
