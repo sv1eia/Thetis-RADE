@@ -466,6 +466,73 @@ namespace Thetis.FreeDVReporter
             }
         }
 
+        /* Master experimental switch for the RX1 RADE feature on Setup
+         * -> DSP -> RADE -> chkRX1RadeControl.  When OFF the Track RX1
+         * button is hidden entirely; if the form was tracking RX1 it
+         * falls back to Track RX2 if RX2 is available, else Off. */
+        public void SetRx1RadeControlVisible(bool visible)
+        {
+            try
+            {
+                if (btnTrackRx1 == null) return;
+                if (InvokeRequired)
+                {
+                    try { BeginInvoke(new Action(() => SetRx1RadeControlVisible(visible))); } catch { }
+                    return;
+                }
+                btnTrackRx1.Visible = visible;
+                if (!visible)
+                {
+                    if (_trackTarget == TrackTarget.Rx1)
+                    {
+                        bool rx2Available = btnTrackRx2 != null && btnTrackRx2.Visible
+                                            && (_console != null) && _console.RX2Enabled;
+                        _trackTarget = rx2Available ? TrackTarget.Rx2 : TrackTarget.Off;
+                        SyncTrackButtons();
+                    }
+                }
+                else
+                {
+                    btnTrackRx1.Enabled = true;
+                }
+            }
+            catch { }
+        }
+
+        /* Master experimental switch for the RX2 RADE feature on Setup
+         * -> DSP -> RADE -> chkRX2RadeControl.  When OFF the Track RX2
+         * button is hidden entirely; if the form was tracking RX2 it
+         * falls back to Track RX1, mirroring UpdateRx2Track's logic.
+         * When ON the button reappears, with its Enabled state still
+         * gated on Console.RX2Enabled. */
+        public void SetRx2RadeControlVisible(bool visible)
+        {
+            try
+            {
+                if (btnTrackRx2 == null) return;
+                if (InvokeRequired)
+                {
+                    try { BeginInvoke(new Action(() => SetRx2RadeControlVisible(visible))); } catch { }
+                    return;
+                }
+                btnTrackRx2.Visible = visible;
+                if (!visible)
+                {
+                    if (_trackTarget == TrackTarget.Rx2)
+                    {
+                        _trackTarget = TrackTarget.Rx1;
+                        SyncTrackButtons();
+                    }
+                }
+                else
+                {
+                    bool rx2Enabled = (_console != null) && _console.RX2Enabled;
+                    btnTrackRx2.Enabled = rx2Enabled;
+                }
+            }
+            catch { }
+        }
+
         private void BuildGrid()
         {
             grid = new DataGridView

@@ -61,6 +61,7 @@
             "W4WMT, Bryan (Resampler, VAC & cmASIO)",
             "MI0BOT, Reid (Hermes Lite 2)",
             "MW0LGE, Richie (UI & various)",
+            "SV1EIA, Christos (RADEV1, FreeDV reporter, HL2, UI additions)",
             "W5WC, Doug (UI, ChannelMaster, various & Thetis naming)",
             "W2PA, Chris (QSK & MIDI)",
             "WD5Y, Joe (UI tweaks and fixes)",

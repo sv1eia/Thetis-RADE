@@ -379,6 +379,35 @@ namespace Thetis.FreeDVReporter
             ApplyRx2ClientState();
         }
 
+        /* Master experimental switch for the RX1 RADE feature on Setup
+         * -> DSP -> RADE -> chkRX1RadeControl.  Delegates to the form's
+         * SetRx1RadeControlVisible if it's been created. */
+        public static void SetRx1RadeControlVisible(bool visible)
+        {
+            try
+            {
+                if (_form != null)
+                    _form.SetRx1RadeControlVisible(visible);
+            }
+            catch { }
+        }
+
+        /* Master experimental switch for the RX2 RADE feature on Setup
+         * -> DSP -> RADE -> chkRX2RadeControl.  Delegates to the form's
+         * SetRx2RadeControlVisible if it's been created.  No-op if the
+         * form is not yet alive (the next form construction will pick
+         * up the right state from the Setup-side handler running again
+         * at rehydrate time). */
+        public static void SetRx2RadeControlVisible(bool visible)
+        {
+            try
+            {
+                if (_form != null)
+                    _form.SetRx2RadeControlVisible(visible);
+            }
+            catch { }
+        }
+
         /* Open / close the RX2 client to match the effective state
          * (_rx2ReportingEnabled AND console.RX2Enabled).  Called from
          * SetRx2ReportingEnabled and from the RX2EnabledChangedHandlers

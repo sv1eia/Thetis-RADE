@@ -53,9 +53,11 @@ namespace Thetis
         private string _id;
         private bool _container_minimises = true;
         private bool _container_hides_when_rx_not_used = true;
+        private bool _container_hides_when_rade_not_enabled = false;
         private bool _is_enabled = true;
         private bool _floating = false;
         private bool _rx2_enabled = false;
+        private bool _rade_enabled = false;
         private bool _hidden_by_macro = false;
 
         public frmMeterDisplay(Console c, int rx)
@@ -68,12 +70,14 @@ namespace Thetis
             _console = c;
             _rx = rx;
             _rx2_enabled = _console.RX2Enabled;
+            _rade_enabled = (_rx == 2) ? _console.RadaeRx2Enabled : _console.RadaeRx1Enabled;
             _hidden_by_macro = false;
 
             Common.DoubleBufferAll(this, true);
 
             _console.WindowStateChangedHandlers += OnWindowStateChanged;
             _console.RX2EnabledChangedHandlers += OnRX2Enabled;
+            _console.RadaeEnabledChangedHandlers += OnRadaeEnabled;
 
             setTitle();
         }
@@ -90,6 +94,11 @@ namespace Thetis
         private void OnRX2Enabled(bool enabled)
         {
             _rx2_enabled = enabled;
+        }
+        private void OnRadaeEnabled(int rx, bool enabled)
+        {
+            // Only track the RADE state for this container's own RX.
+            if (rx == _rx) _rade_enabled = enabled;
         }
         public bool Floating
         {
@@ -110,6 +119,11 @@ namespace Thetis
         {
             get { return _container_hides_when_rx_not_used; }
             set { _container_hides_when_rx_not_used = value; }
+        }
+        public bool ContainerHidesWhenRADENotEnabled
+        {
+            get { return _container_hides_when_rade_not_enabled; }
+            set { _container_hides_when_rade_not_enabled = value; }
         }
         private void OnWindowStateChanged(FormWindowState state)
         {
@@ -133,6 +147,9 @@ namespace Thetis
                             if (_rx2_enabled || !_container_hides_when_rx_not_used) show = !_hidden_by_macro;
                             break;
                     }
+                    // "Hide if RADE not enabled" gate: applies to RX1 and RX2.
+                    if (show && _container_hides_when_rade_not_enabled && !_rade_enabled)
+                        show = false;
                     if(show) this.Show();
                 }
             }

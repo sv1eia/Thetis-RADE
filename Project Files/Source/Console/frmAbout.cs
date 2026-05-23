@@ -190,7 +190,7 @@ namespace Thetis
 
             switch (lstLinks.SelectedIndex)
             {
-                case 0: Common.OpenUri("https://github.com/ramdor/Thetis/releases"); break;
+                case 0: Common.OpenUri("https://github.com/sv1eia/Thetis-RADE/releases"); break;
                 case 1: Common.OpenUri("https://discord.gg/6fHCRKnDc9"); break;
                 case 2: Common.OpenUri("https://community.apache-labs.com/index.php"); break;
                 case 3: Common.OpenUri("https://apache-labs.com/"); break;

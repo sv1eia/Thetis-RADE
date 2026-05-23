@@ -2308,6 +2308,12 @@ namespace Thetis
 
             chkVAC1WillMute_CheckedChanged(this, e);
             chkVAC2WillMute_CheckedChanged(this, e);
+            // RX1 RADE master switch fires before its children so the
+            // children inherit visibility/enabled state before their own
+            // handlers run.  When the master is off the force-uncheck
+            // loop above makes the subsequent rehydrate handlers see
+            // them as already off.
+            chkRX1RadeControl_CheckedChanged(this, e);
             chkRADAE_CheckedChanged(this, e);
             chkRADAELoopback_CheckedChanged(this, e);
             udRadaeMicLevel_ValueChanged(this, e);
@@ -2328,6 +2334,12 @@ namespace Thetis
             // txtRadaeReporterMsgRX2 must fire BEFORE chkRADAEReportingRX2 so
             // FreeDVReporterManager's _rx2Message cache is populated by the
             // time the second client opens.
+            //
+            // The master experimental switch fires FIRST so children inherit
+            // the correct visibility/enabled state before their own handlers
+            // run.  When the master is off the children's force-uncheck loop
+            // makes the subsequent rehydrate handlers see them as already off.
+            chkRX2RadeControl_CheckedChanged(this, e);
             chkRADAERX2_CheckedChanged(this, e);
             chkRADAELoopbackRX2_CheckedChanged(this, e);
             udRadaeRxLevelRX2_ValueChanged(this, e);
@@ -22174,7 +22186,7 @@ namespace Thetis
                     double f = console.VFOAFreq;
                     DSPMode want;
                     if (f >= 5.0 && f < 5.5)   want = DSPMode.DIGU;
-                    else if (f < 12.0)         want = DSPMode.DIGL;
+                    else if (f < 10.0)         want = DSPMode.DIGL;
                     else                       want = DSPMode.DIGU;
                     if (console.RX1DSPMode != want) console.RX1DSPMode = want;
                 }
@@ -22191,6 +22203,11 @@ namespace Thetis
                     console.chkRADEMirror.Checked != chkRADAE.Checked)
                     console.chkRADEMirror.Checked = chkRADAE.Checked;
             }
+            catch { }
+
+            // Notify Meters/Gadgets so RX1 containers with "Hide if RADE
+            // not enabled" re-evaluate their visibility.
+            try { if (console != null) console.NotifyRadaeEnabledChanged(1, chkRADAE.Checked); }
             catch { }
         }
 
@@ -22590,6 +22607,184 @@ namespace Thetis
         // ============================================================
         // Dual-RX RADE additions -- RX2 handlers + four-way REPR mirror.
         // ============================================================
+
+        // chkRX1RadeControl is the experimental master switch for the
+        // RX1 RADE feature + TX/mic chain + reporter UI.  Symmetric to
+        // chkRX2RadeControl: when unchecked it force-unchecks every
+        // dependent control (chkRADAE, loopback, mic-conditioning
+        // chain, reporter on/off, etc.) so the existing CheckedChanged
+        // handlers run their normal teardown, then hides and disables
+        // every RX1 + TX/mic + reporter control on this tab.  Also
+        // hides the Track RX1 button on the FreeDV Reporter form and
+        // falls back the track target to RX2 if it was tracking RX1.
+        // Reporter form closes via chkRADAEReporter going false (the
+        // four-way mirror).  Default unchecked: opt-in only.
+        public bool RX1RadeControl
+        {
+            get { return chkRX1RadeControl != null && chkRX1RadeControl.Checked; }
+            set { if (chkRX1RadeControl != null) chkRX1RadeControl.Checked = value; }
+        }
+
+        private void chkRX1RadeControl_CheckedChanged(object sender, EventArgs e)
+        {
+            bool on = chkRX1RadeControl.Checked;
+
+            // If switching OFF, force-uncheck every dependent RX1+TX
+            // control first so its existing handler runs the full
+            // teardown.  Unchecking chkRADAEReporter via the four-way
+            // mirror also propagates to chkRADAEReporterRX2 and closes
+            // the reporter form.  Also force-uncheck chkRX2RadeControl
+            // so RX2 RADE goes off too -- RX2 depends on RX1 (shares
+            // the TX path + reporter identity), so RX2 cannot run on
+            // its own.  chkRX2RadeControl is then disabled/greyed
+            // below so the user cannot re-enable RX2 while RX1 is off.
+            if (!on)
+            {
+                if (chkRX2RadeControl != null && chkRX2RadeControl.Checked)
+                    chkRX2RadeControl.Checked = false;
+                if (chkRADAEReporting != null && chkRADAEReporting.Checked)
+                    chkRADAEReporting.Checked = false;
+                if (chkRADAEReporter != null && chkRADAEReporter.Checked)
+                    chkRADAEReporter.Checked = false;
+                if (chkRadaeMicEQ != null && chkRadaeMicEQ.Checked)
+                    chkRadaeMicEQ.Checked = false;
+                if (chkRadaeMicAGC != null && chkRadaeMicAGC.Checked)
+                    chkRadaeMicAGC.Checked = false;
+                if (chkRadaeMicRNNoise != null && chkRadaeMicRNNoise.Checked)
+                    chkRadaeMicRNNoise.Checked = false;
+                if (chkRADAELoopback != null && chkRADAELoopback.Checked)
+                    chkRADAELoopback.Checked = false;
+                if (chkRADAE != null && chkRADAE.Checked)
+                    chkRADAE.Checked = false;
+            }
+
+            // chkRX2RadeControl is enabled only while chkRX1RadeControl
+            // is on.  Visible always (so the user sees the dependency),
+            // but greyed when RX1 master is off.
+            if (chkRX2RadeControl != null) chkRX2RadeControl.Enabled = on;
+
+            // Visibility + enabled for the Setup-side RX1 + TX/mic +
+            // reporter controls.  Mic-conditioning EQ rows, AGC target,
+            // and the (production-hidden) Diagnostics group are all
+            // gated together so the entire RX1/TX block disappears in
+            // lockstep.
+            if (chkRADAE != null)             { chkRADAE.Visible             = on; chkRADAE.Enabled             = on; }
+            if (chkRADAELoopback != null)     { chkRADAELoopback.Visible     = on; chkRADAELoopback.Enabled     = on; }
+            if (lblRadaeMicLevel != null)       lblRadaeMicLevel.Visible       = on;
+            if (udRadaeMicLevel != null)      { udRadaeMicLevel.Visible      = on; udRadaeMicLevel.Enabled      = on; }
+            if (lblRadaeRxLevel != null)        lblRadaeRxLevel.Visible        = on;
+            if (udRadaeRxLevel != null)       { udRadaeRxLevel.Visible       = on; udRadaeRxLevel.Enabled       = on; }
+            if (chkRadaeMicRNNoise != null)   { chkRadaeMicRNNoise.Visible   = on; chkRadaeMicRNNoise.Enabled   = on; }
+            if (chkRadaeMicAGC != null)       { chkRadaeMicAGC.Visible       = on; chkRadaeMicAGC.Enabled       = on; }
+            if (lblRadaeMicAGCTarget != null)   lblRadaeMicAGCTarget.Visible   = on;
+            if (udRadaeMicAGCTarget != null)  { udRadaeMicAGCTarget.Visible  = on; udRadaeMicAGCTarget.Enabled  = on; }
+            if (chkRadaeMicEQ != null)        { chkRadaeMicEQ.Visible        = on; chkRadaeMicEQ.Enabled        = on; }
+            if (lblRadaeMicEQBass != null)      lblRadaeMicEQBass.Visible      = on;
+            if (udRadaeMicEQBassFreq != null) { udRadaeMicEQBassFreq.Visible = on; udRadaeMicEQBassFreq.Enabled = on; }
+            if (udRadaeMicEQBassGain != null) { udRadaeMicEQBassGain.Visible = on; udRadaeMicEQBassGain.Enabled = on; }
+            if (lblRadaeMicEQMid != null)       lblRadaeMicEQMid.Visible       = on;
+            if (udRadaeMicEQMidFreq != null)  { udRadaeMicEQMidFreq.Visible  = on; udRadaeMicEQMidFreq.Enabled  = on; }
+            if (udRadaeMicEQMidGain != null)  { udRadaeMicEQMidGain.Visible  = on; udRadaeMicEQMidGain.Enabled  = on; }
+            if (udRadaeMicEQMidQ != null)     { udRadaeMicEQMidQ.Visible     = on; udRadaeMicEQMidQ.Enabled     = on; }
+            if (lblRadaeMicEQTreble != null)    lblRadaeMicEQTreble.Visible    = on;
+            if (udRadaeMicEQTrebleFreq != null){ udRadaeMicEQTrebleFreq.Visible= on; udRadaeMicEQTrebleFreq.Enabled = on; }
+            if (udRadaeMicEQTrebleGain != null){ udRadaeMicEQTrebleGain.Visible= on; udRadaeMicEQTrebleGain.Enabled = on; }
+            if (lblRadaeMicEQVol != null)       lblRadaeMicEQVol.Visible       = on;
+            if (udRadaeMicEQVol != null)      { udRadaeMicEQVol.Visible      = on; udRadaeMicEQVol.Enabled      = on; }
+            if (chkRADAEReporter != null)     { chkRADAEReporter.Visible     = on; chkRADAEReporter.Enabled     = on; }
+            if (chkRADAEReporting != null)    { chkRADAEReporting.Visible    = on; chkRADAEReporting.Enabled    = on; }
+            if (lblRadaeReporterCallsign != null) lblRadaeReporterCallsign.Visible = on;
+            if (txtRadaeReporterCallsign != null){ txtRadaeReporterCallsign.Visible = on; txtRadaeReporterCallsign.Enabled = on; }
+            if (lblRadaeReporterGrid != null)   lblRadaeReporterGrid.Visible   = on;
+            if (txtRadaeReporterGrid != null) { txtRadaeReporterGrid.Visible = on; txtRadaeReporterGrid.Enabled = on; }
+            if (lblRadaeReporterMsg != null)    lblRadaeReporterMsg.Visible    = on;
+            if (txtRadaeReporterMsg != null)  { txtRadaeReporterMsg.Visible  = on; txtRadaeReporterMsg.Enabled  = on; }
+
+            // Push to the console-side RX1 mirrors (chkRADE / chkREPR
+            // / chkVIS on the main face).
+            try
+            {
+                if (console != null)
+                    console.SetRx1RadeControlVisible(on);
+            }
+            catch { }
+
+            // Push to the FreeDVReporter form's Track RX1 button.  When
+            // turning OFF, falls back _trackTarget to RX2 if RX2 is
+            // available, else Off.
+            try
+            {
+                Thetis.FreeDVReporter.FreeDVReporterManager.SetRx1RadeControlVisible(on);
+            }
+            catch { }
+        }
+
+        // chkRX2RadeControl is the experimental master switch for the
+        // entire RX2 RADE feature.  When unchecked it force-unchecks
+        // every dependent RX2 RADE control (so handlers tear down the
+        // C-side decoder + reporter client + console mirrors), then
+        // hides and disables them.  Also drives the FreeDVReporter
+        // Track RX2 button visibility and forces the Track target to
+        // RX1 / Off if it was RX2 when the master goes off.  Default is
+        // unchecked: opt-in only, to keep CPU cost off by default.
+        public bool RX2RadeControl
+        {
+            get { return chkRX2RadeControl != null && chkRX2RadeControl.Checked; }
+            set { if (chkRX2RadeControl != null) chkRX2RadeControl.Checked = value; }
+        }
+
+        private void chkRX2RadeControl_CheckedChanged(object sender, EventArgs e)
+        {
+            bool on = chkRX2RadeControl.Checked;
+
+            // If switching OFF, force-uncheck every dependent RX2 RADE
+            // control first so its existing handler runs the full
+            // teardown (C-side decoder, reporter client, console
+            // mirrors).  WinForms suppresses the recursion when a
+            // checkbox is set to its current value, so already-off
+            // controls are no-ops.
+            if (!on)
+            {
+                if (chkRADAEReportingRX2 != null && chkRADAEReportingRX2.Checked)
+                    chkRADAEReportingRX2.Checked = false;
+                if (chkRADAEReporterRX2 != null && chkRADAEReporterRX2.Checked)
+                    chkRADAEReporterRX2.Checked = false;
+                if (chkRADAELoopbackRX2 != null && chkRADAELoopbackRX2.Checked)
+                    chkRADAELoopbackRX2.Checked = false;
+                if (chkRADAERX2 != null && chkRADAERX2.Checked)
+                    chkRADAERX2.Checked = false;
+            }
+
+            // Visibility + enabled for the Setup-side RX2 RADE controls.
+            if (chkRADAERX2 != null)         { chkRADAERX2.Visible         = on; chkRADAERX2.Enabled         = on; }
+            if (chkRADAELoopbackRX2 != null) { chkRADAELoopbackRX2.Visible = on; chkRADAELoopbackRX2.Enabled = on; }
+            if (chkRADAEReporterRX2 != null) { chkRADAEReporterRX2.Visible = on; chkRADAEReporterRX2.Enabled = on; }
+            if (chkRADAEReportingRX2 != null){ chkRADAEReportingRX2.Visible= on; chkRADAEReportingRX2.Enabled= on; }
+            if (lblRadaeRxLevelRX2 != null)   lblRadaeRxLevelRX2.Visible   = on;
+            if (udRadaeRxLevelRX2 != null)   { udRadaeRxLevelRX2.Visible   = on; udRadaeRxLevelRX2.Enabled   = on; }
+            if (lblRadaeReporterMsgRX2 != null) lblRadaeReporterMsgRX2.Visible = on;
+            if (txtRadaeReporterMsgRX2 != null){ txtRadaeReporterMsgRX2.Visible = on; txtRadaeReporterMsgRX2.Enabled = on; }
+
+            // Push to the console-side mirrors (chkRADERX2 / chkREPRRX2
+            // / chkVISRX2 on panelRX2Display).
+            try
+            {
+                if (console != null)
+                    console.SetRx2RadeControlVisible(on);
+            }
+            catch { }
+
+            // Push to the FreeDVReporter form's Track RX2 button.  When
+            // turning OFF, the form also drops _trackTarget back to RX1
+            // (or Off if neither is enabled) so a stale "tracking RX2"
+            // state does not survive.
+            try
+            {
+                Thetis.FreeDVReporter.FreeDVReporterManager.SetRx2RadeControlVisible(on);
+            }
+            catch { }
+        }
+
         private void chkRADAERX2_CheckedChanged(object sender, EventArgs e)
         {
             int active = chkRADAERX2.Checked ? 1 : 0;
@@ -22625,7 +22820,7 @@ namespace Thetis
                         double f = console.VFOBFreq;
                         DSPMode want;
                         if      (f >= 5.0 && f < 5.5) want = DSPMode.DIGU;
-                        else if (f < 12.0)            want = DSPMode.DIGL;
+                        else if (f < 10.0)            want = DSPMode.DIGL;
                         else                          want = DSPMode.DIGU;
                         if (console.RX2DSPMode != want) console.RX2DSPMode = want;
                     }
@@ -22640,6 +22835,11 @@ namespace Thetis
                     console.chkRADERX2Mirror.Checked != chkRADAERX2.Checked)
                     console.chkRADERX2Mirror.Checked = chkRADAERX2.Checked;
             }
+            catch { }
+
+            // Notify Meters/Gadgets so RX2 containers with "Hide if RADE
+            // not enabled" re-evaluate their visibility.
+            try { if (console != null) console.NotifyRadaeEnabledChanged(2, chkRADAERX2.Checked); }
             catch { }
         }
 
@@ -25578,6 +25778,7 @@ namespace Thetis
             radContainer_rx2_data.Enabled = bEnableControls;
 
             chkContainer_hidewhennotused.Enabled = bEnableControls;
+            chkContainer_hideRADEnotenabled.Enabled = bEnableControls;
 
             if (!bEnableControls) txtContainerNotes.Text = "";
             if (!bEnableControls) comboContainerSelect.Text = "";
@@ -25740,6 +25941,7 @@ namespace Thetis
             chkLockContainer_CheckedChanged(this, EventArgs.Empty); // force it
 
             chkContainer_hidewhennotused.Checked = MeterManager.ContainerHidesWhenRXNotUsed(cci.ID); //needs to be before the rx2/rx1 data radios below
+            chkContainer_hideRADEnotenabled.Checked = MeterManager.ContainerHidesWhenRADENotEnabled(cci.ID);
 
             int rx = MeterManager.GetContainerRX(cci.ID);
             switch (rx)
@@ -35544,6 +35746,16 @@ namespace Thetis
             if (cci != null)
             {
                 MeterManager.ContainerHidesWhenRXNotUsed(cci.ID, chkContainer_hidewhennotused.Checked);
+            }
+        }
+
+        private void chkContainer_hideRADEnotenabled_CheckedChanged(object sender, EventArgs e)
+        {
+            if (initializing) return;
+            clsContainerComboboxItem cci = (clsContainerComboboxItem)comboContainerSelect.SelectedItem;
+            if (cci != null)
+            {
+                MeterManager.ContainerHidesWhenRADENotEnabled(cci.ID, chkContainer_hideRADEnotenabled.Checked);
             }
         }
 

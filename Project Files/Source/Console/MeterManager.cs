@@ -2878,6 +2878,61 @@ namespace Thetis
             ContainerVisibleHandlers?.Invoke(id, visible);
         }
 
+        /* Unified visibility gate for a container.  Returns true if the
+         * container should be hidden by either:
+         *   - "Hide if RX not in use"  (only RX2 can be 'not in use'), or
+         *   - "Hide if RADE not enabled" (per the container's own RX).
+         * RADE-enabled state is read live from the console: RX1 uses
+         * RadaeRx1Enabled, RX2 uses RadaeRx2Enabled. */
+        private static bool containerShouldHide(ucMeter uc)
+        {
+            if (_console == null || uc == null) return false;
+
+            if (uc.RX == 2 && !_console.RX2Enabled && uc.ContainerHidesWhenRXNotUsed)
+                return true;
+
+            if (uc.ContainerHidesWhenRADENotEnabled)
+            {
+                bool radeOn = (uc.RX == 2) ? _console.RadaeRx2Enabled : _console.RadaeRx1Enabled;
+                if (!radeOn) return true;
+            }
+            return false;
+        }
+
+        /* Show or hide a container according to containerShouldHide.
+         * Used by the two "Hide if ..." setters and by the RADE-enable
+         * change handler. */
+        private static void applyContainerVisibilityGates(ucMeter uc)
+        {
+            if (uc == null) return;
+            if (_lstMeterDisplayForms == null || !_lstMeterDisplayForms.ContainsKey(uc.ID)) return;
+
+            bool hide = containerShouldHide(uc);
+            if (hide)
+            {
+                if (uc.Floating)
+                    _lstMeterDisplayForms[uc.ID].Hide();
+                else
+                {
+                    uc.Hide();
+                    uc.Repaint();
+                }
+                containerVisible(uc.ID, false);
+            }
+            else
+            {
+                if (uc.MeterEnabled && !uc.Visible & !uc.HiddenByMacro)
+                {
+                    if (uc.Floating)
+                        setMeterFloating(uc, _lstMeterDisplayForms[uc.ID]);
+                    else
+                        returnMeterFromFloating(uc, _lstMeterDisplayForms[uc.ID]);
+
+                    containerVisible(uc.ID, true);
+                }
+            }
+        }
+
         public static void ContainerHidesWhenRXNotUsed(string sId, bool hides)
         {
             lock (_metersLock)
@@ -2886,39 +2941,33 @@ namespace Thetis
                 if (_lstUCMeters == null || !_lstUCMeters.ContainsKey(sId)) return;
                 if (_lstMeterDisplayForms == null || !_lstMeterDisplayForms.ContainsKey(sId)) return;
 
-                clsMeter m = _meters[sId];
                 ucMeter uc = _lstUCMeters[sId];
                 frmMeterDisplay f = _lstMeterDisplayForms[uc.ID];
 
                 uc.ContainerHidesWhenRXNotUsed = hides;
                 f.ContainerHidesWhenRXNotUsed = hides;
 
-                //hide if this is for an rx that is not in use, otherwise show it
-                //atm this is only a consideration for rx2
-                bool hide = m.RX == 2 && (!m.RX2Enabled && uc.ContainerHidesWhenRXNotUsed);
-                if (hide)
-                {
-                    if (uc.Floating)
-                        _lstMeterDisplayForms[uc.ID].Hide();
-                    else
-                    {
-                        uc.Hide();
-                        uc.Repaint();
-                    }
-                    containerVisible(uc.ID, false);
-                }
-                else
-                {
-                    if (uc.MeterEnabled && !uc.Visible & !uc.HiddenByMacro)
-                    {
-                        if (uc.Floating)
-                            setMeterFloating(uc, _lstMeterDisplayForms[uc.ID]);
-                        else
-                            returnMeterFromFloating(uc, _lstMeterDisplayForms[uc.ID]);
+                // Re-evaluate visibility under both gates.
+                applyContainerVisibilityGates(uc);
+            }
+        }
 
-                        containerVisible(uc.ID, true);
-                    }
-                }
+        public static void ContainerHidesWhenRADENotEnabled(string sId, bool hides)
+        {
+            lock (_metersLock)
+            {
+                if (_meters == null || !_meters.ContainsKey(sId)) return;
+                if (_lstUCMeters == null || !_lstUCMeters.ContainsKey(sId)) return;
+                if (_lstMeterDisplayForms == null || !_lstMeterDisplayForms.ContainsKey(sId)) return;
+
+                ucMeter uc = _lstUCMeters[sId];
+                frmMeterDisplay f = _lstMeterDisplayForms[uc.ID];
+
+                uc.ContainerHidesWhenRADENotEnabled = hides;
+                f.ContainerHidesWhenRADENotEnabled = hides;
+
+                // Re-evaluate visibility under both gates.
+                applyContainerVisibilityGates(uc);
             }
         }
         public static void LockContainer(string sId, bool locked)
@@ -3218,6 +3267,17 @@ namespace Thetis
 
                 ucMeter uc = _lstUCMeters[sId];
                 return uc.ContainerHidesWhenRXNotUsed;
+            }
+        }
+        public static bool ContainerHidesWhenRADENotEnabled(string sId)
+        {
+            lock (_metersLock)
+            {
+                if (_lstUCMeters == null) return false;
+                if (!_lstUCMeters.ContainsKey(sId)) return false;
+
+                ucMeter uc = _lstUCMeters[sId];
+                return uc.ContainerHidesWhenRADENotEnabled;
             }
         }
         public static bool ContainerIsHidden(string sId)
@@ -3693,6 +3753,7 @@ namespace Thetis
 
             _console.RX2EnabledChangedHandlers += OnRX2EnabledChanged;
             _console.RX2EnabledPreChangedHandlers += OnRX2EnabledPreChanged;
+            _console.RadaeEnabledChangedHandlers += OnRadaeEnabledChanged;
 
             _console.EQChangedHandlers += OnEQChanged;
             _console.LevelerChangedHandlers += OnLevelerChanged;
@@ -3804,6 +3865,7 @@ namespace Thetis
 
             _console.RX2EnabledChangedHandlers -= OnRX2EnabledChanged;
             _console.RX2EnabledPreChangedHandlers -= OnRX2EnabledPreChanged;
+            _console.RadaeEnabledChangedHandlers -= OnRadaeEnabledChanged;
 
             _console.EQChangedHandlers -= OnEQChanged;
             _console.LevelerChangedHandlers -= OnLevelerChanged;
@@ -6015,8 +6077,8 @@ namespace Thetis
             {
                 containerVisible(m.ID, false);
             }
-            if (m.RX == 2 && (!_console.RX2Enabled && m.ContainerHidesWhenRXNotUsed))
-            {                
+            if (containerShouldHide(m))
+            {
                 return;
             }
 
@@ -6028,7 +6090,7 @@ namespace Thetis
         {
             if (_console == null) return;
 
-            if (m.RX == 2 && (!_console.RX2Enabled && m.ContainerHidesWhenRXNotUsed)) return;
+            if (containerShouldHide(m)) return;
 
             m.Hide();
             m.Repaint();
@@ -6048,6 +6110,23 @@ namespace Thetis
             frm.Show();
             //Common.FadeIn(frm, 100);
             containerVisible(frm.ID, true);
+        }
+        /* RADE enable toggled for an RX.  Re-evaluate the visibility of
+         * every container bound to that RX so "Hide if RADE not enabled"
+         * applies live.  rx is 1 or 2. */
+        private static void OnRadaeEnabledChanged(int rx, bool enabled)
+        {
+            lock (_metersLock)
+            {
+                if (_lstUCMeters == null) return;
+                foreach (KeyValuePair<string, ucMeter> kvp in _lstUCMeters)
+                {
+                    ucMeter ucM = kvp.Value;
+                    if (ucM.RX != rx) continue;
+                    if (_lstMeterDisplayForms == null || !_lstMeterDisplayForms.ContainsKey(ucM.ID)) continue;
+                    applyContainerVisibilityGates(ucM);
+                }
+            }
         }
         private static void OnRX2EnabledChanged(bool enabled)
         {

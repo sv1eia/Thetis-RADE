@@ -98,6 +98,7 @@ namespace Thetis
         private bool _hidden_by_macro;
         private bool _container_minimises;
         private bool _container_hides_when_rx_not_used;
+        private bool _container_hides_when_rade_not_enabled;
         private string _notes;
         private int _height;
         private bool _autoHeight;
@@ -130,6 +131,7 @@ namespace Thetis
             _hidden_by_macro = false;
             _container_minimises = true;
             _container_hides_when_rx_not_used = true;
+            _container_hides_when_rade_not_enabled = false;
             _notes = "";
 
             _tool_tip = new ToolTip();
@@ -881,6 +883,15 @@ namespace Thetis
             }
         }
         [Browsable(false), EditorBrowsable(EditorBrowsableState.Never)]
+        public bool ContainerHidesWhenRADENotEnabled
+        {
+            get { return _container_hides_when_rade_not_enabled; }
+            set
+            {
+                _container_hides_when_rade_not_enabled = value;
+            }
+        }
+        [Browsable(false), EditorBrowsable(EditorBrowsableState.Never)]
         public string Notes
         {
             get { return _notes; }
@@ -1034,7 +1045,8 @@ namespace Thetis
                 ShowOnTX.ToString().ToLower() + "|" +
                 Locked.ToString().ToLower() + "|" +
                 ContainerHidesWhenRXNotUsed.ToString().ToLower() + "|" +
-                HiddenByMacro.ToString().ToLower();
+                HiddenByMacro.ToString().ToLower() + "|" +
+                ContainerHidesWhenRADENotEnabled.ToString().ToLower();
         }
         public bool TryParse(string str)
         {
@@ -1052,6 +1064,7 @@ namespace Thetis
             bool locked = false;
             bool hides_when_not_used = true;
             bool hidden_by_macro = false;
+            bool hides_when_rade_not_enabled = false;
 
             if (str != "")
             {
@@ -1152,6 +1165,12 @@ namespace Thetis
                     {
                         bOk = bool.TryParse(tmp[22], out hidden_by_macro);
                         if (bOk) HiddenByMacro = hidden_by_macro;
+                    }
+
+                    if (bOk && tmp.Length > 23) // "Hide if RADE not enabled"
+                    {
+                        bOk = bool.TryParse(tmp[23], out hides_when_rade_not_enabled);
+                        if (bOk) ContainerHidesWhenRADENotEnabled = hides_when_rade_not_enabled;
                     }
                 }
             }

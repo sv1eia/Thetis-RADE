@@ -1256,6 +1256,41 @@ namespace Thetis
         public System.Windows.Forms.CheckBoxTS chkRADERX2Mirror { get { return chkRADERX2; } }
         public System.Windows.Forms.CheckBoxTS chkREPRRX2Mirror { get { return chkREPRRX2; } }
         public System.Windows.Forms.CheckBoxTS chkVISRX2Mirror  { get { return chkVISRX2;  } }
+
+        /* Master experimental switch for the RX1 RADE feature, driven
+         * by chkRX1RadeControl on Setup -> DSP -> RADE.  When OFF the
+         * three console-side RX1 mirrors (RADE / REPR / VIS on the main
+         * face) are hidden and disabled. */
+        public void SetRx1RadeControlVisible(bool visible)
+        {
+            try
+            {
+                if (chkRADE != null) { chkRADE.Visible = visible; chkRADE.Enabled = visible; }
+                if (chkREPR != null) { chkREPR.Visible = visible; chkREPR.Enabled = visible; }
+                if (chkVIS  != null) { chkVIS.Visible  = visible; chkVIS.Enabled  = visible; }
+            }
+            catch { }
+        }
+
+        /* Master experimental switch for the RX2 RADE feature, driven
+         * by chkRX2RadeControl on Setup -> DSP -> RADE.  When OFF the
+         * three console-side RX2 mirrors (RADE / REPR / VIS) are hidden
+         * and disabled; when ON they re-appear with whatever state the
+         * Setup-side child checkboxes carry.  No teardown of decoder /
+         * reporter state is done here -- the Setup handler already
+         * force-unchecks the children before calling, so the existing
+         * RX2 chkRADAERX2 / chkRADAEReportingRX2 handlers run their
+         * normal teardown path. */
+        public void SetRx2RadeControlVisible(bool visible)
+        {
+            try
+            {
+                if (chkRADERX2 != null) { chkRADERX2.Visible = visible; chkRADERX2.Enabled = visible; }
+                if (chkREPRRX2 != null) { chkREPRRX2.Visible = visible; chkREPRRX2.Enabled = visible; }
+                if (chkVISRX2  != null) { chkVISRX2.Visible  = visible; chkVISRX2.Enabled  = visible; }
+            }
+            catch { }
+        }
         // Console-face VAC1 TX/RX Gain trackbar mirrors.  Enabled
         // state is independent from the Setup-side spinners (the
         // value-mirror only flows through the VAC*Gain property
@@ -37624,6 +37659,16 @@ namespace Thetis
             get { return RadaeRx1Enabled || RadaeRx2Enabled; }
         }
 
+        /* Fired by the Setup RADE enable handlers (chkRADAE / chkRADAERX2)
+         * after the C-side enable flag flips, so listeners such as the
+         * Meters/Gadgets manager can re-evaluate per-RX container
+         * visibility ("Hide if RADE not enabled").  rx is 1 or 2. */
+        public void NotifyRadaeEnabledChanged(int rx, bool enabled)
+        {
+            try { RadaeEnabledChangedHandlers?.Invoke(rx, enabled); }
+            catch { }
+        }
+
         private void ckQuickRec_CheckedChanged(object sender, System.EventArgs e)
         {
             //if (ckQuickRec.Checked)
@@ -45733,6 +45778,7 @@ namespace Thetis
         public delegate void ThetisFocusChanged(bool focus);
         public delegate void RX2EnabledChanged(bool enabled);
         public delegate void RX2EnabledPreChanged(bool enabled); // before the change
+        public delegate void RadaeEnabledChanged(int rx, bool enabled); // rx: 1 or 2
         public delegate void SpotClicked(string callsign, long frequencyHz, int rx = -1, bool vfoB = false);
         public delegate void MultiRxChanged(int rx, bool newState, bool oldState, double vfoASubFrequency, Band band, bool rx2Enabled);
 
@@ -45897,6 +45943,7 @@ namespace Thetis
         public ThetisFocusChanged ThetisFocusChangedHandlers;
         public RX2EnabledChanged RX2EnabledChangedHandlers;
         public RX2EnabledPreChanged RX2EnabledPreChangedHandlers;
+        public RadaeEnabledChanged RadaeEnabledChangedHandlers;
         public SpotClicked SpotClickedHandlers;
         public MultiRxChanged MultiRxHandlers;
 

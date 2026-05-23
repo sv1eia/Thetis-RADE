@@ -1879,6 +1879,8 @@ namespace Thetis
             this.chkRADAEReporter = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReporting = new System.Windows.Forms.CheckBoxTS();
             // Dual-RX RADE additions -- RX2 column mirrors of the RX1 controls.
+            this.chkRX1RadeControl = new System.Windows.Forms.CheckBoxTS();
+            this.chkRX2RadeControl = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAERX2 = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAELoopbackRX2 = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReporterRX2 = new System.Windows.Forms.CheckBoxTS();
@@ -3465,6 +3467,7 @@ namespace Thetis
             this.btnContainer_load = new System.Windows.Forms.ButtonTS();
             this.chkContainer_hidewhennotused = new System.Windows.Forms.CheckBoxTS();
             this.chkContainerMinimises = new System.Windows.Forms.CheckBoxTS();
+            this.chkContainer_hideRADEnotenabled = new System.Windows.Forms.CheckBoxTS();
             this.btnContainer_save = new System.Windows.Forms.ButtonTS();
             this.lblMMContainerNotes = new System.Windows.Forms.LabelTS();
             this.radContainer_rx2_data = new System.Windows.Forms.RadioButtonTS();
@@ -30941,7 +30944,7 @@ namespace Thetis
             //
             this.chkRADAE.AutoSize = true;
             this.chkRADAE.Image = null;
-            this.chkRADAE.Location = new System.Drawing.Point(10, 10);
+            this.chkRADAE.Location = new System.Drawing.Point(10, 33);
             this.chkRADAE.Name = "chkRADAE";
             this.chkRADAE.Size = new System.Drawing.Size(140, 17);
             this.chkRADAE.TabIndex = 0;
@@ -30954,7 +30957,7 @@ namespace Thetis
             //
             this.chkRADAELoopback.AutoSize = true;
             this.chkRADAELoopback.Image = null;
-            this.chkRADAELoopback.Location = new System.Drawing.Point(10, 33);
+            this.chkRADAELoopback.Location = new System.Drawing.Point(10, 56);
             this.chkRADAELoopback.Name = "chkRADAELoopback";
             this.chkRADAELoopback.Size = new System.Drawing.Size(210, 17);
             this.chkRADAELoopback.TabIndex = 1;
@@ -30966,14 +30969,14 @@ namespace Thetis
             // lblRadaeMicLevel
             //
             this.lblRadaeMicLevel.AutoSize = true;
-            this.lblRadaeMicLevel.Location = new System.Drawing.Point(10, 69);
+            this.lblRadaeMicLevel.Location = new System.Drawing.Point(10, 115);
             this.lblRadaeMicLevel.Name = "lblRadaeMicLevel";
             this.lblRadaeMicLevel.TabIndex = 2;
             this.lblRadaeMicLevel.Text = "RADE Mic level (dB):";
             //
             // udRadaeMicLevel
             //
-            this.udRadaeMicLevel.Location = new System.Drawing.Point(135, 66);
+            this.udRadaeMicLevel.Location = new System.Drawing.Point(135, 112);
             this.udRadaeMicLevel.Maximum = new decimal(new int[] { 40, 0, 0, 0 });
             this.udRadaeMicLevel.Minimum = new decimal(new int[] { 40, 0, 0, System.Int32.MinValue });
             this.udRadaeMicLevel.Increment = new decimal(new int[] { 1, 0, 0, 0 });
@@ -31010,7 +31013,7 @@ namespace Thetis
             // chkRadaeMicRNNoise  -- RNNoise denoiser, 48 kHz only.
             //
             this.chkRadaeMicRNNoise.AutoSize = true;
-            this.chkRadaeMicRNNoise.Location = new System.Drawing.Point(10, 122);
+            this.chkRadaeMicRNNoise.Location = new System.Drawing.Point(10, 145);
             this.chkRadaeMicRNNoise.Name = "chkRadaeMicRNNoise";
             this.chkRadaeMicRNNoise.TabIndex = 6;
             this.chkRadaeMicRNNoise.Text = "RADE Mic RNNoise enable";
@@ -31021,7 +31024,7 @@ namespace Thetis
             // chkRadaeMicAGC  -- LUFS-targeted AGC + peak limiter.
             //
             this.chkRadaeMicAGC.AutoSize = true;
-            this.chkRadaeMicAGC.Location = new System.Drawing.Point(10, 145);
+            this.chkRadaeMicAGC.Location = new System.Drawing.Point(10, 168);
             this.chkRadaeMicAGC.Name = "chkRadaeMicAGC";
             this.chkRadaeMicAGC.TabIndex = 7;
             this.chkRadaeMicAGC.Text = "RADE Mic AGC enable";
@@ -31032,14 +31035,14 @@ namespace Thetis
             // lblRadaeMicAGCTarget
             //
             this.lblRadaeMicAGCTarget.AutoSize = true;
-            this.lblRadaeMicAGCTarget.Location = new System.Drawing.Point(180, 147);
+            this.lblRadaeMicAGCTarget.Location = new System.Drawing.Point(180, 170);
             this.lblRadaeMicAGCTarget.Name = "lblRadaeMicAGCTarget";
             this.lblRadaeMicAGCTarget.TabIndex = 8;
             this.lblRadaeMicAGCTarget.Text = "LUFS:";
             //
             // udRadaeMicAGCTarget
             //
-            this.udRadaeMicAGCTarget.Location = new System.Drawing.Point(220, 144);
+            this.udRadaeMicAGCTarget.Location = new System.Drawing.Point(220, 167);
             this.udRadaeMicAGCTarget.Maximum = new decimal(new int[] { 0, 0, 0, 0 });
             this.udRadaeMicAGCTarget.Minimum = new decimal(new int[] { 30, 0, 0, System.Int32.MinValue });
             this.udRadaeMicAGCTarget.Increment = new decimal(new int[] { 1, 0, 0, 0 });
@@ -31054,7 +31057,7 @@ namespace Thetis
             // chkRadaeMicEQ
             //
             this.chkRadaeMicEQ.AutoSize = true;
-            this.chkRadaeMicEQ.Location = new System.Drawing.Point(10, 168);
+            this.chkRadaeMicEQ.Location = new System.Drawing.Point(10, 191);
             this.chkRadaeMicEQ.Name = "chkRadaeMicEQ";
             this.chkRadaeMicEQ.TabIndex = 10;
             this.chkRadaeMicEQ.Text = "RADE Mic EQ enable";
@@ -31065,14 +31068,14 @@ namespace Thetis
             // lblRadaeMicEQBass
             //
             this.lblRadaeMicEQBass.AutoSize = true;
-            this.lblRadaeMicEQBass.Location = new System.Drawing.Point(20, 194);
+            this.lblRadaeMicEQBass.Location = new System.Drawing.Point(20, 217);
             this.lblRadaeMicEQBass.Name = "lblRadaeMicEQBass";
             this.lblRadaeMicEQBass.TabIndex = 11;
             this.lblRadaeMicEQBass.Text = "Bass (Hz, dB):";
             //
             // udRadaeMicEQBassFreq
             //
-            this.udRadaeMicEQBassFreq.Location = new System.Drawing.Point(120, 191);
+            this.udRadaeMicEQBassFreq.Location = new System.Drawing.Point(120, 214);
             this.udRadaeMicEQBassFreq.Maximum = new decimal(new int[] { 500, 0, 0, 0 });
             this.udRadaeMicEQBassFreq.Minimum = new decimal(new int[] { 50, 0, 0, 0 });
             this.udRadaeMicEQBassFreq.Increment = new decimal(new int[] { 10, 0, 0, 0 });
@@ -31086,7 +31089,7 @@ namespace Thetis
             //
             // udRadaeMicEQBassGain
             //
-            this.udRadaeMicEQBassGain.Location = new System.Drawing.Point(190, 191);
+            this.udRadaeMicEQBassGain.Location = new System.Drawing.Point(190, 214);
             this.udRadaeMicEQBassGain.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
             this.udRadaeMicEQBassGain.Minimum = new decimal(new int[] { 20, 0, 0, System.Int32.MinValue });
             this.udRadaeMicEQBassGain.Increment = new decimal(new int[] { 1, 0, 0, 0x10000 });   // 0.1 dB
@@ -31101,14 +31104,14 @@ namespace Thetis
             // lblRadaeMicEQMid
             //
             this.lblRadaeMicEQMid.AutoSize = true;
-            this.lblRadaeMicEQMid.Location = new System.Drawing.Point(20, 217);
+            this.lblRadaeMicEQMid.Location = new System.Drawing.Point(20, 240);
             this.lblRadaeMicEQMid.Name = "lblRadaeMicEQMid";
             this.lblRadaeMicEQMid.TabIndex = 14;
             this.lblRadaeMicEQMid.Text = "Mid (Hz, dB, Q):";
             //
             // udRadaeMicEQMidFreq
             //
-            this.udRadaeMicEQMidFreq.Location = new System.Drawing.Point(120, 214);
+            this.udRadaeMicEQMidFreq.Location = new System.Drawing.Point(120, 237);
             this.udRadaeMicEQMidFreq.Maximum = new decimal(new int[] { 4000, 0, 0, 0 });
             this.udRadaeMicEQMidFreq.Minimum = new decimal(new int[] { 200, 0, 0, 0 });
             this.udRadaeMicEQMidFreq.Increment = new decimal(new int[] { 50, 0, 0, 0 });
@@ -31122,7 +31125,7 @@ namespace Thetis
             //
             // udRadaeMicEQMidGain
             //
-            this.udRadaeMicEQMidGain.Location = new System.Drawing.Point(190, 214);
+            this.udRadaeMicEQMidGain.Location = new System.Drawing.Point(190, 237);
             this.udRadaeMicEQMidGain.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
             this.udRadaeMicEQMidGain.Minimum = new decimal(new int[] { 20, 0, 0, System.Int32.MinValue });
             this.udRadaeMicEQMidGain.Increment = new decimal(new int[] { 1, 0, 0, 0x10000 });   // 0.1 dB
@@ -31136,7 +31139,7 @@ namespace Thetis
             //
             // udRadaeMicEQMidQ
             //
-            this.udRadaeMicEQMidQ.Location = new System.Drawing.Point(250, 214);
+            this.udRadaeMicEQMidQ.Location = new System.Drawing.Point(250, 237);
             this.udRadaeMicEQMidQ.Maximum = new decimal(new int[] { 50, 0, 0, 0x10000 });    // 5.0
             this.udRadaeMicEQMidQ.Minimum = new decimal(new int[] { 1, 0, 0, 0x10000 });     // 0.1
             this.udRadaeMicEQMidQ.Increment = new decimal(new int[] { 1, 0, 0, 0x10000 });   // 0.1
@@ -31151,14 +31154,14 @@ namespace Thetis
             // lblRadaeMicEQTreble
             //
             this.lblRadaeMicEQTreble.AutoSize = true;
-            this.lblRadaeMicEQTreble.Location = new System.Drawing.Point(20, 240);
+            this.lblRadaeMicEQTreble.Location = new System.Drawing.Point(20, 263);
             this.lblRadaeMicEQTreble.Name = "lblRadaeMicEQTreble";
             this.lblRadaeMicEQTreble.TabIndex = 18;
             this.lblRadaeMicEQTreble.Text = "Treble (Hz, dB):";
             //
             // udRadaeMicEQTrebleFreq
             //
-            this.udRadaeMicEQTrebleFreq.Location = new System.Drawing.Point(120, 237);
+            this.udRadaeMicEQTrebleFreq.Location = new System.Drawing.Point(120, 260);
             this.udRadaeMicEQTrebleFreq.Maximum = new decimal(new int[] { 8000, 0, 0, 0 });
             this.udRadaeMicEQTrebleFreq.Minimum = new decimal(new int[] { 1000, 0, 0, 0 });
             this.udRadaeMicEQTrebleFreq.Increment = new decimal(new int[] { 100, 0, 0, 0 });
@@ -31172,7 +31175,7 @@ namespace Thetis
             //
             // udRadaeMicEQTrebleGain
             //
-            this.udRadaeMicEQTrebleGain.Location = new System.Drawing.Point(190, 237);
+            this.udRadaeMicEQTrebleGain.Location = new System.Drawing.Point(190, 260);
             this.udRadaeMicEQTrebleGain.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
             this.udRadaeMicEQTrebleGain.Minimum = new decimal(new int[] { 20, 0, 0, System.Int32.MinValue });
             this.udRadaeMicEQTrebleGain.Increment = new decimal(new int[] { 1, 0, 0, 0x10000 });   // 0.1 dB
@@ -31187,14 +31190,14 @@ namespace Thetis
             // lblRadaeMicEQVol
             //
             this.lblRadaeMicEQVol.AutoSize = true;
-            this.lblRadaeMicEQVol.Location = new System.Drawing.Point(20, 263);
+            this.lblRadaeMicEQVol.Location = new System.Drawing.Point(20, 286);
             this.lblRadaeMicEQVol.Name = "lblRadaeMicEQVol";
             this.lblRadaeMicEQVol.TabIndex = 21;
             this.lblRadaeMicEQVol.Text = "Vol (dB):";
             //
             // udRadaeMicEQVol
             //
-            this.udRadaeMicEQVol.Location = new System.Drawing.Point(120, 260);
+            this.udRadaeMicEQVol.Location = new System.Drawing.Point(120, 283);
             this.udRadaeMicEQVol.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
             this.udRadaeMicEQVol.Minimum = new decimal(new int[] { 20, 0, 0, System.Int32.MinValue });
             this.udRadaeMicEQVol.Increment = new decimal(new int[] { 1, 0, 0, 0 });
@@ -31210,7 +31213,7 @@ namespace Thetis
             //
             this.chkRADAEReporter.AutoSize = true;
             this.chkRADAEReporter.Image = null;
-            this.chkRADAEReporter.Location = new System.Drawing.Point(10, 295);
+            this.chkRADAEReporter.Location = new System.Drawing.Point(10, 318);
             this.chkRADAEReporter.Name = "chkRADAEReporter";
             this.chkRADAEReporter.Size = new System.Drawing.Size(180, 17);
             this.chkRADAEReporter.TabIndex = 23;
@@ -31222,7 +31225,7 @@ namespace Thetis
             // lblRadaeReporterCallsign
             //
             this.lblRadaeReporterCallsign.AutoSize = true;
-            this.lblRadaeReporterCallsign.Location = new System.Drawing.Point(10, 321);
+            this.lblRadaeReporterCallsign.Location = new System.Drawing.Point(10, 344);
             this.lblRadaeReporterCallsign.Name = "lblRadaeReporterCallsign";
             this.lblRadaeReporterCallsign.Size = new System.Drawing.Size(31, 13);
             this.lblRadaeReporterCallsign.TabIndex = 24;
@@ -31230,7 +31233,7 @@ namespace Thetis
             //
             // txtRadaeReporterCallsign
             //
-            this.txtRadaeReporterCallsign.Location = new System.Drawing.Point(45, 318);
+            this.txtRadaeReporterCallsign.Location = new System.Drawing.Point(45, 341);
             this.txtRadaeReporterCallsign.MaxLength = 16;
             this.txtRadaeReporterCallsign.Name = "txtRadaeReporterCallsign";
             this.txtRadaeReporterCallsign.Size = new System.Drawing.Size(100, 20);
@@ -31242,7 +31245,7 @@ namespace Thetis
             // lblRadaeReporterGrid
             //
             this.lblRadaeReporterGrid.AutoSize = true;
-            this.lblRadaeReporterGrid.Location = new System.Drawing.Point(160, 321);
+            this.lblRadaeReporterGrid.Location = new System.Drawing.Point(160, 344);
             this.lblRadaeReporterGrid.Name = "lblRadaeReporterGrid";
             this.lblRadaeReporterGrid.Size = new System.Drawing.Size(31, 13);
             this.lblRadaeReporterGrid.TabIndex = 26;
@@ -31250,7 +31253,7 @@ namespace Thetis
             //
             // txtRadaeReporterGrid
             //
-            this.txtRadaeReporterGrid.Location = new System.Drawing.Point(200, 318);
+            this.txtRadaeReporterGrid.Location = new System.Drawing.Point(200, 341);
             this.txtRadaeReporterGrid.MaxLength = 6;
             this.txtRadaeReporterGrid.Name = "txtRadaeReporterGrid";
             this.txtRadaeReporterGrid.Size = new System.Drawing.Size(90, 20);
@@ -31262,7 +31265,7 @@ namespace Thetis
             // lblRadaeReporterMsg
             //
             this.lblRadaeReporterMsg.AutoSize = true;
-            this.lblRadaeReporterMsg.Location = new System.Drawing.Point(10, 344);
+            this.lblRadaeReporterMsg.Location = new System.Drawing.Point(10, 367);
             this.lblRadaeReporterMsg.Name = "lblRadaeReporterMsg";
             this.lblRadaeReporterMsg.Size = new System.Drawing.Size(31, 13);
             this.lblRadaeReporterMsg.TabIndex = 28;
@@ -31270,7 +31273,7 @@ namespace Thetis
             //
             // txtRadaeReporterMsg
             //
-            this.txtRadaeReporterMsg.Location = new System.Drawing.Point(75, 341);
+            this.txtRadaeReporterMsg.Location = new System.Drawing.Point(75, 364);
             this.txtRadaeReporterMsg.MaxLength = 80;
             this.txtRadaeReporterMsg.Name = "txtRadaeReporterMsg";
             this.txtRadaeReporterMsg.Size = new System.Drawing.Size(245, 20);
@@ -31288,7 +31291,7 @@ namespace Thetis
             this.grpRadaeDiagnostics.Controls.Add(this.chkRadaeBypassRmatch);
             this.grpRadaeDiagnostics.Controls.Add(this.chkRadaeBypassMicDsp);
             this.grpRadaeDiagnostics.Controls.Add(this.chkRadaeBypassAll);
-            this.grpRadaeDiagnostics.Location = new System.Drawing.Point(380, 10);
+            this.grpRadaeDiagnostics.Location = new System.Drawing.Point(380, 33);
             this.grpRadaeDiagnostics.Name = "grpRadaeDiagnostics";
             this.grpRadaeDiagnostics.Size = new System.Drawing.Size(330, 155);
             this.grpRadaeDiagnostics.TabIndex = 31;
@@ -31361,7 +31364,7 @@ namespace Thetis
             //
             this.chkRADAEReporting.AutoSize = true;
             this.chkRADAEReporting.Image = null;
-            this.chkRADAEReporting.Location = new System.Drawing.Point(10, 365);
+            this.chkRADAEReporting.Location = new System.Drawing.Point(10, 388);
             this.chkRADAEReporting.Name = "chkRADAEReporting";
             this.chkRADAEReporting.Size = new System.Drawing.Size(140, 17);
             this.chkRADAEReporting.TabIndex = 30;
@@ -31371,12 +31374,48 @@ namespace Thetis
             this.chkRADAEReporting.CheckedChanged += new System.EventHandler(this.chkRADAEReporting_CheckedChanged);
             //
             // Dual-RX RADE additions -- RX2 column at X=370 (mirrors RX1 at X=10).
+            // Two master switches sit on the top row above their respective columns:
+            //   chkRX1RadeControl @ (10, 10)   -- governs RX1 + TX/mic + reporter UI
+            //   chkRX2RadeControl @ (370, 10)  -- governs RX2 controls only
+            // All other RADE controls have been shifted one line down (Y+23) to
+            // make room for the master row.
+            //
+            // chkRX1RadeControl  master switch for the RX1 RADE feature.  When
+            // unchecked it force-unchecks every dependent RX1 / TX / mic /
+            // reporter control (so handlers tear down the C-side decoder, mic
+            // conditioning chain, and reporter clients), then hides and
+            // disables them.  Also hides the Track RX1 button on the FreeDV
+            // Reporter form.  Default unchecked: opt-in only.
+            //
+            this.chkRX1RadeControl.AutoSize = true;
+            this.chkRX1RadeControl.Image = null;
+            this.chkRX1RadeControl.Location = new System.Drawing.Point(10, 10);
+            this.chkRX1RadeControl.Name = "chkRX1RadeControl";
+            this.chkRX1RadeControl.Size = new System.Drawing.Size(125, 17);
+            this.chkRX1RadeControl.TabIndex = 58;
+            this.chkRX1RadeControl.Text = "RX1RADE Control";
+            this.toolTip1.SetToolTip(this.chkRX1RadeControl, "Experimental RX1 RADE decoder **CAUTION** heavy CPU usage");
+            this.chkRX1RadeControl.UseVisualStyleBackColor = true;
+            this.chkRX1RadeControl.CheckedChanged += new System.EventHandler(this.chkRX1RadeControl_CheckedChanged);
+            //
+            // chkRX2RadeControl  master switch for the RX2 RADE feature.
+            //
+            this.chkRX2RadeControl.AutoSize = true;
+            this.chkRX2RadeControl.Image = null;
+            this.chkRX2RadeControl.Location = new System.Drawing.Point(370, 10);
+            this.chkRX2RadeControl.Name = "chkRX2RadeControl";
+            this.chkRX2RadeControl.Size = new System.Drawing.Size(125, 17);
+            this.chkRX2RadeControl.TabIndex = 59;
+            this.chkRX2RadeControl.Text = "RX2RADE Control";
+            this.toolTip1.SetToolTip(this.chkRX2RadeControl, "Experimental RX2 RADE decoder **CAUTION** heavy CPU usage");
+            this.chkRX2RadeControl.UseVisualStyleBackColor = true;
+            this.chkRX2RadeControl.CheckedChanged += new System.EventHandler(this.chkRX2RadeControl_CheckedChanged);
             //
             // chkRADAERX2
             //
             this.chkRADAERX2.AutoSize = true;
             this.chkRADAERX2.Image = null;
-            this.chkRADAERX2.Location = new System.Drawing.Point(370, 10);
+            this.chkRADAERX2.Location = new System.Drawing.Point(370, 33);
             this.chkRADAERX2.Name = "chkRADAERX2";
             this.chkRADAERX2.Size = new System.Drawing.Size(140, 17);
             this.chkRADAERX2.TabIndex = 60;
@@ -31389,7 +31428,7 @@ namespace Thetis
             //
             this.chkRADAELoopbackRX2.AutoSize = true;
             this.chkRADAELoopbackRX2.Image = null;
-            this.chkRADAELoopbackRX2.Location = new System.Drawing.Point(370, 33);
+            this.chkRADAELoopbackRX2.Location = new System.Drawing.Point(370, 56);
             this.chkRADAELoopbackRX2.Name = "chkRADAELoopbackRX2";
             this.chkRADAELoopbackRX2.Size = new System.Drawing.Size(210, 17);
             this.chkRADAELoopbackRX2.TabIndex = 61;
@@ -31424,7 +31463,7 @@ namespace Thetis
             //
             this.chkRADAEReporterRX2.AutoSize = true;
             this.chkRADAEReporterRX2.Image = null;
-            this.chkRADAEReporterRX2.Location = new System.Drawing.Point(370, 295);
+            this.chkRADAEReporterRX2.Location = new System.Drawing.Point(370, 318);
             this.chkRADAEReporterRX2.Name = "chkRADAEReporterRX2";
             this.chkRADAEReporterRX2.Size = new System.Drawing.Size(180, 17);
             this.chkRADAEReporterRX2.TabIndex = 64;
@@ -31436,14 +31475,14 @@ namespace Thetis
             // lblRadaeReporterMsgRX2
             //
             this.lblRadaeReporterMsgRX2.AutoSize = true;
-            this.lblRadaeReporterMsgRX2.Location = new System.Drawing.Point(370, 344);
+            this.lblRadaeReporterMsgRX2.Location = new System.Drawing.Point(370, 367);
             this.lblRadaeReporterMsgRX2.Name = "lblRadaeReporterMsgRX2";
             this.lblRadaeReporterMsgRX2.TabIndex = 65;
             this.lblRadaeReporterMsgRX2.Text = "RX2Msg:";
             //
             // txtRadaeReporterMsgRX2
             //
-            this.txtRadaeReporterMsgRX2.Location = new System.Drawing.Point(445, 341);
+            this.txtRadaeReporterMsgRX2.Location = new System.Drawing.Point(445, 364);
             this.txtRadaeReporterMsgRX2.MaxLength = 80;
             this.txtRadaeReporterMsgRX2.Name = "txtRadaeReporterMsgRX2";
             this.txtRadaeReporterMsgRX2.Size = new System.Drawing.Size(245, 20);
@@ -31455,7 +31494,7 @@ namespace Thetis
             //
             this.chkRADAEReportingRX2.AutoSize = true;
             this.chkRADAEReportingRX2.Image = null;
-            this.chkRADAEReportingRX2.Location = new System.Drawing.Point(370, 365);
+            this.chkRADAEReportingRX2.Location = new System.Drawing.Point(370, 388);
             this.chkRADAEReportingRX2.Name = "chkRADAEReportingRX2";
             this.chkRADAEReportingRX2.Size = new System.Drawing.Size(140, 17);
             this.chkRADAEReportingRX2.TabIndex = 67;
@@ -45593,6 +45632,8 @@ namespace Thetis
             this.tpDSPRADE.Controls.Add(this.txtRadaeReporterMsg);
             this.tpDSPRADE.Controls.Add(this.grpRadaeDiagnostics);
             // Dual-RX RADE additions.
+            this.tpDSPRADE.Controls.Add(this.chkRX1RadeControl);
+            this.tpDSPRADE.Controls.Add(this.chkRX2RadeControl);
             this.tpDSPRADE.Controls.Add(this.chkRADAERX2);
             this.tpDSPRADE.Controls.Add(this.chkRADAELoopbackRX2);
             this.tpDSPRADE.Controls.Add(this.chkRADAEReporterRX2);
@@ -56061,6 +56102,7 @@ namespace Thetis
             this.grpMultiMeterHolder.Controls.Add(this.btnContainer_load);
             this.grpMultiMeterHolder.Controls.Add(this.chkContainer_hidewhennotused);
             this.grpMultiMeterHolder.Controls.Add(this.chkContainerMinimises);
+            this.grpMultiMeterHolder.Controls.Add(this.chkContainer_hideRADEnotenabled);
             this.grpMultiMeterHolder.Controls.Add(this.btnContainer_save);
             this.grpMultiMeterHolder.Controls.Add(this.lblMMContainerNotes);
             this.grpMultiMeterHolder.Controls.Add(this.radContainer_rx2_data);
@@ -56157,6 +56199,20 @@ namespace Thetis
             this.toolTip1.SetToolTip(this.chkContainerMinimises, "Container will minimise if main window is minimised");
             this.chkContainerMinimises.UseVisualStyleBackColor = true;
             this.chkContainerMinimises.CheckedChanged += new System.EventHandler(this.chkContainerMinimises_CheckedChanged);
+            //
+            // chkContainer_hideRADEnotenabled
+            //
+            this.chkContainer_hideRADEnotenabled.AutoSize = true;
+            this.chkContainer_hideRADEnotenabled.Image = null;
+            this.chkContainer_hideRADEnotenabled.Location = new System.Drawing.Point(380, 85);
+            this.chkContainer_hideRADEnotenabled.Name = "chkContainer_hideRADEnotenabled";
+            this.chkContainer_hideRADEnotenabled.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            this.chkContainer_hideRADEnotenabled.Size = new System.Drawing.Size(74, 30);
+            this.chkContainer_hideRADEnotenabled.TabIndex = 119;
+            this.chkContainer_hideRADEnotenabled.Text = "Hide if RADE\r\nnot enabled";
+            this.toolTip1.SetToolTip(this.chkContainer_hideRADEnotenabled, "Hide this container if RADE is not enabled for the RX it belongs to");
+            this.chkContainer_hideRADEnotenabled.UseVisualStyleBackColor = true;
+            this.chkContainer_hideRADEnotenabled.CheckedChanged += new System.EventHandler(this.chkContainer_hideRADEnotenabled_CheckedChanged);
             // 
             // btnContainer_save
             // 
@@ -77152,6 +77208,8 @@ namespace Thetis
         private CheckBoxTS chkRADAEReporter;
         private CheckBoxTS chkRADAEReporting;
         // Dual-RX RADE additions -- RX2 column mirrors.
+        private CheckBoxTS chkRX1RadeControl;
+        private CheckBoxTS chkRX2RadeControl;
         private CheckBoxTS chkRADAERX2;
         private CheckBoxTS chkRADAELoopbackRX2;
         private CheckBoxTS chkRADAEReporterRX2;
@@ -78369,6 +78427,7 @@ namespace Thetis
         private RadioButtonTS radContainer_rx2_data;
         private RadioButtonTS radContainer_rx1_data;
         private CheckBoxTS chkContainer_hidewhennotused;
+        private CheckBoxTS chkContainer_hideRADEnotenabled;
         private CheckBoxTS chkPulsed_TwoTone;
         private GroupBoxTS grpPulsedTwoTone;
         private LabelTS lblTwoTonePulse_info;
