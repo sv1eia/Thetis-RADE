@@ -177,6 +177,12 @@ namespace Thetis
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeTxMicClip", CallingConvention = CallingConvention.Cdecl)]
         public static extern int GetRadaeTxMicClip();
 
+        // EOO-safe un-key handshake (PTTRADE arbiter, Option B).
+        [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeEooFlushed", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int GetRadaeEooFlushed();
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeTxSilenceHold", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeTxSilenceHold(int on);
+
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeFreqOffset", CallingConvention = CallingConvention.Cdecl)]
         public static extern float GetRadaeFreqOffset(int rx);
 

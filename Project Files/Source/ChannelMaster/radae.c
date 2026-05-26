@@ -93,6 +93,11 @@ static volatile long g_radae_loopback_enabled[RADAE_NRX] = { 0 };
 static volatile long g_radae_mox_state        = 0;
 static volatile long g_radae_drain_blocks     = 0;
 
+/* EOO-safe un-key handshake (PTTRADE arbiter, Option B). */
+static volatile long g_radae_eoo_inflight     = 0; /* EOO pushed, not yet drained out of mic_io */
+static volatile long g_radae_eoo_flushed      = 0; /* EOO + 60ms silence have left mic_io        */
+static volatile long g_radae_tx_silence_hold  = 0; /* keep gate passing (silence) while keyed     */
+
 /* Per-RX sync / SNR registers, published from the audio thread. */
 static volatile long g_radae_sync[RADAE_NRX]    = { 0 };
 static volatile long g_radae_snr_db[RADAE_NRX]  = { 0 };
@@ -717,7 +722,20 @@ PORT void RadaeNotifyEndOfOver(void)
 PORT void RadaeNotifyBeginOver(void)
 {
     _InterlockedExchange(&g_radae_box_pending, 1);
+    /* fresh over: clear any stale EOO-flush handshake (arbiter owns silence-hold) */
+    _InterlockedExchange(&g_radae_eoo_inflight, 0);
+    _InterlockedExchange(&g_radae_eoo_flushed,  0);
     OutputDebugStringA("[RADAE] MOX 0->1\n");
+}
+
+PORT int GetRadaeEooFlushed(void)
+{
+    return (int)_InterlockedAnd(&g_radae_eoo_flushed, 1);
+}
+
+PORT void SetRadaeTxSilenceHold(int on)
+{
+    _InterlockedExchange(&g_radae_tx_silence_hold, on ? 1 : 0);
 }
 
 PORT void SetRadaeLoopbackEnabled(int rx, int enable)
@@ -1067,7 +1085,12 @@ void xradae_tx(double* mic_io)
         const long lpb0 = _InterlockedAnd(&g_radae_loopback_enabled[0],       1);
         const long lpb1 = _InterlockedAnd(&g_radae_loopback_enabled[1],       1);
         const long eoo  = _InterlockedAnd(&g_radae_eoo_pending,               1);
-        if (!mox && !lpb0 && !lpb1 && !eoo)
+        const long hold = _InterlockedAnd(&g_radae_tx_silence_hold,           1);
+        /* hold keeps the gate passing so step 6 writes silence (or remaining
+         * modem samples) into mic_io for the whole keyed flush window -- the
+         * arbiter keeps the radio keyed until the EOO has flushed, and live
+         * mic must never leak on-air. */
+        if (!mox && !lpb0 && !lpb1 && !eoo && !hold)
         {
             const long drain = _InterlockedAnd(&g_radae_drain_blocks, 0xffffffff);
             if (drain <= 0) return;
@@ -1093,6 +1116,13 @@ void xradae_tx(double* mic_io)
     const int bypass_rmatch  = (int)_InterlockedAnd(&g_radae_bypass_rmatch,  1);
     const int bypass_encoder = (int)_InterlockedAnd(&g_radae_bypass_encoder, 1);
     (void)bypass_rmatch;
+
+    /* Silence-hold (PTTRADE arbiter): the radio is held keyed while the EOO
+     * flushes.  Skip live-mic ingest + speech encode (steps 2-3) so ONLY the
+     * EOO frame + trailing silence drain out -- otherwise the encoder keeps
+     * refilling the modem/outrate FIFOs from live mic, the flush never
+     * completes (no GetRadaeEooFlushed ack) and live voice would go on-air. */
+    const long tx_hold = _InterlockedAnd(&g_radae_tx_silence_hold, 1);
 
     /* 1) deswizzle + scale + publish TX mic level / clip */
     {
@@ -1137,7 +1167,7 @@ void xradae_tx(double* mic_io)
             LeaveCriticalSection(&g_radae_tx_cs);
             return;
         }
-        if (n_dsp > 0)
+        if (n_dsp > 0 && !tx_hold)
         {
             int n16 = 0;
             xresampleFV(g_tx_in_mono, g_tx_speech_16k, n_dsp,
@@ -1149,8 +1179,9 @@ void xradae_tx(double* mic_io)
         }
     }
 
-    /* 3) LPCNet -> rade_tx */
-    while (g_tx_speech_fifo_n >= LPCNET_FRAME_SIZE)
+    /* 3) LPCNet -> rade_tx  (skipped while silence-hold: no new speech frames
+     *    so the modem FIFO only carries the EOO and can drain to empty) */
+    while (!tx_hold && g_tx_speech_fifo_n >= LPCNET_FRAME_SIZE)
     {
         float frame_f[LPCNET_FRAME_SIZE];
         opus_int16 frame_i16[LPCNET_FRAME_SIZE];
@@ -1216,6 +1247,12 @@ void xradae_tx(double* mic_io)
             if (g_radae_cs_inited) LeaveCriticalSection(&g_radae_cs);
         }
         int n_eoo = rade_tx_eoo(g_rade[0], g_rade_tx_eoo_out);
+        {
+            char log[160];
+            sprintf_s(log, sizeof(log), "[RADAE] EOO emit: call='%s' n_eoo=%d\n",
+                      g_tx_own_callsign, n_eoo);
+            OutputDebugStringA(log);
+        }
         int j;
         if (n_eoo > 0)
         {
@@ -1232,6 +1269,9 @@ void xradae_tx(double* mic_io)
                             zeros, 480,
                             &g_tx_modem_ovrun_count, "tx.modem_fifo");
         }
+        /* mark EOO in-flight for the flushed-out-of-mic_io ack (step 6 tail) */
+        _InterlockedExchange(&g_radae_eoo_inflight, 1);
+        _InterlockedExchange(&g_radae_eoo_flushed,  0);
     }
 
     /* 5) ENCODER OUTPUT RESAMPLER: 8 k modem -> outrate */
@@ -1328,6 +1368,17 @@ void xradae_tx(double* mic_io)
                 mic_io[2 * i + 1] = 0.0;
             }
         }
+    }
+
+    /* EOO-flushed ack: modem fifo empty and only a sub-block of trailing
+     * silence left in the outrate fifo => the EOO + 60ms silence have left
+     * mic_io.  The arbiter polls this via GetRadaeEooFlushed(). */
+    if (_InterlockedAnd(&g_radae_eoo_inflight, 1) &&
+        g_tx_modem_fifo_n == 0 && g_tx_outrate_fifo_n < outsize)
+    {
+        _InterlockedExchange(&g_radae_eoo_flushed,  1);
+        _InterlockedExchange(&g_radae_eoo_inflight, 0);
+        OutputDebugStringA("[RADAE] EOO flushed out of mic_io\n");
     }
 
     LeaveCriticalSection(&g_radae_tx_cs);

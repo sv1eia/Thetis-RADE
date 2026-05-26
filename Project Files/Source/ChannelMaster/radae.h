@@ -81,6 +81,12 @@ PORT void  SetRadaeFreqOffset(int rx, float hz);
 PORT void  RadaeNotifyEndOfOver(void);
 PORT void  RadaeNotifyBeginOver(void);
 
+/* EOO-safe un-key handshake (PTTRADE arbiter).  GetRadaeEooFlushed returns 1
+ * once the EOO + 60ms trailing silence have left mic_io.  SetRadaeTxSilenceHold
+ * keeps the TX gate writing silence while the radio is held keyed during flush. */
+PORT int   GetRadaeEooFlushed(void);
+PORT void  SetRadaeTxSilenceHold(int on);
+
 /* TX-side outgoing EOO callsign (single -- one operator identity). */
 PORT void  SetRadaeEooCallsign(const char* callsign);
 

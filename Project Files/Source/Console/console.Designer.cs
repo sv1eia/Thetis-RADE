@@ -155,6 +155,7 @@ namespace Thetis
         private System.Windows.Forms.CheckBoxTS chkDX;
         private System.Windows.Forms.CheckBoxTS ckQuickPlay;
         private System.Windows.Forms.CheckBoxTS ckQuickRec;
+        private System.Windows.Forms.CheckBoxTS chkPTTRADE;
         private System.Windows.Forms.GroupBoxTS grpDisplaySplit;
         private System.Windows.Forms.CheckBoxTS chkDisplayPeak;
         private System.Windows.Forms.CheckBoxTS chkRX2;
@@ -569,6 +570,7 @@ namespace Thetis
             this.ckQuickPlay = new System.Windows.Forms.CheckBoxTS();
             this.chkMON = new System.Windows.Forms.CheckBoxTS();
             this.ckQuickRec = new System.Windows.Forms.CheckBoxTS();
+            this.chkPTTRADE = new System.Windows.Forms.CheckBoxTS();
             this.chkRX2SR = new System.Windows.Forms.CheckBoxTS();
             this.chkMOX = new System.Windows.Forms.CheckBoxTS();
             this.chkTUN = new System.Windows.Forms.CheckBoxTS();
@@ -1911,9 +1913,9 @@ namespace Thetis
             this.toolTip1.SetToolTip(this.ckQuickRec, resources.GetString("ckQuickRec.ToolTip"));
             this.ckQuickRec.UseVisualStyleBackColor = false;
             this.ckQuickRec.CheckedChanged += new System.EventHandler(this.ckQuickRec_CheckedChanged);
-            // 
+            //
             // chkRX2SR
-            // 
+            //
             resources.ApplyResources(this.chkRX2SR, "chkRX2SR");
             this.chkRX2SR.BackColor = System.Drawing.Color.Transparent;
             this.chkRX2SR.FlatAppearance.BorderSize = 0;
@@ -5928,7 +5930,7 @@ namespace Thetis
             this.panelOptions.Controls.Add(this.comboTuneMode);
             this.panelOptions.ForeColor = System.Drawing.SystemColors.ControlLightLight;
             this.panelOptions.Name = "panelOptions";
-            // 
+            //
             // btnHidden
             // 
             this.btnHidden.ForeColor = System.Drawing.Color.White;
@@ -6819,6 +6821,7 @@ namespace Thetis
             this.panelModeSpecificDigital.Controls.Add(this.chkRADE);
             this.panelModeSpecificDigital.Controls.Add(this.chkREPR);
             this.panelModeSpecificDigital.Controls.Add(this.chkVIS);
+            this.panelModeSpecificDigital.Controls.Add(this.chkPTTRADE);
             this.panelModeSpecificDigital.Controls.Add(this.lblVACTXIndicator);
             this.panelModeSpecificDigital.Controls.Add(this.lblDigTXProfile);
             this.panelModeSpecificDigital.Controls.Add(this.lblVACRXIndicator);
@@ -6878,6 +6881,24 @@ namespace Thetis
             this.toolTip1.SetToolTip(this.chkVIS, "Mirror of Setup -> Audio -> Options -> 'RADE enable reporting'.  When ticked, Thetis publishes its data to qso.freedv.org as a 'report' client; when unticked the reporter window still shows the live station list (read-only 'view' role) but no own data is sent.  Greyed when REPR is unchecked.");
             this.chkVIS.UseVisualStyleBackColor = false;
             this.chkVIS.CheckedChanged += new System.EventHandler(this.chkVIS_CheckedChanged);
+            //
+            // chkPTTRADE  POC: RADE PTT request - drives the EOO-safe un-key state machine
+            //
+            this.chkPTTRADE.AutoSize = true;
+            this.chkPTTRADE.BackColor = System.Drawing.Color.Transparent;
+            // Superseded by the MOX-driven RADE path; kept in code but hidden + disabled.
+            this.chkPTTRADE.Visible = false;
+            this.chkPTTRADE.Enabled = false;
+            this.chkPTTRADE.ForeColor = System.Drawing.Color.White;
+            this.chkPTTRADE.Image = null;
+            this.chkPTTRADE.Location = new System.Drawing.Point(130, 91);
+            this.chkPTTRADE.Name = "chkPTTRADE";
+            this.chkPTTRADE.Size = new System.Drawing.Size(80, 17);
+            this.chkPTTRADE.TabIndex = 203;
+            this.chkPTTRADE.Text = "PTTRADE";
+            this.toolTip1.SetToolTip(this.chkPTTRADE, "POC: RADE PTT request - drives the EOO-safe un-key state machine (no radio keying).  Background tint shows state: red=TX, orange=EOO/flush.");
+            this.chkPTTRADE.UseVisualStyleBackColor = false;
+            this.chkPTTRADE.CheckedChanged += new System.EventHandler(this.chkPTTRADE_CheckedChanged);
             //
             // chkRADERX2 -- console-side mirror of Setup chkRADAERX2.  Lives on
             // panelRX2Display next to chkX2TR (CTUN).

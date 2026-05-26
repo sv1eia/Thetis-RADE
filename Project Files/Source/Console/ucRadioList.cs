@@ -1522,6 +1522,28 @@ if (!DoesRadioExist(item.Key))
             return -1;
         }
 
+        /* The 4 detail lines shown in the H/W Select list for the currently
+         * selected radio, in display order:
+         *   [0] transceiver model + IP:port + MAC
+         *   [1] protocol + firmware version + PLL state
+         *   [2] PC ethernet controller (NIC description / name)
+         *   [3] NIC IP / mask + type
+         * Returns an empty list if nothing is selected.  Used by the
+         * Power-on logger so the log captures which ethernet transceiver
+         * and which PC ethernet controller the connection used. */
+        public System.Collections.Generic.List<string> GetSelectedRadioInfoLines()
+        {
+            System.Collections.Generic.List<string> lines = new System.Collections.Generic.List<string>();
+            RowItem item = getSelectedItem();
+            if (item == null) return lines;
+
+            lines.Add(buildLine1(item));
+            lines.Add(buildLine2(item));
+            lines.Add(buildNicLine3(item));
+            lines.Add(buildNicLine4(item));
+            return lines;
+        }
+
         private RowItem getSelectedItem()
         {
             if (string.IsNullOrWhiteSpace(_selected_key)) return null;

@@ -26069,10 +26069,221 @@ namespace Thetis
             return PTTMode.NONE;
         }
 
+        #region RADE PTT arbiter (Option B: _rade_ptt drives real keying via PollPTT)
+        // The PTTRADE checkbox (NOT the MOX button) requests TX; a state machine on the poll
+        // thread is the sole keying authority for a RADE over.  It keys the radio via
+        // chkMOX.Checked, then on release keeps the radio keyed while the EOO is emitted and
+        // flushed (C-side handshake: SetRadaeTxSilenceHold / RadaeNotifyEndOfOver /
+        // GetRadaeEooFlushed) before un-keying, so the End-Of-Over frame actually radiates.
+        // See /mnt/i/Thetis/rade-ptt-real-sequencing-plan.md.
+        private enum RadePttState { Idle, Transmitting, EmitEOO, Flushing, Releasing }
+        private volatile RadePttState _rade_ptt_state = RadePttState.Idle;
+        private volatile bool _rade_ptt_request = false;   // set by checkbox (request only)
+        private volatile bool _rade_ptt = false;           // effective, owned by the state machine
+        public bool RadePTT { get { return _rade_ptt; } private set { _rade_ptt = value; } }
+        private int _rade_eoo_margin_ms  = 300;   // post-ack downstream margin (radio TX->RX, USB/DAC)
+        private int _rade_eoo_timeout_ms = 3000;  // hard safety cap so a stuck encoder never strands TX (> real EOO flush)
+        private readonly System.Diagnostics.Stopwatch _rade_seq_sw = new System.Diagnostics.Stopwatch();
+        private long _rade_flush_ack_ms = -1;     // _rade_seq_sw ms when the flushed ack first read true; -1 = not yet
+        private volatile bool _rade_over_was_radae = false;
+        private CheckBoxTS _rade_greyed_ctrl = null;   // RADE-enable control greyed for the duration of the PTT
+        private volatile bool _rade_arbiter_actuating = false;  // true while the arbiter writes chkMOX (bypasses the MOX interception)
+
+        // Operator callsign carried in the RADE EOO frame.  Cached here (UI thread) from
+        // Setup's txtRadaeReporterCallsign; pushed to the encoder at begin-over (audio.cs MOX
+        // 0->1) so g_tx_own_callsign is loaded before each over's EOO is generated.
+        private volatile string _radae_eoo_callsign = "";
+        public string RadaeEooCallsign
+        {
+            get { return _radae_eoo_callsign; }
+            set { _radae_eoo_callsign = value ?? ""; }
+        }
+
+        private void chkPTTRADE_CheckedChanged(object sender, EventArgs e)
+        {
+            _rade_ptt_request = chkPTTRADE.Checked;
+            Common.LogNetError("[RADE-PTT] request = " + (_rade_ptt_request ? "ON" : "OFF"));
+        }
+
+        // Runs each PollPTT tick (~1 ms) on the poll thread - never on the UI thread.
+        private void RadePttStateMachine()
+        {
+            switch (_rade_ptt_state)
+            {
+                case RadePttState.Idle:
+                    if (_rade_ptt_request)
+                    {
+                        if (_rx_only || _tx_inhibit || _ganymede_pa_issue) return;   // honour inhibits
+                        _rade_over_was_radae = RadaeEnabled;
+                        SetRadeEffective(true);
+                        KeyRadio(true);                                              // real key-up
+                        RadeGreyRadeSetting();                                       // lock the RX's RADE setting for the PTT
+                        SetRadeState(RadePttState.Transmitting);
+                    }
+                    break;
+
+                case RadePttState.Transmitting:
+                    if (!_rade_ptt_request)
+                    {
+                        if (_rade_over_was_radae)
+                        {
+                            cmaster.SetRadaeTxSilenceHold(1);          // gate keeps writing silence while keyed
+                            Audio.RadaeEooEmittedExternally = true;    // suppress the re-emit at the real un-key
+                            cmaster.RadaeNotifyEndOfOver();            // emit EOO now (eoo_pending)
+                            cmaster.SetRadaeMoxState(0);               // stop new voice; drain/EOO mode (still keyed)
+                            _rade_flush_ack_ms = -1;
+                            _rade_seq_sw.Restart();
+                            SetRadeState(RadePttState.EmitEOO);
+                        }
+                        else
+                        {
+                            SetRadeState(RadePttState.Releasing);      // non-RADE over: un-key immediately
+                        }
+                    }
+                    break;
+
+                case RadePttState.EmitEOO:
+                    SetRadeState(RadePttState.Flushing);               // one tick to let xradae_tx consume eoo_pending
+                    break;
+
+                case RadePttState.Flushing:
+                    if (_rade_ptt_request)                             // re-key cancel
+                    {
+                        cmaster.SetRadaeMoxState(1);                   // resume encoder
+                        cmaster.SetRadaeTxSilenceHold(0);
+                        Audio.RadaeEooEmittedExternally = false;
+                        SetRadeState(RadePttState.Transmitting);
+                        break;
+                    }
+                    if (_rade_flush_ack_ms < 0 && cmaster.GetRadaeEooFlushed() != 0)
+                        _rade_flush_ack_ms = _rade_seq_sw.ElapsedMilliseconds;        // ack arrived; start margin
+                    bool margin_done = _rade_flush_ack_ms >= 0 &&
+                                       (_rade_seq_sw.ElapsedMilliseconds - _rade_flush_ack_ms) >= _rade_eoo_margin_ms;
+                    bool timed_out   = _rade_seq_sw.ElapsedMilliseconds >= _rade_eoo_timeout_ms;
+                    if (margin_done || timed_out)
+                    {
+                        if (timed_out) Common.LogNetError("[RADE-PTT] flush TIMEOUT @ " + _rade_seq_sw.ElapsedMilliseconds + "ms");
+                        SetRadeState(RadePttState.Releasing);
+                    }
+                    break;
+
+                case RadePttState.Releasing:
+                    KeyRadio(false);                                   // real un-key (EOO re-emit suppressed)
+                    _manual_mox = false;                               // clear in case a MOX-click over re-asserted it
+                    cmaster.SetRadaeTxSilenceHold(0);                  // release the hold AFTER un-key
+                    RadeRestoreRadeSetting();                          // re-enable the RX's RADE setting after the PTT
+                    SetRadeEffective(false);
+                    SetRadeState(RadePttState.Idle);
+                    break;
+            }
+        }
+
+        // Set the real key from the poll thread; chkMOX is a thread-safe CheckBoxTS (marshals to UI thread).
+        // _rade_arbiter_actuating marks these writes so the MOX-click interception in
+        // chkMOX_CheckedChanged2 lets them through to the normal keying code.
+        private void KeyRadio(bool on)
+        {
+            _rade_arbiter_actuating = true;
+            try { if (chkMOX.Checked != on) chkMOX.Checked = on; }
+            finally { _rade_arbiter_actuating = false; }
+            Common.LogNetError("[RADE-PTT] KeyRadio(" + (on ? "TX" : "RX") + ")");
+        }
+
+        // True when a MOX over is a RADE over per the user's VFO/RX rule.  Keep this in step
+        // with audio.cs's radae_active_this_over predicate so the MOX interception and the
+        // encoder never disagree about whether the over is RADE-encoded.
+        private bool RadeOver()
+        {
+            // Must match audio.cs's radae_active_this_over exactly so the MOX interception and
+            // the encoder agree.  Pure RX1/RX2 decode enables (NOT RadaeRx1Enabled, which folds
+            // in the shared TX encoder).  RX2 RADE drives TX only on a genuine RX2 over.
+            bool rx2_over = RX2Enabled && chkVFOBTX.Checked;
+            bool rade_rx1 = cmaster.GetRadaeRxEnabled(0) != 0;
+            bool rade_rx2 = cmaster.GetRadaeRxEnabled(1) != 0;
+            return (rade_rx1 && !rx2_over) || (rade_rx2 && rx2_over);
+        }
+
+        // Grey the RADE-enable setting for the RX being transmitted on (VFO A -> RX1, VFO B -> RX2)
+        // so it cannot be toggled mid-PTT.  Stores the control so it is re-enabled at un-key.
+        // chkRADE/chkRADERX2 are thread-safe CheckBoxTS, so .Enabled marshals to the UI thread.
+        private void RadeGreyRadeSetting()
+        {
+            CheckBoxTS ctrl = null;
+            if (chkVFOATX.Checked && RadaeRx1Enabled) ctrl = chkRADE;
+            else if (chkVFOBTX.Checked && RadaeRx2Enabled) ctrl = chkRADERX2;
+            if (ctrl != null)
+            {
+                _rade_greyed_ctrl = ctrl;
+                ctrl.Enabled = false;
+                Common.LogNetError("[RADE-PTT] greyed " + ctrl.Name + " for PTT");
+            }
+        }
+
+        // Re-enable exactly the control greyed by RadeGreyRadeSetting (re-enable what was disabled,
+        // regardless of any VFO-TX change during the over).
+        private void RadeRestoreRadeSetting()
+        {
+            if (_rade_greyed_ctrl != null)
+            {
+                _rade_greyed_ctrl.Enabled = true;
+                Common.LogNetError("[RADE-PTT] re-enabled " + _rade_greyed_ctrl.Name + " after PTT");
+                _rade_greyed_ctrl = null;
+            }
+        }
+
+        private void SetRadeState(RadePttState next)
+        {
+            RadePttState from = _rade_ptt_state;
+            if (from == next) return;
+            _rade_ptt_state = next;
+            Common.LogNetError("[RADE-PTT] " + from + "->" + next + " @ " + _rade_seq_sw.ElapsedMilliseconds + "ms");
+            UpdateRadePttIndicator(next);
+        }
+
+        private void SetRadeEffective(bool on)
+        {
+            _rade_ptt = on;
+            Common.LogNetError("[RADE-PTT] effective = " + (on ? "TX" : "RX"));
+        }
+
+        // Observability: (unchanged) tint the (hidden) PTTRADE checkbox background per state, AND
+        // tint the MOX button letters orange while the EOO is being emitted / flushed (normal MOX
+        // colour otherwise).  Both controls are thread-safe CheckBoxTS, so the property writes
+        // marshal to the UI thread automatically.  The full state trace (with timestamps) goes to
+        // the log via SetRadeState/SetRadeEffective.
+        private void UpdateRadePttIndicator(RadePttState state)
+        {
+            System.Drawing.Color back;
+            switch (state)
+            {
+                case RadePttState.Transmitting: back = System.Drawing.Color.Red; break;       // TX
+                case RadePttState.EmitEOO: back = System.Drawing.Color.Orange; break;          // emitting EOO
+                case RadePttState.Flushing: back = System.Drawing.Color.Orange; break;         // flushing EOO
+                default: back = System.Drawing.Color.Transparent; break;                       // Idle / Releasing -> RX
+            }
+            chkPTTRADE.BackColor = back;
+
+            // MOX button letters: orange while emitting / flushing the EOO, normal otherwise.
+            System.Drawing.Color fore;
+            switch (state)
+            {
+                case RadePttState.EmitEOO: fore = System.Drawing.Color.Orange; break;          // emitting EOO
+                case RadePttState.Flushing: fore = System.Drawing.Color.Orange; break;         // flushing EOO
+                default: fore = System.Drawing.SystemColors.ControlLightLight; break;          // Transmitting / Idle / Releasing -> normal
+            }
+            chkMOX.ForeColor = fore;
+        }
+        #endregion
+
         private async void PollPTT()
         {
             while (chkPower.Checked)
             {
+                RadePttStateMachine(); // EOO-safe un-key arbiter, runs every tick
+                // While a RADE over is sequencing, the arbiter is the sole keying authority -
+                // skip the normal body so no other PTT source can un-key mid-sequence.
+                if (_rade_ptt_state != RadePttState.Idle) { await Task.Delay(1); continue; }
+
                 int dotdashptt = NetworkIO.nativeGetDotDashPTT();
                 DSPMode tx_mode = chkVFOBTX.Checked && chkRX2.Checked ? _rx2_dsp_mode : _rx1_dsp_mode;
 
@@ -27910,6 +28121,29 @@ namespace Thetis
                 if (!IsSetupFormNull) SetupForm.BoardWarning = NetworkIO.BoardMismatch; //[2.10.3.9]MW0LGE show warning in setup if board does not match expected
 
                 Common.LogNetError("Thetis PowerOn");
+
+                // Log the H/W Select transceiver + PC ethernet controller
+                // details (the 4 lines shown in Setup -> General -> H/W Select
+                // for the connected radio) so the log records which ethernet
+                // transceiver device and which PC ethernet controller this
+                // connection used.
+                try
+                {
+                    if (!IsSetupFormNull && SetupForm.SelectedRadioList != null)
+                    {
+                        System.Collections.Generic.List<string> hwLines =
+                            SetupForm.SelectedRadioList.GetSelectedRadioInfoLines();
+                        if (hwLines != null)
+                        {
+                            foreach (string ln in hwLines)
+                            {
+                                if (!string.IsNullOrWhiteSpace(ln))
+                                    Common.LogNetError("H/W Select: " + ln);
+                            }
+                        }
+                    }
+                }
+                catch { }
 
                 //MW0LGE_21k9 these two moved after the audio start
                 //seems to fix issue that was causing multiRX to be silent when starting up and it was switched on
@@ -30055,8 +30289,42 @@ namespace Thetis
                 _forceATTwhenPowerChangesWhenPSAon_anddecreased = value;
             }
         }
+        private void chkMOX_CheckedChanged(object sender, System.EventArgs e)
+        {
+            Common.LogNetError("[MOX] chkMOX_CheckedChanged  Checked=" + chkMOX.Checked);
+        }
+
         private void chkMOX_CheckedChanged2(object sender, System.EventArgs e)
         {
+            Common.LogNetError("[MOX] chkMOX_CheckedChanged2  Checked=" + chkMOX.Checked);
+
+            // RADE-over MOX integration: route a real user MOX click into the PTT-RADE arbiter
+            // (the same _rade_ptt_request the chkPTTRADE button drives).  The arbiter's own
+            // chkMOX writes carry _rade_arbiter_actuating, so they bypass this block and run the
+            // normal keying code below.
+            if (!_rade_arbiter_actuating)
+            {
+                if (chkMOX.Checked)
+                {
+                    // key-down: engage the arbiter only for a genuine RADE voice over -- never for
+                    // TUN / 2-TONE (carrier/tone tests must not RADE-encode or emit an EOO).
+                    if (RadeOver() && !chkTUN.Checked && !chk2TONE.Checked)
+                        _rade_ptt_request = true;
+                    // fall through -> normal code keys the radio immediately (no deferral on the key)
+                }
+                else if (_rade_ptt_state != RadePttState.Idle)
+                {
+                    // un-key: defer ONLY if the arbiter actually owns this over.  Keep the radio
+                    // keyed/lit by silently re-asserting MOX (same detach/reattach as the ganymede
+                    // guard below); the arbiter performs the real un-key once the EOO has flushed.
+                    _rade_ptt_request = false;
+                    chkMOX.CheckedChanged -= chkMOX_CheckedChanged2;
+                    chkMOX.Checked = true;
+                    chkMOX.CheckedChanged += chkMOX_CheckedChanged2;
+                    return;
+                }
+            }
+
             if(chkMOX.Checked && _ganymede_pa_issue)
             {
                 // abort the change if there is a ganymede pa issue
@@ -30481,6 +30749,7 @@ namespace Thetis
         }
         private void chkMOX_Click(object sender, System.EventArgs e)
         {
+            Common.LogNetError("[MOX] chkMOX_Click  Checked=" + chkMOX.Checked);
             if (chkMOX.Checked)			// because the CheckedChanged event fires first
             {
                 _manual_mox = true;

@@ -91,6 +91,16 @@ namespace Thetis
         private Progress progress;
         private List<Keys> KeyList;
         private bool initializing;
+        // True only while ForceAllEvents() is replaying every control's
+        // CheckedChanged/ValueChanged during the post-init rehydrate sweep
+        // (initializing is deliberately false there so handlers push their
+        // restored values to the backend).  The RADE Control master
+        // switches consult this so they do NOT tear down the shared
+        // FreeDV Reporter window during rehydrate -- doing so closed the
+        // reporter form mid-startup and made its FormClosing/SaveForm
+        // persist a transient (0,0) position, wiping the user's saved
+        // reporter coordinates.
+        private bool _forcingAllEvents = false;
         public bool alex_fw_good = false;
         private string RXAntChk1Name;                   // radio dependent name for 1st check box
         private string RXAntChk2Name;                   // radio dependent name for 2nd check box
@@ -2206,6 +2216,8 @@ namespace Thetis
         }
         private void ForceAllEvents()
         {
+            _forcingAllEvents = true;
+
             EventArgs e = EventArgs.Empty;
 
             // General Tab
@@ -2972,6 +2984,8 @@ namespace Thetis
 
             //done last
             chkIgnoreATTOffset_CheckedChanged(this, e); // part of the test tab
+
+            _forcingAllEvents = false;
         }
 
         public string[] GetTXProfileStrings()
@@ -22631,20 +22645,25 @@ namespace Thetis
 
             // If switching OFF, force-uncheck every dependent RX1+TX
             // control first so its existing handler runs the full
-            // teardown.  Unchecking chkRADAEReporter via the four-way
-            // mirror also propagates to chkRADAEReporterRX2 and closes
-            // the reporter form.  Also force-uncheck chkRX2RadeControl
-            // so RX2 RADE goes off too -- RX2 depends on RX1 (shares
-            // the TX path + reporter identity), so RX2 cannot run on
-            // its own.  chkRX2RadeControl is then disabled/greyed
-            // below so the user cannot re-enable RX2 while RX1 is off.
+            // teardown.  Also force-uncheck chkRX2RadeControl so RX2
+            // RADE goes off too -- RX2 depends on RX1 (shares the TX
+            // path + reporter identity), so RX2 cannot run on its own.
+            // chkRX2RadeControl is then disabled/greyed below so the
+            // user cannot re-enable RX2 while RX1 is off.
+            //
+            // The shared FreeDV Reporter WINDOW (chkRADAEReporter) is
+            // only closed on a genuine user toggle -- NOT during the
+            // startup ForceAllEvents rehydrate.  Closing it mid-rehydrate
+            // tore down the reporter form and made its SaveForm persist a
+            // transient (0,0) position, wiping the user's saved reporter
+            // coordinates.
             if (!on)
             {
                 if (chkRX2RadeControl != null && chkRX2RadeControl.Checked)
                     chkRX2RadeControl.Checked = false;
                 if (chkRADAEReporting != null && chkRADAEReporting.Checked)
                     chkRADAEReporting.Checked = false;
-                if (chkRADAEReporter != null && chkRADAEReporter.Checked)
+                if (!_forcingAllEvents && chkRADAEReporter != null && chkRADAEReporter.Checked)
                     chkRADAEReporter.Checked = false;
                 if (chkRadaeMicEQ != null && chkRadaeMicEQ.Checked)
                     chkRadaeMicEQ.Checked = false;
@@ -22743,12 +22762,18 @@ namespace Thetis
             // mirrors).  WinForms suppresses the recursion when a
             // checkbox is set to its current value, so already-off
             // controls are no-ops.
+            // NOTE: the RX2 master does NOT touch chkRADAEReporterRX2 (the
+            // shared FreeDV Reporter WINDOW, four-way-mirrored to
+            // chkRADAEReporter).  RX2 is not the owner of that window --
+            // per spec the RX2 master only hides the "Track RX2" button.
+            // Force-unchecking it here mirror-closed the reporter window
+            // that RX1 had legitimately opened, and during the startup
+            // ForceAllEvents rehydrate that close persisted a transient
+            // (0,0) position, wiping the user's saved reporter coordinates.
             if (!on)
             {
                 if (chkRADAEReportingRX2 != null && chkRADAEReportingRX2.Checked)
                     chkRADAEReportingRX2.Checked = false;
-                if (chkRADAEReporterRX2 != null && chkRADAEReporterRX2.Checked)
-                    chkRADAEReporterRX2.Checked = false;
                 if (chkRADAELoopbackRX2 != null && chkRADAELoopbackRX2.Checked)
                     chkRADAELoopbackRX2.Checked = false;
                 if (chkRADAERX2 != null && chkRADAERX2.Checked)
@@ -23097,6 +23122,11 @@ namespace Thetis
                     finally { m_radaeCallUpdating = false; }
                 }
             }
+
+            // Cache the (sanitised) callsign on the console for the RADE EOO frame.
+            // Safe during init -- pure C# string assignment, no native call; the push to
+            // the encoder happens at begin-over once RADE is initialised.
+            if (console != null) console.RadaeEooCallsign = txtRadaeReporterCallsign.Text;
 
             if (initializing) return;
             Thetis.FreeDVReporter.FreeDVReporterManager.ApplyIdentity(
