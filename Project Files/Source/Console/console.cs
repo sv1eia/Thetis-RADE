@@ -1286,8 +1286,9 @@ namespace Thetis
             try
             {
                 if (chkRADERX2 != null) { chkRADERX2.Visible = visible; chkRADERX2.Enabled = visible; }
-                if (chkREPRRX2 != null) { chkREPRRX2.Visible = visible; chkREPRRX2.Enabled = visible; }
-                if (chkVISRX2  != null) { chkVISRX2.Visible  = visible; chkVISRX2.Enabled  = visible; }
+                // chkREPRRX2 (RX2 reporter) removed from the UI -- a single RX1 reporter covers both RX.
+                // RX2 VIS is shown with the RX2 master but enabled only when the RX1 reporter (chkREPR) is on.
+                if (chkVISRX2  != null) { chkVISRX2.Visible  = visible; chkVISRX2.Enabled  = visible && chkREPR != null && chkREPR.Checked; }
             }
             catch { }
         }
@@ -1312,9 +1313,12 @@ namespace Thetis
             {
                 if (!IsSetupFormNull && SetupForm.RADAEReporter != chkREPR.Checked)
                     SetupForm.RADAEReporter = chkREPR.Checked;
-                /* Local greyed-out: VIS is meaningful only when REPR is on. */
+                /* Local greyed-out: VIS is meaningful only when REPR is on.  Both RX1 and RX2 VIS
+                 * now gate on the single RX1 reporter (the RX2 reporter control was removed). */
                 if (chkVIS.Enabled != chkREPR.Checked)
                     chkVIS.Enabled = chkREPR.Checked;
+                if (chkVISRX2 != null && chkVISRX2.Enabled != chkREPR.Checked)
+                    chkVISRX2.Enabled = chkREPR.Checked;
             }
             catch { }
         }
@@ -26280,9 +26284,14 @@ namespace Thetis
             while (chkPower.Checked)
             {
                 RadePttStateMachine(); // EOO-safe un-key arbiter, runs every tick
-                // While a RADE over is sequencing, the arbiter is the sole keying authority -
-                // skip the normal body so no other PTT source can un-key mid-sequence.
-                if (_rade_ptt_state != RadePttState.Idle) { await Task.Delay(1); continue; }
+                // Suspend the normal body ONLY during the post-release EOO flush, so it cannot
+                // fight the deferred un-key.  During Transmitting the body must keep running so a
+                // polled/hardware PTT release (mic/foot, CW-semi, VOX, CAT, TCI) is detected (it
+                // self-gates off for MOX-button overs via _manual_mox). Skipping Transmitting too
+                // would starve hardware-PTT release detection and lock the radio in TX.
+                if (_rade_ptt_state == RadePttState.EmitEOO ||
+                    _rade_ptt_state == RadePttState.Flushing ||
+                    _rade_ptt_state == RadePttState.Releasing) { await Task.Delay(1); continue; }
 
                 int dotdashptt = NetworkIO.nativeGetDotDashPTT();
                 DSPMode tx_mode = chkVFOBTX.Checked && chkRX2.Checked ? _rx2_dsp_mode : _rx1_dsp_mode;

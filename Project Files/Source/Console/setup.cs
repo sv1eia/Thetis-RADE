@@ -22783,7 +22783,7 @@ namespace Thetis
             // Visibility + enabled for the Setup-side RX2 RADE controls.
             if (chkRADAERX2 != null)         { chkRADAERX2.Visible         = on; chkRADAERX2.Enabled         = on; }
             if (chkRADAELoopbackRX2 != null) { chkRADAELoopbackRX2.Visible = on; chkRADAELoopbackRX2.Enabled = on; }
-            if (chkRADAEReporterRX2 != null) { chkRADAEReporterRX2.Visible = on; chkRADAEReporterRX2.Enabled = on; }
+            // chkRADAEReporterRX2 (RX2 reporter) removed from the UI -- single RX1 reporter covers both RX.
             if (chkRADAEReportingRX2 != null){ chkRADAEReportingRX2.Visible= on; chkRADAEReportingRX2.Enabled= on; }
             if (lblRadaeRxLevelRX2 != null)   lblRadaeRxLevelRX2.Visible   = on;
             if (udRadaeRxLevelRX2 != null)   { udRadaeRxLevelRX2.Visible   = on; udRadaeRxLevelRX2.Enabled   = on; }

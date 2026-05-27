@@ -31462,6 +31462,10 @@ namespace Thetis
             // chkRADAEReporterRX2
             //
             this.chkRADAEReporterRX2.AutoSize = true;
+            // Removed from the UI: a single "RX1RADE Reporter" covers both RX. Kept in code
+            // (four-way mirror/DB) but permanently hidden+disabled; the RX2 master no longer shows it.
+            this.chkRADAEReporterRX2.Visible = false;
+            this.chkRADAEReporterRX2.Enabled = false;
             this.chkRADAEReporterRX2.Image = null;
             this.chkRADAEReporterRX2.Location = new System.Drawing.Point(370, 318);
             this.chkRADAEReporterRX2.Name = "chkRADAEReporterRX2";

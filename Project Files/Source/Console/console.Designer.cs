@@ -6920,6 +6920,10 @@ namespace Thetis
             //
             this.chkREPRRX2.AutoSize = true;
             this.chkREPRRX2.BackColor = System.Drawing.Color.Transparent;
+            // Removed from the UI: a single RX1 reporter (chkREPR) covers both RX. Kept in code
+            // (mirror/DB) but permanently hidden+disabled; the RX2 master no longer re-shows it.
+            this.chkREPRRX2.Visible = false;
+            this.chkREPRRX2.Enabled = false;
             this.chkREPRRX2.ForeColor = System.Drawing.Color.White;
             this.chkREPRRX2.Image = null;
             this.chkREPRRX2.Location = new System.Drawing.Point(1, 80);

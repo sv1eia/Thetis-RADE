@@ -97,6 +97,7 @@ static volatile long g_radae_drain_blocks     = 0;
 static volatile long g_radae_eoo_inflight     = 0; /* EOO pushed, not yet drained out of mic_io */
 static volatile long g_radae_eoo_flushed      = 0; /* EOO + 60ms silence have left mic_io        */
 static volatile long g_radae_tx_silence_hold  = 0; /* keep gate passing (silence) while keyed     */
+static volatile long g_radae_eoo_repeats_left = 0; /* scheduled EOO frames still to emit (multi-EOO tail) */
 
 /* Per-RX sync / SNR registers, published from the audio thread. */
 static volatile long g_radae_sync[RADAE_NRX]    = { 0 };
@@ -725,6 +726,7 @@ PORT void RadaeNotifyBeginOver(void)
     /* fresh over: clear any stale EOO-flush handshake (arbiter owns silence-hold) */
     _InterlockedExchange(&g_radae_eoo_inflight, 0);
     _InterlockedExchange(&g_radae_eoo_flushed,  0);
+    _InterlockedExchange(&g_radae_eoo_repeats_left, 0);
     OutputDebugStringA("[RADAE] MOX 0->1\n");
 }
 
@@ -1231,7 +1233,10 @@ void xradae_tx(double* mic_io)
         }
     }
 
-    /* 4) EOO handling */
+    /* 4) EOO handling -- schedule a burst of repeated EOO frames (double EOO).
+     *    The callsign bits are generated once here; the frames themselves are
+     *    emitted one per call in step 4b, paced by the outrate-FIFO drain, with
+     *    the 60 ms trailing silence pushed after the final frame. */
     if (_InterlockedExchange(&g_radae_eoo_pending, 0))
     {
         if (g_rade_text_tx != NULL && g_tx_own_callsign[0] != '\0' &&
@@ -1246,11 +1251,25 @@ void xradae_tx(double* mic_io)
             rade_tx_set_eoo_bits(g_rade[0], g_rade_eoo_bits);
             if (g_radae_cs_inited) LeaveCriticalSection(&g_radae_cs);
         }
+        _InterlockedExchange(&g_radae_eoo_repeats_left, 2);   /* double EOO */
+        /* mark EOO in-flight for the flushed-out-of-mic_io ack (step 6 tail) */
+        _InterlockedExchange(&g_radae_eoo_inflight, 1);
+        _InterlockedExchange(&g_radae_eoo_flushed,  0);
+    }
+
+    /* 4b) Emit one scheduled EOO frame when the outrate FIFO has drained enough
+     *     to take another, so the repeated EOOs play back-to-back without
+     *     overflowing the modem/outrate FIFOs.  The 60 ms trailing silence is
+     *     pushed after the final frame. */
+    if (_InterlockedAnd(&g_radae_eoo_repeats_left, 0xffffffff) > 0 &&
+        g_tx_modem_fifo_n == 0 && g_tx_outrate_fifo_n < (outsize * 2))
+    {
         int n_eoo = rade_tx_eoo(g_rade[0], g_rade_tx_eoo_out);
         {
             char log[160];
-            sprintf_s(log, sizeof(log), "[RADAE] EOO emit: call='%s' n_eoo=%d\n",
-                      g_tx_own_callsign, n_eoo);
+            sprintf_s(log, sizeof(log), "[RADAE] EOO emit: call='%s' n_eoo=%d left=%ld\n",
+                      g_tx_own_callsign, n_eoo,
+                      _InterlockedAnd(&g_radae_eoo_repeats_left, 0xffffffff));
             OutputDebugStringA(log);
         }
         int j;
@@ -1262,6 +1281,7 @@ void xradae_tx(double* mic_io)
                             g_tx_modem_8k, n_eoo,
                             &g_tx_modem_ovrun_count, "tx.modem_fifo");
         }
+        if (_InterlockedDecrement(&g_radae_eoo_repeats_left) == 0)
         {
             float zeros[480];
             memset(zeros, 0, sizeof(zeros));
@@ -1269,9 +1289,6 @@ void xradae_tx(double* mic_io)
                             zeros, 480,
                             &g_tx_modem_ovrun_count, "tx.modem_fifo");
         }
-        /* mark EOO in-flight for the flushed-out-of-mic_io ack (step 6 tail) */
-        _InterlockedExchange(&g_radae_eoo_inflight, 1);
-        _InterlockedExchange(&g_radae_eoo_flushed,  0);
     }
 
     /* 5) ENCODER OUTPUT RESAMPLER: 8 k modem -> outrate */
@@ -1374,6 +1391,7 @@ void xradae_tx(double* mic_io)
      * silence left in the outrate fifo => the EOO + 60ms silence have left
      * mic_io.  The arbiter polls this via GetRadaeEooFlushed(). */
     if (_InterlockedAnd(&g_radae_eoo_inflight, 1) &&
+        _InterlockedAnd(&g_radae_eoo_repeats_left, 0xffffffff) == 0 &&
         g_tx_modem_fifo_n == 0 && g_tx_outrate_fifo_n < outsize)
     {
         _InterlockedExchange(&g_radae_eoo_flushed,  1);
