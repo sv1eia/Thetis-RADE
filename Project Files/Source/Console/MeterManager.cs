@@ -23557,16 +23557,15 @@ namespace Thetis
                 cb.DecayRatio = 0.05f;
                 cb.UpdateInterval = nMSupdate;
                 cb.HistoryDuration = 4000;
-                cb.ShowHistory = false;
-                cb.PeakHold = true;
+                cb.ShowHistory = true;
+                cb.PeakHold = false;
                 cb.Colour = System.Drawing.Color.DarkCyan;
                 cb.HistoryColour = System.Drawing.Color.FromArgb(128, System.Drawing.Color.Violet);
-                cb.Style = clsBarItem.BarStyle.Segments;
-                /* SNR scale -10..30 dB; 0 dB at the left edge of "good" zone */
-                cb.ScaleCalibration.Add(-10, new PointF(0, 0));
-                cb.ScaleCalibration.Add(0,   new PointF(0.25f, 0));
-                cb.ScaleCalibration.Add(15,  new PointF(0.625f, 0));
-                cb.ScaleCalibration.Add(30,  new PointF(0.99f, 0));
+                cb.Style = clsBarItem.BarStyle.Line;
+                /* RADE SNR scale -10..+40 dB (AGC-style template), 0 dB at 20% from left */
+                cb.ScaleCalibration.Add(-10, new PointF(0f,    0));
+                cb.ScaleCalibration.Add(0,   new PointF(0.2f,  0));
+                cb.ScaleCalibration.Add(40,  new PointF(0.99f, 0));
                 cb.FontColour = System.Drawing.Color.Yellow;
                 cb.ZOrder = 2;
                 cb.Value = cb.ScaleCalibration.OrderBy(p => p.Key).First().Key;
@@ -23580,6 +23579,11 @@ namespace Thetis
                 cs.ReadingSource = cb.ReadingSource;
                 cs.ZOrder = 3;
                 cs.ShowType = true;
+                /* -10..0 (first 20%) red, 0..+40 green */
+                cs.LowColour      = System.Drawing.Color.Red;
+                cs.FontColourLow  = System.Drawing.Color.Red;
+                cs.HighColour     = System.Drawing.Color.Green;
+                cs.FontColourHigh = System.Drawing.Color.Green;
                 addMeterItem(cs);
 
                 clsSolidColour sc = new clsSolidColour();
@@ -23589,15 +23593,6 @@ namespace Thetis
                 sc.Colour = System.Drawing.Color.FromArgb(32, 32, 32);
                 sc.ZOrder = 1;
                 addMeterItem(sc);
-
-                clsClickBox clb = new clsClickBox();
-                clb.ParentID = ig.ID;
-                clb.TopLeft = sc.TopLeft;
-                clb.Size = sc.Size;
-                clb.ChangesGroup = false;
-                clb.PerformsIncDec = true;
-                clb.RelatedMeterItem = cb;
-                addMeterItem(clb);
 
                 fBottom = cb.TopLeft.Y + cb.Size.Height;
                 ig.TopLeft = cb.TopLeft;
@@ -23624,20 +23619,18 @@ namespace Thetis
                 cb.Size = new SizeF(1f - _fPadX * 2f, _fHeight);
                 cb.ReadingSource = Reading.RADAE_RX_LEVEL_DB;
                 cb.MMIOVariableIndex = 0;
-                cb.AttackRatio = 0.4f;
-                cb.DecayRatio = 0.1f;
+                cb.AttackRatio = 0.2f;
+                cb.DecayRatio = 0.05f;
                 cb.UpdateInterval = nMSupdate;
                 cb.HistoryDuration = 4000;
-                cb.ShowHistory = false;
-                cb.PeakHold = true;
-                cb.Colour = System.Drawing.Color.LightCoral;
-                cb.HistoryColour = System.Drawing.Color.FromArgb(128, System.Drawing.Color.Violet);
-                cb.Style = clsBarItem.BarStyle.Segments;
-                /* dBFS scale -60..0 with -3 dB clip-warning region near the right */
-                cb.ScaleCalibration.Add(-60, new PointF(0, 0));
-                cb.ScaleCalibration.Add(-30, new PointF(0.5f, 0));
-                cb.ScaleCalibration.Add(-6,  new PointF(0.9f, 0));
-                cb.ScaleCalibration.Add(0,   new PointF(0.99f, 0));
+                cb.ShowHistory = true;
+                cb.MarkerColour = System.Drawing.Color.Orange;
+                cb.HistoryColour = System.Drawing.Color.FromArgb(128, System.Drawing.Color.CornflowerBlue);
+                cb.Style = clsBarItem.BarStyle.Line;
+                /* ADC-style scale -120..0 dBFS, midpoint -20 */
+                cb.ScaleCalibration.Add(-120, new PointF(0, 0));
+                cb.ScaleCalibration.Add(-20,  new PointF(0.8333f, 0));
+                cb.ScaleCalibration.Add(0,    new PointF(0.99f, 0));
                 cb.FontColour = System.Drawing.Color.Yellow;
                 cb.ZOrder = 2;
                 cb.Value = cb.ScaleCalibration.OrderBy(p => p.Key).First().Key;
@@ -23660,15 +23653,6 @@ namespace Thetis
                 sc.Colour = System.Drawing.Color.FromArgb(32, 32, 32);
                 sc.ZOrder = 1;
                 addMeterItem(sc);
-
-                clsClickBox clb = new clsClickBox();
-                clb.ParentID = ig.ID;
-                clb.TopLeft = sc.TopLeft;
-                clb.Size = sc.Size;
-                clb.ChangesGroup = false;
-                clb.PerformsIncDec = true;
-                clb.RelatedMeterItem = cb;
-                addMeterItem(clb);
 
                 fBottom = cb.TopLeft.Y + cb.Size.Height;
                 ig.TopLeft = cb.TopLeft;
@@ -23763,19 +23747,18 @@ namespace Thetis
                 cb.Size = new SizeF(1f - _fPadX * 2f, _fHeight);
                 cb.ReadingSource = Reading.RADAE_TX_MIC_LEVEL_DB;
                 cb.MMIOVariableIndex = 0;
-                cb.AttackRatio = 0.4f;
-                cb.DecayRatio = 0.1f;
+                cb.AttackRatio = 0.2f;
+                cb.DecayRatio = 0.05f;
                 cb.UpdateInterval = nMSupdate;
                 cb.HistoryDuration = 4000;
-                cb.ShowHistory = false;
-                cb.PeakHold = true;
-                cb.Colour = System.Drawing.Color.LightCoral;
-                cb.HistoryColour = System.Drawing.Color.FromArgb(128, System.Drawing.Color.Violet);
-                cb.Style = clsBarItem.BarStyle.Segments;
-                cb.ScaleCalibration.Add(-60, new PointF(0, 0));
-                cb.ScaleCalibration.Add(-30, new PointF(0.5f, 0));
-                cb.ScaleCalibration.Add(-6,  new PointF(0.9f, 0));
-                cb.ScaleCalibration.Add(0,   new PointF(0.99f, 0));
+                cb.ShowHistory = true;
+                cb.MarkerColour = System.Drawing.Color.Orange;
+                cb.HistoryColour = System.Drawing.Color.FromArgb(128, System.Drawing.Color.CornflowerBlue);
+                cb.Style = clsBarItem.BarStyle.Line;
+                /* ADC-style scale -120..0 dBFS, midpoint -20 */
+                cb.ScaleCalibration.Add(-120, new PointF(0, 0));
+                cb.ScaleCalibration.Add(-20,  new PointF(0.8333f, 0));
+                cb.ScaleCalibration.Add(0,    new PointF(0.99f, 0));
                 cb.FontColour = System.Drawing.Color.Yellow;
                 cb.ZOrder = 2;
                 cb.Value = cb.ScaleCalibration.OrderBy(p => p.Key).First().Key;
@@ -23798,15 +23781,6 @@ namespace Thetis
                 sc.Colour = System.Drawing.Color.FromArgb(32, 32, 32);
                 sc.ZOrder = 1;
                 addMeterItem(sc);
-
-                clsClickBox clb = new clsClickBox();
-                clb.ParentID = ig.ID;
-                clb.TopLeft = sc.TopLeft;
-                clb.Size = sc.Size;
-                clb.ChangesGroup = false;
-                clb.PerformsIncDec = true;
-                clb.RelatedMeterItem = cb;
-                addMeterItem(clb);
 
                 fBottom = cb.TopLeft.Y + cb.Size.Height;
                 ig.TopLeft = cb.TopLeft;
@@ -29020,6 +28994,16 @@ namespace Thetis
                                             solidColor.FadeOnTx = igs.FadeOnTx;
                                             solidColor.Colour = igs.Colour;
                                         }
+                                        foreach (KeyValuePair<string, clsMeterItem> ct in items.Where(o => o.Value.ItemType == clsMeterItem.MeterItemType.RADAE_CALL_TEXT))
+                                        {
+                                            clsRadaeCallText callText = ct.Value as clsRadaeCallText;
+                                            if (callText == null) continue;
+
+                                            callText.FadeOnRx = igs.FadeOnRx;
+                                            callText.FadeOnTx = igs.FadeOnTx;
+                                            callText.LabelColour = igs.TitleColor;   // title  <- "Title:" colour picker
+                                            callText.Colour      = igs.MarkerColour;  // callsign <- indicator (marker) colour picker
+                                        }
                                         foreach (KeyValuePair<string, clsMeterItem> si in items.Where(o => o.Value.ItemType == clsMeterItem.MeterItemType.H_SCALE))
                                         {
                                             clsScaleItem scaleItem = si.Value as clsScaleItem;
@@ -30081,6 +30065,14 @@ namespace Thetis
                                             igs.TitleColor = scaleItem.FontColourType;
                                             igs.ShowType = scaleItem.ShowType;
                                             if (scaleItem.ReadingSource == Reading.PWR || scaleItem.ReadingSource == Reading.REVERSE_PWR) igs.MaxPower = scaleItem.MaxPower;
+                                        }
+                                        foreach (KeyValuePair<string, clsMeterItem> ct in items.Where(o => o.Value.ItemType == clsMeterItem.MeterItemType.RADAE_CALL_TEXT))
+                                        {
+                                            clsRadaeCallText callText = ct.Value as clsRadaeCallText;
+                                            if (callText == null) continue;
+
+                                            igs.TitleColor   = callText.LabelColour;  // title    -> "Title:" picker
+                                            igs.MarkerColour = callText.Colour;        // callsign -> indicator (marker) picker (recall)
                                         }
                                         foreach (KeyValuePair<string, clsMeterItem> fcs in items.Where(o => o.Value.ItemType == clsMeterItem.MeterItemType.FADE_COVER))
                                         {
@@ -34165,6 +34157,13 @@ namespace Thetis
                                 generalScale(x, y, w, h, scale, 6, 5, -125, 125, 25, 25, fLineBaseY, fontSizeEmScaled, 255);
                             }
                             break;
+                        case Reading.RADAE_SNR_DB:
+                            {
+                                // -10..+40 dB, 0 at 20% from left; low (-10..0) red, high (0..+40) green.
+                                // labelLowStart -> show "-10" at the far left; boundaryUsesHighColour -> "0" in green.
+                                generalScale(x, y, w, h, scale, 2, 4, -10, 40, 10, 10, fLineBaseY, fontSizeEmScaled, 255, 0.2f, false, false, true, true);
+                            }
+                            break;
                         case Reading.SIGNAL_STRENGTH:
                         case Reading.AVG_SIGNAL_STRENGTH:
                         case Reading.SIGNAL_MAX_BIN:
@@ -34175,6 +34174,13 @@ namespace Thetis
                         case Reading.ADC_PK:
                         case Reading.ADC_AV:
                             {
+                                generalScale(x, y, w, h, scale, 6, 1, -120, 0, 20, 20, fLineBaseY, fontSizeEmScaled, 255);
+                            }
+                            break;
+                        case Reading.RADAE_RX_LEVEL_DB:
+                        case Reading.RADAE_TX_MIC_LEVEL_DB:
+                            {
+                                // ADC-style: -120..0 dBFS, midpoint -20, default colours
                                 generalScale(x, y, w, h, scale, 6, 1, -120, 0, 20, 20, fLineBaseY, fontSizeEmScaled, 255);
                             }
                             break;
@@ -34592,7 +34598,7 @@ namespace Thetis
                     }
                 }
             }
-            private void generalScale(float x,float y,float w,float h,clsScaleItem scale, int lowLongTicks, int highLongTicks, int lowStartNumber, int highEndNumber, int lowIncrement, int highIngrement, float fLineBaseY, float newSize, int nFade, float centrePerc = -1, bool addTrailingPlus = false, bool addAllTrailingPlus = false)
+            private void generalScale(float x,float y,float w,float h,clsScaleItem scale, int lowLongTicks, int highLongTicks, int lowStartNumber, int highEndNumber, int lowIncrement, int highIngrement, float fLineBaseY, float newSize, int nFade, float centrePerc = -1, bool addTrailingPlus = false, bool addAllTrailingPlus = false, bool labelLowStart = false, bool boundaryUsesHighColour = false)
             {
                 float lowToHighPoint = (float)(lowLongTicks - 1) / (float)(lowLongTicks + highLongTicks - 1);
 
@@ -34621,7 +34627,26 @@ namespace Thetis
                     _renderTarget.DrawLine(startPoint, endPoint, highColour, 2f);
                 }
 
-                // markers low                                
+                // opt-in: label the low-start value (e.g. -10) at the far-left edge.
+                // generalScale's low loop starts at i=1, so the start edge is normally
+                // unlabelled; this draws it (left-aligned) in the low font colour.
+                if (labelLowStart)
+                {
+                    if (scale.ShowMarkers)
+                    {
+                        startPoint.X = x;
+                        startPoint.Y = fLineBaseY;
+                        endPoint.X = x;
+                        endPoint.Y = fLineBaseY - (h * 0.3f);
+                        _renderTarget.DrawLine(startPoint, endPoint, lowColour, 2f);
+                    }
+                    string sTextLow0 = lowStartNumber.ToString();
+                    SizeF szLow0 = measureString(sTextLow0, scale.FontFamily, scale.FntStyle, newSize);
+                    SharpDX.RectangleF rLow0 = new SharpDX.RectangleF(x, (fLineBaseY - (h * 0.3f)) - szLow0.Height, szLow0.Width, szLow0.Height);
+                    _renderTarget.DrawText(sTextLow0, getDXTextFormatForFont(scale.FontFamily, newSize, scale.FntStyle), rLow0, fontLowColour);
+                }
+
+                // markers low
                 for (int i = 1; i < lowLongTicks; i++)
                 {
                     if (scale.ShowMarkers)
@@ -34645,9 +34670,11 @@ namespace Thetis
                     string sText = (lowStartNumber + i * lowIncrement).ToString();
                     SizeF szTextSize = measureString(sText, scale.FontFamily, scale.FntStyle, newSize);
                     SharpDX.RectangleF txtrect = new SharpDX.RectangleF(startPoint.X - (szTextSize.Width / 2f), endPoint.Y - szTextSize.Height, szTextSize.Width, szTextSize.Height);
-                    _renderTarget.DrawText(sText, getDXTextFormatForFont(scale.FontFamily, newSize, scale.FntStyle), txtrect, fontLowColour);
+                    // opt-in: the boundary tick (last low tick, e.g. 0) can be drawn in the high font colour
+                    SharpDX.Direct2D1.Brush lowTextBrush = (boundaryUsesHighColour && i == lowLongTicks - 1) ? fontHighColour : fontLowColour;
+                    _renderTarget.DrawText(sText, getDXTextFormatForFont(scale.FontFamily, newSize, scale.FntStyle), txtrect, lowTextBrush);
                 }
-                
+
                 // markers high
                 float lowSpacing = spacing;
                 spacing = ((w - (lowSpacing * (float)(lowLongTicks - 1))) - (w * 0.01f)) / (float)highLongTicks; // - w*0.01f as we only draw the line up to w*0.99f
@@ -41287,16 +41314,21 @@ namespace Thetis
 
                 if (t.ShowLabel)
                 {
-                    plotText("RADE last call",
-                             x + (w * 0.02f), y + (h * 0.05f),
-                             rect.Width, t.FontSize * 0.55f,
-                             t.LabelColour, 255, t.FontFamily, t.Style);
+                    // title: left-aligned at the top, same scaling as the other measurement titles (scale FontSize 20 base)
+                    float titleSize = (rect.Width / 52f) * (20f / 16f);
+                    SizeF szTitle = measureString("RADE last call", t.FontFamily, t.Style, titleSize);
+                    SharpDX.RectangleF titleRect = new SharpDX.RectangleF(x + (w * 0.02f), y, szTitle.Width, szTitle.Height);
+                    _renderTarget.DrawText("RADE last call", getDXTextFormatForFont(t.FontFamily, titleSize, t.Style), titleRect, getDXBrushForColour(t.LabelColour, 255));
                 }
 
-                plotText(sDraw,
-                         x + (w * 0.02f), y + (h * 0.40f),
-                         rect.Width, t.FontSize,
-                         drawColour, 255, t.FontFamily, t.Style);
+                // callsign: centred, near the top, kept fully inside the item area (no overlap with the next meter)
+                float callSize = (rect.Width / 52f) * 2.2f;
+                SizeF szCall = measureString(sDraw, t.FontFamily, t.Style, callSize);
+                float callY = y + (h * 0.15f);
+                if (callY + szCall.Height > y + (h * 0.98f)) callY = y + (h * 0.98f) - szCall.Height; // keep bottom inside
+                if (callY < y) callY = y;
+                SharpDX.RectangleF callRect = new SharpDX.RectangleF(x + (w * 0.5f) - (szCall.Width / 2f), callY, szCall.Width, szCall.Height);
+                _renderTarget.DrawText(sDraw, getDXTextFormatForFont(t.FontFamily, callSize, t.Style), callRect, getDXBrushForColour(drawColour, 255));
             }
             private void renderSignalTextDisplay(SharpDX.RectangleF rect, clsMeterItem mi, clsMeter m)
             {

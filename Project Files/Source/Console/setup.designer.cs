@@ -30999,7 +30999,7 @@ namespace Thetis
             //
             this.udRadaeRxLevel.Location = new System.Drawing.Point(135, 89);
             this.udRadaeRxLevel.Maximum = new decimal(new int[] { 40, 0, 0, 0 });
-            this.udRadaeRxLevel.Minimum = new decimal(new int[] { 40, 0, 0, System.Int32.MinValue });
+            this.udRadaeRxLevel.Minimum = new decimal(new int[] { 100, 0, 0, System.Int32.MinValue });
             this.udRadaeRxLevel.Increment = new decimal(new int[] { 1, 0, 0, 0 });
             this.udRadaeRxLevel.DecimalPlaces = 0;
             this.udRadaeRxLevel.Name = "udRadaeRxLevel";
@@ -31448,7 +31448,7 @@ namespace Thetis
             //
             this.udRadaeRxLevelRX2.Location = new System.Drawing.Point(495, 89);
             this.udRadaeRxLevelRX2.Maximum = new decimal(new int[] { 40, 0, 0, 0 });
-            this.udRadaeRxLevelRX2.Minimum = new decimal(new int[] { 40, 0, 0, System.Int32.MinValue });
+            this.udRadaeRxLevelRX2.Minimum = new decimal(new int[] { 100, 0, 0, System.Int32.MinValue });
             this.udRadaeRxLevelRX2.Increment = new decimal(new int[] { 1, 0, 0, 0 });
             this.udRadaeRxLevelRX2.DecimalPlaces = 0;
             this.udRadaeRxLevelRX2.Name = "udRadaeRxLevelRX2";
