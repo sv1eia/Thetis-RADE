@@ -101,6 +101,7 @@ static volatile long g_radae_eoo_repeats_left = 0; /* scheduled EOO frames still
 
 /* Per-RX sync / SNR registers, published from the audio thread. */
 static volatile long g_radae_sync[RADAE_NRX]    = { 0 };
+static volatile long g_radae_sync_prev[RADAE_NRX] = { 0 }; /* prev sync, for rising-edge clear of last callsign */
 static volatile long g_radae_snr_db[RADAE_NRX]  = { 0 };
 
 /* Per-RX dial frequency offset (Hz). */
@@ -606,6 +607,7 @@ PORT void SetRadaeRxEnabled(int rx, int enable)
 {
     if (!radae_rx_valid(rx)) return;
     _InterlockedExchange(&g_radae_rx_enabled[rx], enable ? 1 : 0);
+    _InterlockedExchange(&g_radae_sync_prev[rx], 0);
     if (g_radae_cs_inited)
     {
         EnterCriticalSection(&g_radae_cs);
@@ -995,7 +997,21 @@ void xradae_rx(int rx, double* rbuff_io)
                 }
             }
 
-            _InterlockedExchange(&g_radae_sync[rx],   rade_sync(g_rade[rx]));
+            {
+                long new_sync  = rade_sync(g_rade[rx]);
+                long prev_sync = _InterlockedExchange(&g_radae_sync_prev[rx], new_sync);
+                /* Fresh sync acquisition (and no EOO decoded in this same block): clear the
+                 * last-decoded remote callsign so the "RADE Last Callsign" meter waits for
+                 * THIS over's EOO before showing the next station.  The decode seq is left
+                 * untouched so the FreeDV-Reporter (seq-driven) is unaffected. */
+                if (!prev_sync && new_sync && !has_eoo)
+                {
+                    if (g_radae_cs_inited) EnterCriticalSection(&g_radae_cs);
+                    g_rx_remote_callsign[rx][0] = '\0';
+                    if (g_radae_cs_inited) LeaveCriticalSection(&g_radae_cs);
+                }
+                _InterlockedExchange(&g_radae_sync[rx], new_sync);
+            }
             _InterlockedExchange(&g_radae_snr_db[rx], rade_snrdB_3k_est(g_rade[rx]));
 
             nin = rade_nin(g_rade[rx]);

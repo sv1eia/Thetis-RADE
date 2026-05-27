@@ -2355,7 +2355,6 @@ namespace Thetis
             chkRADAERX2_CheckedChanged(this, e);
             chkRADAELoopbackRX2_CheckedChanged(this, e);
             udRadaeRxLevelRX2_ValueChanged(this, e);
-            chkRADAEReporterRX2_CheckedChanged(this, e);
             txtRadaeReporterMsgRX2_TextChanged(this, e);
             chkRADAEReportingRX2_CheckedChanged(this, e);
 
@@ -22510,25 +22509,17 @@ namespace Thetis
         {
             // Greyed-out state of "RX1RADE enable reporting" tracks the master.
             chkRADAEReporting.Enabled = chkRADAEReporter.Checked;
-            // RX2 VIS gated symmetrically -- with four-way REPR coupling
-            // chkRADAEReporterRX2.Checked tracks chkRADAEReporter.Checked.
+            // RX2 VIS ("RX2RADE enable reporting") gates on the single RX1 reporter.
             if (chkRADAEReportingRX2 != null)
                 chkRADAEReportingRX2.Enabled = chkRADAEReporter.Checked;
 
-            // Four-way REPR mirror: chkRADAEReporter <-> chkRADAEReporterRX2
-            // (Setup tabs) <-> chkREPR / chkREPRRX2 (Console).  Same recursion-
-            // safe pattern -- assignment is a WinForms no-op when value matches.
+            // Single RX1 reporter drives the console RX1 REPR mirror and both VIS
+            // (RX1 + RX2) enabled states.  (The RX2 reporter checkboxes were removed.)
             try
             {
-                if (chkRADAEReporterRX2 != null &&
-                    chkRADAEReporterRX2.Checked != chkRADAEReporter.Checked)
-                    chkRADAEReporterRX2.Checked = chkRADAEReporter.Checked;
                 if (console != null && console.chkREPRMirror != null &&
                     console.chkREPRMirror.Checked != chkRADAEReporter.Checked)
                     console.chkREPRMirror.Checked = chkRADAEReporter.Checked;
-                if (console != null && console.chkREPRRX2Mirror != null &&
-                    console.chkREPRRX2Mirror.Checked != chkRADAEReporter.Checked)
-                    console.chkREPRRX2Mirror.Checked = chkRADAEReporter.Checked;
                 if (console != null && console.chkVISMirror != null &&
                     console.chkVISMirror.Enabled != chkRADAEReporter.Checked)
                     console.chkVISMirror.Enabled = chkRADAEReporter.Checked;
@@ -22885,17 +22876,6 @@ namespace Thetis
             cmaster.SetRadaeRxDialScale(1, scale);
         }
 
-        // Four-way REPR mirror sibling.  The actual reporter lifecycle lives
-        // in chkRADAEReporter_CheckedChanged; here we just propagate the
-        // shared flag so all four UIs stay in lockstep.  Recursion is
-        // suppressed by WinForms' same-value no-op behaviour.
-        private void chkRADAEReporterRX2_CheckedChanged(object sender, EventArgs e)
-        {
-            if (chkRADAEReporter != null &&
-                chkRADAEReporter.Checked != chkRADAEReporterRX2.Checked)
-                chkRADAEReporter.Checked = chkRADAEReporterRX2.Checked;
-        }
-
         // RX2 reporter message -- pushed only when the RX2 second client
         // is up.  The manager handles "client not yet created" silently.
         private void txtRadaeReporterMsgRX2_TextChanged(object sender, EventArgs e)
@@ -22969,11 +22949,6 @@ namespace Thetis
         {
             get { return chkRADAERX2.Checked; }
             set { if (chkRADAERX2.Checked != value) chkRADAERX2.Checked = value; }
-        }
-        public bool RADAEReporterRX2
-        {
-            get { return chkRADAEReporterRX2.Checked; }
-            set { if (chkRADAEReporterRX2.Checked != value) chkRADAEReporterRX2.Checked = value; }
         }
         public bool RADAEReportingRX2
         {

@@ -231,7 +231,6 @@ namespace Thetis
         private System.Windows.Forms.CheckBoxTS chkVIS;
         // Dual-RX RADE additions -- RX2 console mirrors on panelRX2Display.
         private System.Windows.Forms.CheckBoxTS chkRADERX2;
-        private System.Windows.Forms.CheckBoxTS chkREPRRX2;
         private System.Windows.Forms.CheckBoxTS chkVISRX2;
         private RadioButtonTS radBand160;
         private RadioButtonTS radBand80;
@@ -1081,7 +1080,6 @@ namespace Thetis
             this.chkREPR = new System.Windows.Forms.CheckBoxTS();
             this.chkVIS = new System.Windows.Forms.CheckBoxTS();
             this.chkRADERX2 = new System.Windows.Forms.CheckBoxTS();
-            this.chkREPRRX2 = new System.Windows.Forms.CheckBoxTS();
             this.chkVISRX2 = new System.Windows.Forms.CheckBoxTS();
             this.lblVACTXIndicator = new System.Windows.Forms.LabelTS();
             this.lblDigTXProfile = new System.Windows.Forms.LabelTS();
@@ -6611,7 +6609,6 @@ namespace Thetis
             this.panelRX2Display.Controls.Add(this.chkX2TR);
             // Dual-RX RADE additions -- RADE/REPR/VIS triplet around chkX2TR.
             this.panelRX2Display.Controls.Add(this.chkRADERX2);
-            this.panelRX2Display.Controls.Add(this.chkREPRRX2);
             this.panelRX2Display.Controls.Add(this.chkVISRX2);
             this.panelRX2Display.Name = "panelRX2Display";
             // 
@@ -6915,25 +6912,6 @@ namespace Thetis
             this.toolTip1.SetToolTip(this.chkRADERX2, "RADE V1 enable for RX2.  Mirrors the chkRADAERX2 state on Setup -> Audio -> Options.");
             this.chkRADERX2.UseVisualStyleBackColor = false;
             this.chkRADERX2.CheckedChanged += new System.EventHandler(this.chkRADERX2_CheckedChanged);
-            //
-            // chkREPRRX2 -- four-way REPR mirror (RX2 surface).
-            //
-            this.chkREPRRX2.AutoSize = true;
-            this.chkREPRRX2.BackColor = System.Drawing.Color.Transparent;
-            // Removed from the UI: a single RX1 reporter (chkREPR) covers both RX. Kept in code
-            // (mirror/DB) but permanently hidden+disabled; the RX2 master no longer re-shows it.
-            this.chkREPRRX2.Visible = false;
-            this.chkREPRRX2.Enabled = false;
-            this.chkREPRRX2.ForeColor = System.Drawing.Color.White;
-            this.chkREPRRX2.Image = null;
-            this.chkREPRRX2.Location = new System.Drawing.Point(1, 80);
-            this.chkREPRRX2.Name = "chkREPRRX2";
-            this.chkREPRRX2.Size = new System.Drawing.Size(56, 17);
-            this.chkREPRRX2.TabIndex = 211;
-            this.chkREPRRX2.Text = "REPR";
-            this.toolTip1.SetToolTip(this.chkREPRRX2, "REPR mirror -- the same 'reporter ON' flag drives all four surfaces (Setup RX1/RX2 + Console RX1/RX2).");
-            this.chkREPRRX2.UseVisualStyleBackColor = false;
-            this.chkREPRRX2.CheckedChanged += new System.EventHandler(this.chkREPRRX2_CheckedChanged);
             //
             // chkVISRX2 -- per-RX VIS (independent of RX1 VIS).
             //

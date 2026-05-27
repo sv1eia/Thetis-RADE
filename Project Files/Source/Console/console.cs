@@ -1254,7 +1254,6 @@ namespace Thetis
         // Dual-RX RADE additions -- console-side RX2 mirrors used by the
         // Setup tab to push state back from the right-column controls.
         public System.Windows.Forms.CheckBoxTS chkRADERX2Mirror { get { return chkRADERX2; } }
-        public System.Windows.Forms.CheckBoxTS chkREPRRX2Mirror { get { return chkREPRRX2; } }
         public System.Windows.Forms.CheckBoxTS chkVISRX2Mirror  { get { return chkVISRX2;  } }
 
         /* Master experimental switch for the RX1 RADE feature, driven
@@ -1337,19 +1336,6 @@ namespace Thetis
             {
                 if (!IsSetupFormNull && SetupForm.RADAERX2 != chkRADERX2.Checked)
                     SetupForm.RADAERX2 = chkRADERX2.Checked;
-            }
-            catch { }
-        }
-        private void chkREPRRX2_CheckedChanged(object sender, EventArgs e)
-        {
-            try
-            {
-                // Four-way REPR mirror: route through Setup's shared flag.
-                if (!IsSetupFormNull && SetupForm.RADAEReporter != chkREPRRX2.Checked)
-                    SetupForm.RADAEReporter = chkREPRRX2.Checked;
-                /* VIS gating: chkVISRX2 is meaningful only when REPR is on. */
-                if (chkVISRX2.Enabled != chkREPRRX2.Checked)
-                    chkVISRX2.Enabled = chkREPRRX2.Checked;
             }
             catch { }
         }

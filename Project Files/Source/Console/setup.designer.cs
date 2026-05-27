@@ -1883,7 +1883,6 @@ namespace Thetis
             this.chkRX2RadeControl = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAERX2 = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAELoopbackRX2 = new System.Windows.Forms.CheckBoxTS();
-            this.chkRADAEReporterRX2 = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReportingRX2 = new System.Windows.Forms.CheckBoxTS();
             this.lblRadaeRxLevelRX2 = new System.Windows.Forms.LabelTS();
             this.udRadaeRxLevelRX2 = new System.Windows.Forms.NumericUpDownTS();
@@ -31459,23 +31458,6 @@ namespace Thetis
             this.toolTip1.SetToolTip(this.udRadaeRxLevelRX2, "RX2 RADE decoder input level (dB).  Independent of RX1 RxLevel.");
             this.udRadaeRxLevelRX2.ValueChanged += new System.EventHandler(this.udRadaeRxLevelRX2_ValueChanged);
             //
-            // chkRADAEReporterRX2
-            //
-            this.chkRADAEReporterRX2.AutoSize = true;
-            // Removed from the UI: a single "RX1RADE Reporter" covers both RX. Kept in code
-            // (four-way mirror/DB) but permanently hidden+disabled; the RX2 master no longer shows it.
-            this.chkRADAEReporterRX2.Visible = false;
-            this.chkRADAEReporterRX2.Enabled = false;
-            this.chkRADAEReporterRX2.Image = null;
-            this.chkRADAEReporterRX2.Location = new System.Drawing.Point(370, 318);
-            this.chkRADAEReporterRX2.Name = "chkRADAEReporterRX2";
-            this.chkRADAEReporterRX2.Size = new System.Drawing.Size(180, 17);
-            this.chkRADAEReporterRX2.TabIndex = 64;
-            this.chkRADAEReporterRX2.Text = "RX2RADE Reporter (qso.freedv.org)";
-            this.toolTip1.SetToolTip(this.chkRADAEReporterRX2, "Mirror of the RX1 Reporter checkbox -- all four reporter UIs (Setup RX1/RX2 + Console RX1/RX2) share one underlying 'reporter ON' flag.");
-            this.chkRADAEReporterRX2.UseVisualStyleBackColor = true;
-            this.chkRADAEReporterRX2.CheckedChanged += new System.EventHandler(this.chkRADAEReporterRX2_CheckedChanged);
-            //
             // lblRadaeReporterMsgRX2
             //
             this.lblRadaeReporterMsgRX2.AutoSize = true;
@@ -45640,7 +45622,6 @@ namespace Thetis
             this.tpDSPRADE.Controls.Add(this.chkRX2RadeControl);
             this.tpDSPRADE.Controls.Add(this.chkRADAERX2);
             this.tpDSPRADE.Controls.Add(this.chkRADAELoopbackRX2);
-            this.tpDSPRADE.Controls.Add(this.chkRADAEReporterRX2);
             this.tpDSPRADE.Controls.Add(this.chkRADAEReportingRX2);
             this.tpDSPRADE.Controls.Add(this.lblRadaeRxLevelRX2);
             this.tpDSPRADE.Controls.Add(this.udRadaeRxLevelRX2);
@@ -56206,14 +56187,14 @@ namespace Thetis
             //
             // chkContainer_hideRADEnotenabled
             //
-            this.chkContainer_hideRADEnotenabled.AutoSize = true;
+            this.chkContainer_hideRADEnotenabled.AutoSize = false;
             this.chkContainer_hideRADEnotenabled.Image = null;
-            this.chkContainer_hideRADEnotenabled.Location = new System.Drawing.Point(380, 85);
+            this.chkContainer_hideRADEnotenabled.Location = new System.Drawing.Point(286, 140);
             this.chkContainer_hideRADEnotenabled.Name = "chkContainer_hideRADEnotenabled";
             this.chkContainer_hideRADEnotenabled.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-            this.chkContainer_hideRADEnotenabled.Size = new System.Drawing.Size(74, 30);
+            this.chkContainer_hideRADEnotenabled.Size = new System.Drawing.Size(80, 30);
             this.chkContainer_hideRADEnotenabled.TabIndex = 119;
-            this.chkContainer_hideRADEnotenabled.Text = "Hide if RADE\r\nnot enabled";
+            this.chkContainer_hideRADEnotenabled.Text = "Hide if\r\nno RADE";
             this.toolTip1.SetToolTip(this.chkContainer_hideRADEnotenabled, "Hide this container if RADE is not enabled for the RX it belongs to");
             this.chkContainer_hideRADEnotenabled.UseVisualStyleBackColor = true;
             this.chkContainer_hideRADEnotenabled.CheckedChanged += new System.EventHandler(this.chkContainer_hideRADEnotenabled_CheckedChanged);
@@ -77216,7 +77197,6 @@ namespace Thetis
         private CheckBoxTS chkRX2RadeControl;
         private CheckBoxTS chkRADAERX2;
         private CheckBoxTS chkRADAELoopbackRX2;
-        private CheckBoxTS chkRADAEReporterRX2;
         private CheckBoxTS chkRADAEReportingRX2;
         private LabelTS    lblRadaeRxLevelRX2;
         private NumericUpDownTS udRadaeRxLevelRX2;
