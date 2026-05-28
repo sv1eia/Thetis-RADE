@@ -1881,6 +1881,9 @@ namespace Thetis
             // Dual-RX RADE additions -- RX2 column mirrors of the RX1 controls.
             this.chkRX1RadeControl = new System.Windows.Forms.CheckBoxTS();
             this.chkRX2RadeControl = new System.Windows.Forms.CheckBoxTS();
+            this.chkRX1Measure = new System.Windows.Forms.CheckBoxTS();
+            this.chkTXMeasure = new System.Windows.Forms.CheckBoxTS();
+            this.chkRX2Measure = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAERX2 = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAELoopbackRX2 = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReportingRX2 = new System.Windows.Forms.CheckBoxTS();
@@ -31410,6 +31413,52 @@ namespace Thetis
             this.chkRX2RadeControl.UseVisualStyleBackColor = true;
             this.chkRX2RadeControl.CheckedChanged += new System.EventHandler(this.chkRX2RadeControl_CheckedChanged);
             //
+            // chkRX1Measure  enables on-screen RADE RX metrics overlay
+            // (SNR/Sync/Level/Clip/Call) on the RX1 panadapter when RX1
+            // RADE is enabled.  Enabled only while chkRX1RadeControl is on.
+            //
+            this.chkRX1Measure.AutoSize = true;
+            this.chkRX1Measure.Image = null;
+            this.chkRX1Measure.Location = new System.Drawing.Point(140, 10);
+            this.chkRX1Measure.Name = "chkRX1Measure";
+            this.chkRX1Measure.Size = new System.Drawing.Size(80, 17);
+            this.chkRX1Measure.TabIndex = 158;
+            this.chkRX1Measure.Text = "RX1Measure";
+            this.toolTip1.SetToolTip(this.chkRX1Measure, "Show RADE RX metrics (SNR/Sync/Level/Clip/Call) overlay on the RX1 panadapter when RX1 RADE is enabled.");
+            this.chkRX1Measure.UseVisualStyleBackColor = true;
+            this.chkRX1Measure.CheckedChanged += new System.EventHandler(this.chkRX1Measure_CheckedChanged);
+            //
+            // chkTXMeasure  enables on-screen RADE TX metrics overlay
+            // (Level/Clip) on whichever panadapter (RX1 or RX2) the active
+            // VFO TX maps to, when that RX's RADE is enabled.  Enabled
+            // whenever either chkRX1RadeControl or chkRX2RadeControl is on.
+            //
+            this.chkTXMeasure.AutoSize = true;
+            this.chkTXMeasure.Image = null;
+            this.chkTXMeasure.Location = new System.Drawing.Point(237, 10);
+            this.chkTXMeasure.Name = "chkTXMeasure";
+            this.chkTXMeasure.Size = new System.Drawing.Size(80, 17);
+            this.chkTXMeasure.TabIndex = 159;
+            this.chkTXMeasure.Text = "TXMeasure";
+            this.toolTip1.SetToolTip(this.chkTXMeasure, "Show RADE TX metrics (Mic Level/Clip) overlay on the panadapter that the active VFO TX maps to, when that RX's RADE is enabled.");
+            this.chkTXMeasure.UseVisualStyleBackColor = true;
+            this.chkTXMeasure.CheckedChanged += new System.EventHandler(this.chkTXMeasure_CheckedChanged);
+            //
+            // chkRX2Measure  enables on-screen RADE RX metrics overlay
+            // (SNR/Sync/Level/Clip/Call) on the RX2 panadapter when RX2
+            // RADE is enabled.  Enabled only while chkRX2RadeControl is on.
+            //
+            this.chkRX2Measure.AutoSize = true;
+            this.chkRX2Measure.Image = null;
+            this.chkRX2Measure.Location = new System.Drawing.Point(500, 10);
+            this.chkRX2Measure.Name = "chkRX2Measure";
+            this.chkRX2Measure.Size = new System.Drawing.Size(80, 17);
+            this.chkRX2Measure.TabIndex = 160;
+            this.chkRX2Measure.Text = "RX2Measure";
+            this.toolTip1.SetToolTip(this.chkRX2Measure, "Show RADE RX metrics (SNR/Sync/Level/Clip/Call) overlay on the RX2 panadapter when RX2 RADE is enabled.");
+            this.chkRX2Measure.UseVisualStyleBackColor = true;
+            this.chkRX2Measure.CheckedChanged += new System.EventHandler(this.chkRX2Measure_CheckedChanged);
+            //
             // chkRADAERX2
             //
             this.chkRADAERX2.AutoSize = true;
@@ -45620,6 +45669,9 @@ namespace Thetis
             // Dual-RX RADE additions.
             this.tpDSPRADE.Controls.Add(this.chkRX1RadeControl);
             this.tpDSPRADE.Controls.Add(this.chkRX2RadeControl);
+            this.tpDSPRADE.Controls.Add(this.chkRX1Measure);
+            this.tpDSPRADE.Controls.Add(this.chkTXMeasure);
+            this.tpDSPRADE.Controls.Add(this.chkRX2Measure);
             this.tpDSPRADE.Controls.Add(this.chkRADAERX2);
             this.tpDSPRADE.Controls.Add(this.chkRADAELoopbackRX2);
             this.tpDSPRADE.Controls.Add(this.chkRADAEReportingRX2);
@@ -77195,6 +77247,9 @@ namespace Thetis
         // Dual-RX RADE additions -- RX2 column mirrors.
         private CheckBoxTS chkRX1RadeControl;
         private CheckBoxTS chkRX2RadeControl;
+        private CheckBoxTS chkRX1Measure;
+        private CheckBoxTS chkTXMeasure;
+        private CheckBoxTS chkRX2Measure;
         private CheckBoxTS chkRADAERX2;
         private CheckBoxTS chkRADAELoopbackRX2;
         private CheckBoxTS chkRADAEReportingRX2;

@@ -4978,6 +4978,209 @@ namespace Thetis
         private static float _ema_oip5;
         //
 
+        // RADE on-screen metrics overlay -- drawn at the top-right of
+        // each panadapter while clipped inside the panadapter rectangle.
+        // RX side (SNR/Sync/Level/Clip/Call) is shown on a non-MOX panel
+        // when RXnMeasure && RXnRADE are both on.  TX side (Level/Clip)
+        // is shown on whichever panel the active VFO TX maps to during
+        // MOX, when TXMeasure && that RX's RADE are both on.  Layout
+        // uses fixed-width label and value columns so the column does
+        // not shift as digit count changes.
+        private static void drawRadeOverlayDX2D(int rx, int W, int H, int nVerticalShift)
+        {
+            if (console == null) return;
+
+            bool tx_side = false;
+            bool rx_side = false;
+            int rxIdx = (rx == 2) ? 1 : 0;
+            bool radeOnThisRx = (cmaster.GetRadaeRxEnabled(rxIdx) != 0);
+
+            if (_mox)
+            {
+                // TX overlay only on the panel the active VFO TX maps to
+                // (localMox(rx) is true) and only when that RX's RADE is on
+                // and the user has enabled TX measure.
+                bool isTxPanelForThisRx = (rx == 1)
+                    ? (!_tx_on_vfob || (_tx_on_vfob && !_rx2_enabled))
+                    : (_tx_on_vfob && _rx2_enabled);
+                if (isTxPanelForThisRx && radeOnThisRx && console.RadeMeasureTx)
+                    tx_side = true;
+            }
+            else
+            {
+                // RX overlay on each RX's own panel when measure + RADE on.
+                bool wantRx = (rx == 1) ? console.RadeMeasureRx1 : console.RadeMeasureRx2;
+                if (wantRx && radeOnThisRx)
+                    rx_side = true;
+            }
+            if (!tx_side && !rx_side) return;
+
+            // Values
+            int    snr_dB     = 0;
+            bool   sync_on    = false;
+            int    rxLev_dB   = -120;
+            bool   rxClip     = false;
+            string callsign   = "";
+            int    txLev_dB   = -120;
+            bool   txClip     = false;
+            try
+            {
+                if (rx_side)
+                {
+                    snr_dB   = cmaster.GetRadaeSnrDb(rxIdx);
+                    sync_on  = cmaster.GetRadaeSync(rxIdx) != 0;
+                    rxLev_dB = cmaster.GetRadaeRxLevelDb(rxIdx);
+                    rxClip   = cmaster.GetRadaeClip(rxIdx) != 0;
+                    var sb = new System.Text.StringBuilder(16);
+                    try { cmaster.GetRadaeRemoteCallsign(rxIdx, sb, sb.Capacity); } catch { }
+                    callsign = sb.ToString();
+                }
+                if (tx_side)
+                {
+                    txLev_dB = cmaster.GetRadaeTxMicLevelDb();
+                    txClip   = cmaster.GetRadaeTxMicClip() != 0;
+                }
+            }
+            catch { return; }
+
+            // Layout
+            const int VAL_CHARS = 9;
+            float charW = 7.5f;   // approximate -- only used to size the value rectangle
+            float labelW = 42f;   // label column width (e.g. "Level:")
+            float valueW = charW * VAL_CHARS;
+            float gap    = 2f;
+            float marginRight = 8f;
+            float lineH  = 13f;
+
+            float xValueLeft = W - marginRight - valueW;
+            float xLabelLeft = xValueLeft - gap - labelW;
+            float yTop       = nVerticalShift + lineH; // one line below top
+
+            // Rows
+            int rowCount = tx_side ? 2 : 5;
+            string[] labels = new string[rowCount];
+            string[] values = new string[rowCount];
+            int[][] cells   = new int[rowCount][]; // per row, 9 cells: 0=transparent, 1=green, 2=red
+
+            if (rx_side)
+            {
+                labels[0] = "SNR  :"; values[0] = FormatSnr(snr_dB);            cells[0] = SnrCells(snr_dB, sync_on);
+                labels[1] = "Sync :"; values[1] = PadRade(sync_on ? "Yes" : "No");
+                cells[1] = sync_on ? AllCells(1) : AllCells(0);
+                labels[2] = "Level:"; values[2] = FormatLevel(rxLev_dB);        cells[2] = LevelBarCells(rxLev_dB);
+                labels[3] = "Clip :"; values[3] = PadRade(rxClip ? "Yes" : "No");
+                cells[3] = rxClip ? AllCells(2) : AllCells(0);
+                labels[4] = "Call :"; values[4] = PadRade(callsign ?? "");
+                cells[4] = AllCells(0);
+            }
+            else
+            {
+                labels[0] = "Level:"; values[0] = FormatLevel(txLev_dB);        cells[0] = LevelBarCells(txLev_dB);
+                labels[1] = "Clip :"; values[1] = PadRade(txClip ? "Yes" : "No");
+                cells[1] = txClip ? AllCells(2) : AllCells(0);
+            }
+
+            float cellW = valueW / VAL_CHARS;
+            for (int row = 0; row < rowCount; row++)
+            {
+                float y = yTop + lineH * row;
+
+                // Backgrounds (9 cells)
+                int[] c = cells[row];
+                for (int i = 0; i < VAL_CHARS; i++)
+                {
+                    if (c[i] == 0) continue;
+                    SharpDX.Direct2D1.Brush b = (c[i] == 1) ? m_bDX2_RadeBgGreen : m_bDX2_RadeBgRed;
+                    if (b == null) continue;
+                    _d2dRenderTarget.FillRectangle(
+                        new RectangleF(xValueLeft + i * cellW, y, cellW, lineH),
+                        b);
+                }
+
+                // Label (left-aligned)
+                _d2dRenderTarget.DrawText(
+                    labels[row],
+                    fontDX2d_callout,
+                    new RectangleF(xLabelLeft, y, labelW, lineH),
+                    m_bDX2_Yellow,
+                    DrawTextOptions.None);
+
+                // Value (already padded to 9 chars; draw right-aligned in the value rect
+                // via a TextLayout to lock the right edge regardless of glyph widths).
+                using (var layout = new SharpDX.DirectWrite.TextLayout(
+                    fontFactory, values[row], fontDX2d_callout, valueW, lineH))
+                {
+                    layout.TextAlignment = SharpDX.DirectWrite.TextAlignment.Trailing;
+                    _d2dRenderTarget.DrawTextLayout(
+                        new SharpDX.Vector2(xValueLeft, y),
+                        layout,
+                        m_bDX2_Yellow,
+                        DrawTextOptions.None);
+                }
+            }
+        }
+
+        private static string PadRade(string s)
+        {
+            if (s == null) s = "";
+            if (s.Length > 9) s = s.Substring(0, 9);
+            return s.PadLeft(9);
+        }
+        private static string FormatSnr(int snr_dB)
+        {
+            return PadRade(snr_dB.ToString() + "dB");
+        }
+        private static string FormatLevel(int lvl_dB)
+        {
+            if (lvl_dB < -120) lvl_dB = -120;
+            if (lvl_dB > 0)    lvl_dB = 0;
+            return PadRade(lvl_dB.ToString() + "dBFS");
+        }
+        private static int[] AllCells(int v)
+        {
+            int[] a = new int[9];
+            for (int i = 0; i < 9; i++) a[i] = v;
+            return a;
+        }
+        private static int[] LevelBarCells(int lvl_dB)
+        {
+            // -120..0 in 9 equal steps; first 7 green (idx 0..6), last 2 red (idx 7..8).
+            int[] a = new int[9];
+            for (int i = 0; i < 9; i++)
+            {
+                double thr = -120.0 + (i + 1) * (120.0 / 9.0);
+                if (lvl_dB >= thr)
+                    a[i] = (i < 7) ? 1 : 2;
+                else
+                    a[i] = 0;
+            }
+            return a;
+        }
+        private static int[] SnrCells(int snr_dB, bool sync_on)
+        {
+            int[] a = new int[9];
+            if (!sync_on) return a;
+            if (snr_dB < -3)
+            {
+                a[0] = 2;
+                return a;
+            }
+            if (snr_dB < 0)
+            {
+                a[0] = 2; a[1] = 2;
+                return a;
+            }
+            a[0] = 1; a[1] = 1;
+            // Cells 2..8: each represents 40/7 dB; lit (green) iff snr_dB >= (i*40/7)
+            // where i = 1..7 -> matches cells 2..8.
+            for (int i = 1; i <= 7; i++)
+            {
+                double thr = i * (40.0 / 7.0);
+                a[1 + i] = (snr_dB >= thr) ? 1 : 0;
+            }
+            return a;
+        }
+
         unsafe static private bool DrawPanadapterDX2D(int nVerticalShift, int W, int H, int rx, bool bottom)
         {
             //if (grid_control) //[2.10.3.9]MW0LGE raw grid control option now just turns off the grid, all other elements are shown
@@ -5722,6 +5925,8 @@ namespace Thetis
                     else if (_ema_dbc != -999) _ema_dbc = -999;
                 }
 
+                drawRadeOverlayDX2D(rx, W, H, nVerticalShift);
+
                 _d2dRenderTarget.PopAxisAlignedClip();
             }
 
@@ -5729,7 +5934,7 @@ namespace Thetis
             {
                 max_y = local_max_y;
                 max_x = local_max_x;
-            }            
+            }
 
             return true;
         }
@@ -7861,6 +8066,11 @@ namespace Thetis
         private static SharpDX.Direct2D1.Brush m_bDX2_Red;
         private static SharpDX.Direct2D1.Brush m_bDX2_Yellow;
         private static SharpDX.Direct2D1.Brush m_bDX2_YellowGreen;
+        // RADE overlay backgrounds.  Semi-transparent so the spectrum
+        // behind tints through, but still strongly coloured for a clear
+        // green/red level bar.  Yellow overlay text stays readable on top.
+        private static SharpDX.Direct2D1.Brush m_bDX2_RadeBgGreen;
+        private static SharpDX.Direct2D1.Brush m_bDX2_RadeBgRed;
         private static SharpDX.Direct2D1.Brush m_bDX2_Gray;
 
         private static SharpDX.Direct2D1.Brush m_bDX2_PeakBlob;
@@ -8234,6 +8444,8 @@ namespace Thetis
             m_bDX2_Yellow = null;
             m_bDX2_YellowGreen = null;
             m_bDX2_Gray = null;
+            m_bDX2_RadeBgGreen = null;
+            m_bDX2_RadeBgRed = null;
 
             m_bDX2_PeakBlob = null;
             m_bDX2_PeakBlobText = null;
@@ -8323,6 +8535,8 @@ namespace Thetis
                 m_bDX2_Yellow = getDXBrushForColour(Color.Yellow);
                 m_bDX2_YellowGreen = getDXBrushForColour(Color.YellowGreen);
                 m_bDX2_Gray = getDXBrushForColour(Color.Gray);
+                m_bDX2_RadeBgGreen = getDXBrushForColour(Color.FromArgb(0, 180, 0), 160);
+                m_bDX2_RadeBgRed = getDXBrushForColour(Color.FromArgb(200, 0, 0), 180);
 
                 m_bDX2_PeakBlob = getDXBrushForColour(Color.OrangeRed);
                 m_bDX2_PeakBlobText = getDXBrushForColour(Color.Chartreuse);

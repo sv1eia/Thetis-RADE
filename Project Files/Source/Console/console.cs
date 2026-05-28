@@ -37923,6 +37923,17 @@ namespace Thetis
             get { return RadaeRx1Enabled || RadaeRx2Enabled; }
         }
 
+        // RADE on-screen metrics overlay enables.  Driven from
+        // Setup -> DSP -> RADE (chkRX1Measure / chkRX2Measure /
+        // chkTXMeasure).  Read per-frame by Display to decide whether
+        // to draw the metrics overlay on RX1 / RX2 panadapter.
+        private bool _rade_measure_rx1 = false;
+        private bool _rade_measure_rx2 = false;
+        private bool _rade_measure_tx  = false;
+        public bool RadeMeasureRx1 { get { return _rade_measure_rx1; } set { _rade_measure_rx1 = value; } }
+        public bool RadeMeasureRx2 { get { return _rade_measure_rx2; } set { _rade_measure_rx2 = value; } }
+        public bool RadeMeasureTx  { get { return _rade_measure_tx;  } set { _rade_measure_tx  = value; } }
+
         /* Fired by the Setup RADE enable handlers (chkRADAE / chkRADAERX2)
          * after the C-side enable flag flips, so listeners such as the
          * Meters/Gadgets manager can re-evaluate per-RX container

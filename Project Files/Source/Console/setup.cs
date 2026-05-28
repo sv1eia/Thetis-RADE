@@ -22673,6 +22673,15 @@ namespace Thetis
             // but greyed when RX1 master is off.
             if (chkRX2RadeControl != null) chkRX2RadeControl.Enabled = on;
 
+            // RX1Measure follows RX1 master; force-uncheck when RX1 off.
+            // TXMeasure follows (RX1 OR RX2) master; force-uncheck when both off.
+            if (chkRX1Measure != null)
+            {
+                if (!on && chkRX1Measure.Checked) chkRX1Measure.Checked = false;
+                chkRX1Measure.Enabled = on;
+            }
+            UpdateTxMeasureEnabled();
+
             // Visibility + enabled for the Setup-side RX1 + TX/mic +
             // reporter controls.  Mic-conditioning EQ rows, AGC target,
             // and the (production-hidden) Diagnostics group are all
@@ -22771,6 +22780,15 @@ namespace Thetis
                     chkRADAERX2.Checked = false;
             }
 
+            // RX2Measure follows RX2 master; force-uncheck when RX2 off.
+            // TXMeasure follows (RX1 OR RX2) master; force-uncheck when both off.
+            if (chkRX2Measure != null)
+            {
+                if (!on && chkRX2Measure.Checked) chkRX2Measure.Checked = false;
+                chkRX2Measure.Enabled = on;
+            }
+            UpdateTxMeasureEnabled();
+
             // Visibility + enabled for the Setup-side RX2 RADE controls.
             if (chkRADAERX2 != null)         { chkRADAERX2.Visible         = on; chkRADAERX2.Enabled         = on; }
             if (chkRADAELoopbackRX2 != null) { chkRADAELoopbackRX2.Visible = on; chkRADAELoopbackRX2.Enabled = on; }
@@ -22799,6 +22817,52 @@ namespace Thetis
                 Thetis.FreeDVReporter.FreeDVReporterManager.SetRx2RadeControlVisible(on);
             }
             catch { }
+        }
+
+        // TXMeasure is enabled when at least one of the two RADE masters
+        // is on.  When both masters go off, force-uncheck so a stale flag
+        // does not survive a feature shutdown.
+        private void UpdateTxMeasureEnabled()
+        {
+            if (chkTXMeasure == null) return;
+            bool eitherOn = (chkRX1RadeControl != null && chkRX1RadeControl.Checked)
+                         || (chkRX2RadeControl != null && chkRX2RadeControl.Checked);
+            if (!eitherOn && chkTXMeasure.Checked) chkTXMeasure.Checked = false;
+            chkTXMeasure.Enabled = eitherOn;
+        }
+
+        // Console-side publishers for the panadapter overlay.  Display
+        // reads these per frame to decide whether to draw the RX/TX RADE
+        // metrics overlay on each RX's panadapter.
+        public bool RX1Measure
+        {
+            get { return chkRX1Measure != null && chkRX1Measure.Checked; }
+            set { if (chkRX1Measure != null) chkRX1Measure.Checked = value; }
+        }
+        public bool RX2Measure
+        {
+            get { return chkRX2Measure != null && chkRX2Measure.Checked; }
+            set { if (chkRX2Measure != null) chkRX2Measure.Checked = value; }
+        }
+        public bool TXMeasure
+        {
+            get { return chkTXMeasure != null && chkTXMeasure.Checked; }
+            set { if (chkTXMeasure != null) chkTXMeasure.Checked = value; }
+        }
+
+        private void chkRX1Measure_CheckedChanged(object sender, EventArgs e)
+        {
+            if (console != null) console.RadeMeasureRx1 = chkRX1Measure.Checked;
+        }
+
+        private void chkRX2Measure_CheckedChanged(object sender, EventArgs e)
+        {
+            if (console != null) console.RadeMeasureRx2 = chkRX2Measure.Checked;
+        }
+
+        private void chkTXMeasure_CheckedChanged(object sender, EventArgs e)
+        {
+            if (console != null) console.RadeMeasureTx = chkTXMeasure.Checked;
         }
 
         private void chkRADAERX2_CheckedChanged(object sender, EventArgs e)
