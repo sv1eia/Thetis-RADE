@@ -1878,6 +1878,7 @@ namespace Thetis
             this.chkRADAELoopback = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReporter = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReporting = new System.Windows.Forms.CheckBoxTS();
+            this.chkRADAEIgnoreQsy = new System.Windows.Forms.CheckBoxTS();
             // Dual-RX RADE additions -- RX2 column mirrors of the RX1 controls.
             this.chkRX1RadeControl = new System.Windows.Forms.CheckBoxTS();
             this.chkRX2RadeControl = new System.Windows.Forms.CheckBoxTS();
@@ -31219,10 +31220,26 @@ namespace Thetis
             this.chkRADAEReporter.Name = "chkRADAEReporter";
             this.chkRADAEReporter.Size = new System.Drawing.Size(180, 17);
             this.chkRADAEReporter.TabIndex = 23;
-            this.chkRADAEReporter.Text = "RX1RADE Reporter (qso.freedv.org)";
+            this.chkRADAEReporter.Text = "RX1RADE Reporter";
             this.toolTip1.SetToolTip(this.chkRADAEReporter, "Connects to qso.freedv.org as a 'report' client and shows the live FreeDV station list. Uses the Callsign / Locator / Msg fields below. Frequency, TX state and RADE SNR reports are sent automatically while this is enabled.");
             this.chkRADAEReporter.UseVisualStyleBackColor = true;
             this.chkRADAEReporter.CheckedChanged += new System.EventHandler(this.chkRADAEReporter_CheckedChanged);
+            //
+            // chkRADAEIgnoreQsy  when ticked the reporter form does NOT
+            // show a popup when another station QSY-requests us.  Visible
+            // only when the RX1 master is on, enabled only when the
+            // reporter itself is on.
+            //
+            this.chkRADAEIgnoreQsy.AutoSize = true;
+            this.chkRADAEIgnoreQsy.Image = null;
+            this.chkRADAEIgnoreQsy.Location = new System.Drawing.Point(143, 318);
+            this.chkRADAEIgnoreQsy.Name = "chkRADAEIgnoreQsy";
+            this.chkRADAEIgnoreQsy.Size = new System.Drawing.Size(130, 17);
+            this.chkRADAEIgnoreQsy.TabIndex = 24;
+            this.chkRADAEIgnoreQsy.Text = "Ignore QSY request";
+            this.toolTip1.SetToolTip(this.chkRADAEIgnoreQsy, "When ticked, incoming QSY requests from other stations are silently logged but not shown on screen.");
+            this.chkRADAEIgnoreQsy.UseVisualStyleBackColor = true;
+            this.chkRADAEIgnoreQsy.CheckedChanged += new System.EventHandler(this.chkRADAEIgnoreQsy_CheckedChanged);
             //
             // lblRadaeReporterCallsign
             //
@@ -45658,6 +45675,7 @@ namespace Thetis
             this.tpDSPRADE.Controls.Add(this.lblRadaeMicEQVol);
             this.tpDSPRADE.Controls.Add(this.udRadaeMicEQVol);
             this.tpDSPRADE.Controls.Add(this.chkRADAEReporter);
+            this.tpDSPRADE.Controls.Add(this.chkRADAEIgnoreQsy);
             this.tpDSPRADE.Controls.Add(this.chkRADAEReporting);
             this.tpDSPRADE.Controls.Add(this.lblRadaeReporterCallsign);
             this.tpDSPRADE.Controls.Add(this.txtRadaeReporterCallsign);
@@ -77244,6 +77262,7 @@ namespace Thetis
         private CheckBoxTS chkRADAELoopback;
         private CheckBoxTS chkRADAEReporter;
         private CheckBoxTS chkRADAEReporting;
+        private CheckBoxTS chkRADAEIgnoreQsy;
         // Dual-RX RADE additions -- RX2 column mirrors.
         private CheckBoxTS chkRX1RadeControl;
         private CheckBoxTS chkRX2RadeControl;

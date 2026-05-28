@@ -43,6 +43,7 @@ namespace Thetis.FreeDVReporter
         private ToolStripButton btnTrackRx2;
         private ToolStripButton btnTrackFreq;
         private ToolStripButton btnTrackBandMode;
+        private ToolStripButton btnRequestQsy;
         private Console.RX2EnabledChanged _rx2EnabledHandler;
         /* Console reference passed explicitly via the constructor.
          * Console.getConsole() is not safe at form-construction time
@@ -61,10 +62,10 @@ namespace Thetis.FreeDVReporter
         private readonly Dictionary<string, DataGridViewRow> _rowBySid =
             new Dictionary<string, DataGridViewRow>(StringComparer.Ordinal);
 
-        /* The selection visual is suppressed entirely -- per-row
-         * SelectionBackColor is painted to match the row's TX/RX shade,
-         * so a "selected" row looks identical to an unselected one.
-         * No timer / deselect logic needed. */
+        /* Selection highlight uses the system Highlight colour so the
+         * user can clearly see which row is selected (Request QSY needs
+         * an explicit pick).  The TX/RX/MSG shading still paints
+         * unselected rows; only the selected row turns system-blue. */
 
         /* Sentinel for "unknown" in numeric columns -- formatted as ""
          * by CellFormatting, sorts to the bottom in ascending order so
@@ -172,6 +173,7 @@ namespace Thetis.FreeDVReporter
 
             _client.StationsChanged        += OnStationsChanged;
             _client.ConnectionStateChanged += OnConnStateChanged;
+            _client.QsyRequestReceived     += OnQsyRequestReceived;
 
             /* Subscribe to RX2 enable changes so the "Track RX2" button
              * follows the console chkRX2 state.  Uses the explicit _console
@@ -218,6 +220,7 @@ namespace Thetis.FreeDVReporter
                 {
                     _client.StationsChanged        -= OnStationsChanged;
                     _client.ConnectionStateChanged -= OnConnStateChanged;
+                    _client.QsyRequestReceived     -= OnQsyRequestReceived;
                     refreshTimer?.Stop();
                     if (_rx2EnabledHandler != null)
                     {
@@ -273,7 +276,7 @@ namespace Thetis.FreeDVReporter
             MainMenuStrip = menu;
 
             refreshTimer = new System.Windows.Forms.Timer { Interval = 1000 };
-            refreshTimer.Tick += (s, e) => SyncRows();
+            refreshTimer.Tick += (s, e) => { SyncRows(); UpdateRequestQsyEnabled(); };
             refreshTimer.Start();
 
             /* Restore last saved geometry from the DB.  RestoreForm
@@ -399,17 +402,19 @@ namespace Thetis.FreeDVReporter
             };
             btnTrackFreq.Click += (s, e) =>
             {
-                if (_trackTarget == TrackTarget.Off) return;
+                if (_trackTarget == TrackTarget.Off) { ClearGridSelection(); return; }
                 _trackMode = TrackMode.Frequency;
                 btnTrackFreq.Checked = true;
                 btnTrackBandMode.Checked = false;
+                ClearGridSelection();
             };
             btnTrackBandMode.Click += (s, e) =>
             {
-                if (_trackTarget == TrackTarget.Off) return;
+                if (_trackTarget == TrackTarget.Off) { ClearGridSelection(); return; }
                 _trackMode = TrackMode.Band;
                 btnTrackBandMode.Checked = true;
                 btnTrackFreq.Checked = false;
+                ClearGridSelection();
             };
 
             btnTrackRx1.Click += (s, e) =>
@@ -418,16 +423,31 @@ namespace Thetis.FreeDVReporter
                                ? TrackTarget.Off
                                : TrackTarget.Rx1;
                 SyncTrackButtons();
+                ClearGridSelection();
             };
             btnTrackRx2.Click += (s, e) =>
             {
-                if (!btnTrackRx2.Enabled) return;
+                if (!btnTrackRx2.Enabled) { ClearGridSelection(); return; }
                 _trackTarget = (_trackTarget == TrackTarget.Rx2)
                                ? TrackTarget.Off
                                : TrackTarget.Rx2;
                 SyncTrackButtons();
+                ClearGridSelection();
             };
             SyncTrackButtons();   /* sets cmbBand.Enabled + sub-button enables */
+
+            /* "Request QSY" -- ask the selected station to move to our
+             * current TX frequency.  Wire protocol matches freedv-gui:
+             * emit("qsy_request", { dest_sid, message:"", frequency }).
+             * Disabled when no row is selected, when this client is a
+             * view-only listener, or when we don't yet have a TX freq. */
+            btnRequestQsy = new ToolStripButton("Request QSY")
+            {
+                CheckOnClick = false,
+                Enabled = false,
+                ToolTipText = "Ask the selected station to move to your current TX frequency.",
+            };
+            btnRequestQsy.Click += OnRequestQsyClick;
 
             toolbar.Items.Add(lblBand);
             toolbar.Items.Add(cmbBand);
@@ -436,6 +456,31 @@ namespace Thetis.FreeDVReporter
             toolbar.Items.Add(btnTrackRx2);
             toolbar.Items.Add(btnTrackFreq);
             toolbar.Items.Add(btnTrackBandMode);
+            toolbar.Items.Add(new ToolStripSeparator());
+            toolbar.Items.Add(btnRequestQsy);
+
+            /* Clicking the toolbar background (empty space between or
+             * around items) also clears the grid selection.  Item Click
+             * handlers above clear after they run -- this catches the
+             * non-item clicks the ToolStrip eats. */
+            toolbar.MouseDown += (s, e) => ClearGridSelection();
+        }
+
+        /* Clear the user's row selection so the highlight goes away and
+         * the Request QSY button re-disables.  Wrapped in the suppress
+         * flag so we don't double-fire UpdateRequestQsyEnabled. */
+        private void ClearGridSelection()
+        {
+            if (grid == null) return;
+            try
+            {
+                _suppressSelectionEvents = true;
+                grid.ClearSelection();
+                if (grid.CurrentCell != null) grid.CurrentCell = null;
+            }
+            catch { }
+            finally { _suppressSelectionEvents = false; }
+            UpdateRequestQsyEnabled();
         }
 
         /* Centralised visual + dependent-control sync for the dual-RX
@@ -560,6 +605,15 @@ namespace Thetis.FreeDVReporter
                     e.Value = "";
                     e.FormattingApplied = true;
                 }
+            };
+
+            /* Selection drives the "Request QSY" button enable.  Suppressed
+             * during the 1-Hz sync tick to avoid spurious calls when rows
+             * are added/removed/reordered. */
+            grid.SelectionChanged += (s, e) =>
+            {
+                if (_suppressSelectionEvents) return;
+                UpdateRequestQsyEnabled();
             };
 
             /* Double-click a station row -> tune VFOA to that station's
@@ -707,7 +761,84 @@ namespace Thetis.FreeDVReporter
         private void OnConnStateChanged(object sender, string state)
         {
             if (IsDisposed || !IsHandleCreated) return;
-            try { BeginInvoke(new Action(() => { lblConn.Text = "Connection: " + state; })); } catch { }
+            try { BeginInvoke(new Action(() => { lblConn.Text = "Connection: " + state; UpdateRequestQsyEnabled(); })); } catch { }
+        }
+
+        /* Inbound qsy_request -- the server tells us another station has
+         * asked US to QSY to a specific frequency.  Mirror freedv-gui:
+         * show a modal box with requester callsign + target frequency.
+         * The actual VFO move is left to the operator; we only notify. */
+        private void OnQsyRequestReceived(object sender, FreeDVReporterClient.QsyRequestEventArgs e)
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            /* Setup -> DSP -> RADE "Ignore QSY request" suppresses the
+             * popup but the event is still logged by the client layer. */
+            if (_console != null && _console.RadeIgnoreQsyRequest) return;
+            try
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    string call = string.IsNullOrEmpty(e.Callsign) ? "(unknown)" : e.Callsign;
+                    string freqMHz = (e.FrequencyHz / 1e6).ToString("F6") + " MHz";
+                    string body = call + " requests QSY to " + freqMHz;
+                    if (!string.IsNullOrEmpty(e.Message)) body += "\r\n\r\nMessage: " + e.Message;
+                    MessageBox.Show(this, body, "FreeDV Reporter -- QSY Request",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }));
+            }
+            catch { }
+        }
+
+        /* Pull the selected row's sid from row.Tag (set in SyncRowsInner). */
+        private string GetSelectedSid()
+        {
+            try
+            {
+                var row = grid?.CurrentRow;
+                if (row == null) return null;
+                return row.Tag as string;
+            }
+            catch { return null; }
+        }
+
+        /* Selection / role / freq state gating for the Request QSY button.
+         * Disabled when no row is selected, when this client is view-only,
+         * when we haven't picked up our own TX frequency yet, or when the
+         * selected row is our own (can't QSY ourselves). */
+        private void UpdateRequestQsyEnabled()
+        {
+            if (btnRequestQsy == null) return;
+            bool ok = true;
+            string tip = "Ask the selected station to move to your current TX frequency.";
+            try
+            {
+                string sid = GetSelectedSid();
+                if (string.IsNullOrEmpty(sid))             { ok = false; tip = "Select a station row first."; }
+                else if (sid == _client?.MySid)            { ok = false; tip = "You can't request a QSY from yourself."; }
+                else if (FreeDVReporterManager.CurrentFrequencyHz == 0UL)
+                                                            { ok = false; tip = "TX frequency not yet known."; }
+                else if (string.Equals(_client?.Role, "view", StringComparison.Ordinal))
+                                                            { ok = false; tip = "View-only mode cannot request QSY."; }
+            }
+            catch { ok = false; }
+            btnRequestQsy.Enabled = ok;
+            btnRequestQsy.ToolTipText = tip;
+        }
+
+        /* User clicked "Request QSY".  Emit the wire packet exactly as
+         * freedv-gui does: dest_sid = selected row's session id, message
+         * = "" (no UI for custom text yet), frequency = our current TX
+         * frequency in Hz. */
+        private void OnRequestQsyClick(object sender, EventArgs e)
+        {
+            string sid = GetSelectedSid();
+            if (string.IsNullOrEmpty(sid)) return;
+            ulong fhz = FreeDVReporterManager.CurrentFrequencyHz;
+            if (fhz == 0UL) return;
+            if (string.Equals(_client?.Role, "view", StringComparison.Ordinal)) return;
+            try { _client.EmitQsyRequest(sid, fhz, ""); } catch { }
+            /* Selection intentionally NOT cleared here -- the user may
+             * want to re-send or visually confirm which row they targeted. */
         }
 
         /* ============================================================
@@ -735,6 +866,12 @@ namespace Thetis.FreeDVReporter
 
         private void SyncRowsInner()
         {
+            /* Capture the user's row selection by sid before any
+             * Add/Remove/Sort/Visible-toggle disturbs CurrentCell.
+             * Restored at the end of this tick so a clicked row stays
+             * selected (and visibly highlighted) across the 1 Hz refresh. */
+            string preservedSid = null;
+            try { preservedSid = grid?.CurrentRow?.Tag as string; } catch { preservedSid = null; }
 
             /* "Track RX1/RX2" mode: pull the tracked receiver's frequency
              * from the manager.  In TrackMode.Band, snap _bandFilter to
@@ -781,11 +918,12 @@ namespace Thetis.FreeDVReporter
                         /* Stash sid on Tag so the CellDoubleClick handler
                          * can recover the station identity from a click. */
                         row.Tag = sid;
-                        /* Suppress the system-blue selection highlight from
-                         * the moment the row exists -- shade-update block
-                         * below will repaint to TX/RX/MSG colour as needed. */
-                        row.DefaultCellStyle.SelectionBackColor = SystemColors.Window;
-                        row.DefaultCellStyle.SelectionForeColor = SystemColors.ControlText;
+                        /* System-blue selection highlight so the user can see
+                         * the row they picked for Request QSY.  Unselected
+                         * rows still get their TX/RX/MSG shading from the
+                         * shade-update block below. */
+                        row.DefaultCellStyle.SelectionBackColor = SystemColors.Highlight;
+                        row.DefaultCellStyle.SelectionForeColor = SystemColors.HighlightText;
                     }
 
                     bool inFilter;
@@ -870,12 +1008,12 @@ namespace Thetis.FreeDVReporter
                     if (row.DefaultCellStyle.BackColor != want)
                     {
                         row.DefaultCellStyle.BackColor = want;
-                        /* Mirror SelectionBackColor onto the same shade so
-                         * a "selected" row never shows the system-blue
-                         * highlight -- the selection visual is suppressed
-                         * entirely.  ForeColor stays default for contrast. */
-                        row.DefaultCellStyle.SelectionBackColor = want;
-                        row.DefaultCellStyle.SelectionForeColor = SystemColors.ControlText;
+                        /* Keep the system-blue selection highlight on the
+                         * selected row regardless of TX/RX/MSG shade -- this
+                         * is what makes the picked row visible for the
+                         * Request QSY button. */
+                        row.DefaultCellStyle.SelectionBackColor = SystemColors.Highlight;
+                        row.DefaultCellStyle.SelectionForeColor = SystemColors.HighlightText;
                     }
                 }
 
@@ -928,6 +1066,42 @@ namespace Thetis.FreeDVReporter
                         while (top < grid.Rows.Count && !grid.Rows[top].Visible) top++;
                         if (top < grid.Rows.Count && grid.FirstDisplayedScrollingRowIndex != top)
                             grid.FirstDisplayedScrollingRowIndex = top;
+                    }
+                    catch { }
+                }
+
+                /* Restore the user's selection if there was one; otherwise
+                 * actively clear any selection DataGridView auto-set during
+                 * this tick (Rows.Add picks the first cell on the first
+                 * insert into an empty grid -- we don't want any row to
+                 * look selected until the user clicks one). */
+                if (!string.IsNullOrEmpty(preservedSid))
+                {
+                    DataGridViewRow restoreRow;
+                    if (_rowBySid.TryGetValue(preservedSid, out restoreRow) &&
+                        restoreRow != null && restoreRow.Visible)
+                    {
+                        try
+                        {
+                            int firstVisibleCol = 0;
+                            while (firstVisibleCol < grid.Columns.Count &&
+                                   !grid.Columns[firstVisibleCol].Visible) firstVisibleCol++;
+                            if (firstVisibleCol < grid.Columns.Count)
+                            {
+                                var cell = restoreRow.Cells[firstVisibleCol];
+                                if (!ReferenceEquals(grid.CurrentCell, cell))
+                                    grid.CurrentCell = cell;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                else
+                {
+                    try
+                    {
+                        if (grid.CurrentCell != null) grid.CurrentCell = null;
+                        grid.ClearSelection();
                     }
                     catch { }
                 }

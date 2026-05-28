@@ -37934,6 +37934,12 @@ namespace Thetis
         public bool RadeMeasureRx2 { get { return _rade_measure_rx2; } set { _rade_measure_rx2 = value; } }
         public bool RadeMeasureTx  { get { return _rade_measure_tx;  } set { _rade_measure_tx  = value; } }
 
+        // When ticked in Setup -> DSP -> RADE, the FreeDV Reporter form
+        // suppresses the popup for inbound qsy_request packets.  The
+        // event is still logged to NetErrorLog.txt either way.
+        private bool _rade_ignore_qsy_request = false;
+        public bool RadeIgnoreQsyRequest { get { return _rade_ignore_qsy_request; } set { _rade_ignore_qsy_request = value; } }
+
         /* Fired by the Setup RADE enable handlers (chkRADAE / chkRADAERX2)
          * after the C-side enable flag flips, so listeners such as the
          * Meters/Gadgets manager can re-evaluate per-RX container

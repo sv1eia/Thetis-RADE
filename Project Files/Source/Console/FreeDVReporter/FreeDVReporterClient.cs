@@ -195,6 +195,66 @@ namespace Thetis.FreeDVReporter
             FireAndForget("message_update", p);
         }
 
+        /* QSY request -- emitted when the user picks a station and asks
+         * it to move to our own current TX frequency.  Payload schema
+         * matches the qso.freedv.org server contract and freedv-gui's
+         * implementation: dest_sid (target session id), message (free
+         * text, currently always empty), frequency (Hz, uint64). */
+        public void EmitQsyRequest(string destSid, ulong frequencyHz, string message)
+        {
+            if (string.IsNullOrEmpty(destSid))
+            {
+                Common.LogReporter("QSY send REFUSED: empty dest_sid");
+                return;
+            }
+            /* Snapshot the gates the wire send checks so the log line tells
+             * us WHY the packet didn't go out (role / socket state).  These
+             * are the same conditions FireAndForget inspects at the start of
+             * the actual send -- duplicated here only for the log message. */
+            string role = Role ?? "";
+            bool   isView    = string.Equals(role, "view", StringComparison.Ordinal);
+            bool   wsOpen    = (_ws != null && _ws.State == WebSocketState.Open);
+            string sidShort  = destSid.Length > 8 ? destSid.Substring(0, 8) + ".." : destSid;
+            double freqMHz   = frequencyHz / 1e6;
+            string msgShort  = string.IsNullOrEmpty(message) ? "" : (" msg=\"" + message + "\"");
+
+            if (isView)
+            {
+                Common.LogReporter("QSY send SUPPRESSED (view role): dest_sid=" + sidShort
+                    + " freq=" + freqMHz.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) + " MHz" + msgShort);
+                return;
+            }
+            if (!wsOpen)
+            {
+                Common.LogReporter("QSY send DROPPED (socket not open, state="
+                    + (_ws == null ? "<null>" : _ws.State.ToString()) + "): dest_sid=" + sidShort
+                    + " freq=" + freqMHz.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) + " MHz" + msgShort);
+                return;
+            }
+
+            var p = new JObject
+            {
+                ["dest_sid"]  = destSid,
+                ["message"]   = message ?? "",
+                ["frequency"] = frequencyHz,
+            };
+            Common.LogReporter("QSY send: dest_sid=" + sidShort
+                + " freq=" + freqMHz.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) + " MHz"
+                + " (role=" + role + ")" + msgShort);
+            FireAndForget("qsy_request", p);
+        }
+
+        /* Inbound QSY request payload.  Server delivers callsign of the
+         * requester (not the dest_sid we sent), target frequency, and an
+         * optional free-text message. */
+        public class QsyRequestEventArgs : EventArgs
+        {
+            public string Callsign { get; set; }
+            public ulong  FrequencyHz { get; set; }
+            public string Message { get; set; }
+        }
+        public event EventHandler<QsyRequestEventArgs> QsyRequestReceived;
+
         private void FireAndForget(string evtName, JToken payload)
         {
             try
@@ -456,9 +516,36 @@ namespace Thetis.FreeDVReporter
                     Log("connection_successful");
                     break;
                 case "qsy_request":
-                    /* Inbound QSY request -- we do not act on it from here;
-                     * UI surface for QSY is a future add. */
+                {
+                    /* Server pushes the requester's callsign, the target
+                     * frequency in Hz, and an optional free-text message.
+                     * Raise on the UI dispatch thread of the form via
+                     * BeginInvoke -- we just fire the event here. */
+                    var call  = payload?["callsign"]?.ToString() ?? "";
+                    ulong fhz = 0;
+                    try
+                    {
+                        var f = payload?["frequency"];
+                        if (f != null && f.Type != JTokenType.Null) fhz = f.Value<ulong>();
+                    }
+                    catch { fhz = 0; }
+                    var msg = payload?["message"]?.ToString() ?? "";
+                    double freqMHz = fhz / 1e6;
+                    string msgShort = string.IsNullOrEmpty(msg) ? "" : (" msg=\"" + msg + "\"");
+                    Common.LogReporter("QSY received: from=" + (string.IsNullOrEmpty(call) ? "(unknown)" : call)
+                        + " freq=" + freqMHz.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) + " MHz" + msgShort);
+                    var handler = QsyRequestReceived;
+                    if (handler != null)
+                    {
+                        handler(this, new QsyRequestEventArgs
+                        {
+                            Callsign    = call,
+                            FrequencyHz = fhz,
+                            Message     = msg,
+                        });
+                    }
                     break;
+                }
             }
         }
 

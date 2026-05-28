@@ -22500,6 +22500,14 @@ namespace Thetis
             m_logViewerLastStamp = Common.LogFileStamp();
         }
 
+        // "Ignore QSY request" -- when ticked, the reporter form will
+        // skip the popup for an inbound QSY request (the event is still
+        // logged to NetErrorLog.txt for the operator's records).
+        private void chkRADAEIgnoreQsy_CheckedChanged(object sender, EventArgs e)
+        {
+            if (console != null) console.RadeIgnoreQsyRequest = chkRADAEIgnoreQsy.Checked;
+        }
+
         // [v2.10.3.16] RADE Reporter (qso.freedv.org).  Connects to the
         // FreeDV Reporter Socket.IO service, sends station identity +
         // freq/TX/RX/SNR updates, and shows the live station list in a
@@ -22512,6 +22520,9 @@ namespace Thetis
             // RX2 VIS ("RX2RADE enable reporting") gates on the single RX1 reporter.
             if (chkRADAEReportingRX2 != null)
                 chkRADAEReportingRX2.Enabled = chkRADAEReporter.Checked;
+            // "Ignore QSY request" only matters while the reporter is on.
+            if (chkRADAEIgnoreQsy != null)
+                chkRADAEIgnoreQsy.Enabled = chkRADAEReporter.Checked;
 
             // Single RX1 reporter drives the console RX1 REPR mirror and both VIS
             // (RX1 + RX2) enabled states.  (The RX2 reporter checkboxes were removed.)
@@ -22711,6 +22722,14 @@ namespace Thetis
             if (lblRadaeMicEQVol != null)       lblRadaeMicEQVol.Visible       = on;
             if (udRadaeMicEQVol != null)      { udRadaeMicEQVol.Visible      = on; udRadaeMicEQVol.Enabled      = on; }
             if (chkRADAEReporter != null)     { chkRADAEReporter.Visible     = on; chkRADAEReporter.Enabled     = on; }
+            if (chkRADAEIgnoreQsy != null)
+            {
+                /* Visibility follows RX1 master; Enabled is then further
+                 * gated by chkRADAEReporter.Checked (greyed when reporter
+                 * is off even if RX1 master is on). */
+                chkRADAEIgnoreQsy.Visible = on;
+                chkRADAEIgnoreQsy.Enabled = on && chkRADAEReporter != null && chkRADAEReporter.Checked;
+            }
             if (chkRADAEReporting != null)    { chkRADAEReporting.Visible    = on; chkRADAEReporting.Enabled    = on; }
             if (lblRadaeReporterCallsign != null) lblRadaeReporterCallsign.Visible = on;
             if (txtRadaeReporterCallsign != null){ txtRadaeReporterCallsign.Visible = on; txtRadaeReporterCallsign.Enabled = on; }
