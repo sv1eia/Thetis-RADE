@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{6F3A2D11-9C4E-4B6A-8F0C-2A7D1E5B0C44}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>rade</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v145</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v145</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup Label="UserMacros">
+    <!-- Opus DNN source root. Defaults to the vendored sibling (lib\opus_dnn)
+         when radae_c is placed under Thetis lib\; override with
+         /p:OpusDir=<path> for a standalone build. -->
+    <OpusDir Condition="'$(OpusDir)'==''">..\..\opus_dnn</OpusDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(ProjectDir)..\build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\build\$(Platform)\$(Configuration)\radae_c\</IntDir>
+    <TargetName>rade</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(ProjectDir)..\build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\build\$(Platform)\$(Configuration)\radae_c\</IntDir>
+    <TargetName>rade</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;IS_BUILDING_RADE_API=1;RADE_PYTHON_FREE=1;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\src;$(OpusDir)\include;$(OpusDir)\dnn;$(OpusDir)\celt;$(OpusDir)\silk;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CompileAs>CompileAsC</CompileAs>
+    </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>$(OpusDir)\build\$(Platform)\$(Configuration)\</AdditionalLibraryDirectories>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;IS_BUILDING_RADE_API=1;RADE_PYTHON_FREE=1;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\src;$(OpusDir)\include;$(OpusDir)\dnn;$(OpusDir)\celt;$(OpusDir)\silk;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CompileAs>CompileAsC</CompileAs>
+    </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>$(OpusDir)\build\$(Platform)\$(Configuration)\</AdditionalLibraryDirectories>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\radc_modem.c" />
+    <ClCompile Include="..\src\radc_bpf.c" />
+    <ClCompile Include="..\src\radc_mod.c" />
+    <ClCompile Include="..\src\radc_demod.c" />
+    <ClCompile Include="..\src\radc_acq.c" />
+    <ClCompile Include="..\src\radc_enc.c" />
+    <ClCompile Include="..\src\radc_dec.c" />
+    <ClCompile Include="..\src\rade_enc_data.c" />
+    <ClCompile Include="..\src\rade_dec_data.c" />
+    <ClCompile Include="..\src\radc_tx.c" />
+    <ClCompile Include="..\src\radc_rx.c" />
+    <ClCompile Include="..\src\radc_api.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\rade_api.h" />
+    <ClInclude Include="..\src\radc_types.h" />
+    <ClInclude Include="..\src\radc_const.h" />
+    <ClInclude Include="..\src\radc_modem.h" />
+    <ClInclude Include="..\src\radc_bpf.h" />
+    <ClInclude Include="..\src\radc_mod.h" />
+    <ClInclude Include="..\src\radc_demod.h" />
+    <ClInclude Include="..\src\radc_acq.h" />
+    <ClInclude Include="..\src\rade_core.h" />
+    <ClInclude Include="..\src\radc_enc.h" />
+    <ClInclude Include="..\src\radc_dec.h" />
+    <ClInclude Include="..\src\rade_enc_data.h" />
+    <ClInclude Include="..\src\rade_dec_data.h" />
+    <ClInclude Include="..\src\rade_constants.h" />
+    <ClInclude Include="..\src\rade_tx.h" />
+    <ClInclude Include="..\src\rade_rx.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

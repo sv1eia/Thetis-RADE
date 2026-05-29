@@ -239,6 +239,11 @@ static RADE_COMP* g_rade_tx_out      = NULL;
 static RADE_COMP* g_rade_tx_eoo_out  = NULL;
 static float*     g_rade_eoo_bits    = NULL;
 
+/* Per-RX EOO scratch for the rade_rx() output. RX1 and RX2 decode on separate
+ * threads, so each needs its own buffer -- sharing one is a data race on the
+ * decoded EOO/callsign. The single g_rade_eoo_bits above stays TX-side only. */
+static float*     g_rade_eoo_bits_rx[RADAE_NRX] = { NULL };
+
 /* Per-RX loopback bridge.  When chkRADAELoopback[rx] is on, TX-side
  * modem audio is pushed into that RX's bridge instead of mic_io. */
 #define RADAE_LOOP_BRIDGE_CAP 96000   /* 2 s at 48 kHz */
@@ -462,6 +467,7 @@ void create_radae(void)
 
             g_rade_rx_in[rx]       = (RADE_COMP*)_aligned_malloc(sizeof(RADE_COMP) * g_rade_nin_max,    16);
             g_rade_rx_features[rx] = (float*)    _aligned_malloc(sizeof(float)     * g_rade_n_features, 16);
+            g_rade_eoo_bits_rx[rx] = (float*)    _aligned_malloc(sizeof(float)     * g_rade_n_eoo_bits, 16);
 
             g_rx_modem_fifo_n[rx]       = 0;
             g_rx_speech_fifo_n[rx]      = 0;
@@ -555,6 +561,7 @@ void destroy_radae(void)
 
         if (g_rade_rx_in[rx])        { _aligned_free(g_rade_rx_in[rx]);        g_rade_rx_in[rx] = NULL; }
         if (g_rade_rx_features[rx])  { _aligned_free(g_rade_rx_features[rx]);  g_rade_rx_features[rx] = NULL; }
+        if (g_rade_eoo_bits_rx[rx])  { _aligned_free(g_rade_eoo_bits_rx[rx]);  g_rade_eoo_bits_rx[rx] = NULL; }
 
         if (g_rade_text_rx[rx]) { rade_text_destroy(g_rade_text_rx[rx]); g_rade_text_rx[rx] = NULL; }
         if (g_rade[rx])         { rade_close(g_rade[rx]);                g_rade[rx]         = NULL; }
@@ -883,8 +890,11 @@ void xradae_rx(int rx, double* rbuff_io)
         if (mox && !lpb) return;
     }
 
-    EnterCriticalSection(&g_radae_cs);
-
+    /* No global lock around the per-RX decode: every RX resource is
+     * per-instance (handle, FARGAN, FIFOs, buffers), so RX1 and RX2 decode in
+     * parallel on their own threads. g_radae_cs is taken only at the callsign
+     * publish points -- the rade_text callback (on_radae_text_rx) and the
+     * fresh-sync clear below -- which coordinate with the C# UI getter. */
     if (g_rx_resamp_down[rx] == NULL || g_rx_resamp_up[rx] == NULL ||
         outrate != g_rx_outrate_cached[rx])
         rebuild_rx_resamplers(rx, outrate);
@@ -971,12 +981,12 @@ void xradae_rx(int rx, double* rbuff_io)
                 g_rade_rx_in[rx][i].real = pop[i];
                 g_rade_rx_in[rx][i].imag = 0.0f;
             }
-            nout = rade_rx(g_rade[rx], g_rade_rx_features[rx], &has_eoo, g_rade_eoo_bits,
+            nout = rade_rx(g_rade[rx], g_rade_rx_features[rx], &has_eoo, g_rade_eoo_bits_rx[rx],
                            g_rade_rx_in[rx]);
             if (has_eoo)
             {
                 if (g_rade_text_rx[rx] != NULL && g_rade_n_eoo_bits > 0)
-                    rade_text_rx(g_rade_text_rx[rx], g_rade_eoo_bits, g_rade_n_eoo_bits / 2);
+                    rade_text_rx(g_rade_text_rx[rx], g_rade_eoo_bits_rx[rx], g_rade_n_eoo_bits / 2);
                 g_rx_pending_features_n[rx] = 0;
             }
             else if (nout > 0)
@@ -1072,8 +1082,6 @@ void xradae_rx(int rx, double* rbuff_io)
         g_rx_diag_counter[rx] = 0;
         g_rx_in_peak[rx] = 0.0f;
     }
-
-    LeaveCriticalSection(&g_radae_cs);
 }
 
 /* ============================================================
