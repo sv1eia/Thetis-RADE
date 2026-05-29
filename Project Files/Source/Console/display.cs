@@ -4986,6 +4986,16 @@ namespace Thetis
         // MOX, when TXMeasure && that RX's RADE are both on.  Layout
         // uses fixed-width label and value columns so the column does
         // not shift as digit count changes.
+        /* EMA-smoothed dBFS levels used ONLY for the 9-cell bar fill.
+         * The displayed digits keep using the raw value so the number
+         * stays responsive; only the colored background averages, which
+         * is what was flickering at frame-rate.  Per-RX (RX1, RX2) for
+         * the receive bar; one for the global TX-mic bar. */
+        private static float _radeLevelRxSmooth0 = -120f;
+        private static float _radeLevelRxSmooth1 = -120f;
+        private static float _radeLevelTxSmooth  = -120f;
+        private const  float RADE_LEVEL_BAR_ALPHA = 0.15f;
+
         private static void drawRadeOverlayDX2D(int rx, int W, int H, int nVerticalShift)
         {
             if (console == null) return;
@@ -5067,7 +5077,16 @@ namespace Thetis
                 labels[0] = "SNR  :"; values[0] = FormatSnr(snr_dB);            cells[0] = SnrCells(snr_dB, sync_on);
                 labels[1] = "Sync :"; values[1] = PadRade(sync_on ? "Yes" : "No");
                 cells[1] = sync_on ? AllCells(1) : AllCells(0);
-                labels[2] = "Level:"; values[2] = FormatLevel(rxLev_dB);        cells[2] = LevelBarCells(rxLev_dB);
+                /* EMA-smooth the dBFS for BOTH the bar fill and the
+                 * displayed digits.  Without this the value jitters at
+                 * frame rate; smoothing both keeps the readout in sync
+                 * with the bar so they don't desync visually. */
+                float rxSmoothRef = (rxIdx == 0) ? _radeLevelRxSmooth0 : _radeLevelRxSmooth1;
+                rxSmoothRef = rxSmoothRef + RADE_LEVEL_BAR_ALPHA * ((float)rxLev_dB - rxSmoothRef);
+                if (rxIdx == 0) _radeLevelRxSmooth0 = rxSmoothRef;
+                else            _radeLevelRxSmooth1 = rxSmoothRef;
+                int rxLevDisp = (int)System.Math.Round(rxSmoothRef);
+                labels[2] = "Level:"; values[2] = FormatLevel(rxLevDisp);        cells[2] = LevelBarCells(rxLevDisp);
                 labels[3] = "Clip :"; values[3] = PadRade(rxClip ? "Yes" : "No");
                 cells[3] = rxClip ? AllCells(2) : AllCells(0);
                 labels[4] = "Call :"; values[4] = PadRade(callsign ?? "");
@@ -5075,7 +5094,10 @@ namespace Thetis
             }
             else
             {
-                labels[0] = "Level:"; values[0] = FormatLevel(txLev_dB);        cells[0] = LevelBarCells(txLev_dB);
+                /* EMA-smooth the TX-mic dBFS for both bar and digits. */
+                _radeLevelTxSmooth = _radeLevelTxSmooth + RADE_LEVEL_BAR_ALPHA * ((float)txLev_dB - _radeLevelTxSmooth);
+                int txLevDisp = (int)System.Math.Round(_radeLevelTxSmooth);
+                labels[0] = "Level:"; values[0] = FormatLevel(txLevDisp);        cells[0] = LevelBarCells(txLevDisp);
                 labels[1] = "Clip :"; values[1] = PadRade(txClip ? "Yes" : "No");
                 cells[1] = txClip ? AllCells(2) : AllCells(0);
             }
