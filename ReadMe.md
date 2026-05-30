@@ -13,7 +13,7 @@ Reporter client to the existing Thetis SDR application.
 ## What this fork adds on top of upstream Thetis v2.10.3.15-g2e
 
 - RADE V1 digital-voice integration — full TX/RX pipeline using the
-  RADE modem (radae_nopy), the LPCNet feature extractor and FARGAN
+  RADE modem (radae_c), the LPCNet feature extractor and FARGAN
   vocoder (Opus DNN), r8brain rate-conversion on the encoder I/O, and
   FreeDV-GUI's `rade_text` LDPC-encoded EOO callsign codec.
 - Native FreeDV Reporter client — Socket.IO v4 client talking to
@@ -28,7 +28,7 @@ Reporter client to the existing Thetis SDR application.
 
 ## Additional Libraries
 
-radae_nopy/ [peterbmarks/radae_nopy](https://github.com/peterbmarks/radae_nopy)
+radae_c/ RADE V1 pure-C port, ported with reference to [peterbmarks/radae_nopy](https://github.com/peterbmarks/radae_nopy)
 opus_dnn/ [xiph/opus](https://gitlab.xiph.org/xiph/opus)
 r8brain/ [avaneev/r8brain-free-src](https://github.com/avaneev/r8brain-free-src)
 rade_text/ [drowe67/freedv-gui](https://github.com/drowe67/freedv-gui)

@@ -1,10 +1,11 @@
 /*  radae.h
 
     Wrapper module that integrates the RADE V1 (Radio AutoEncoder) digital
-    voice modem (https://github.com/peterbmarks/radae_nopy) into Thetis.
+    voice modem (the in-repo radae_c library) into Thetis.
 
     Copyright (C) 2026  Christos Nikolaou (SV1EIA) <sv1eia@gmail.com>
-    radae_nopy upstream: BSD-2-Clause, David Rowe / Peter B Marks.
+    RADE V1: BSD-2-Clause, David Rowe. radae_c ported with reference to
+    Peter B Marks' radae_nopy (BSD-2-Clause).
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License

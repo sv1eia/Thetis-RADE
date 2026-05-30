@@ -1,7 +1,7 @@
 upstream:    https://github.com/xiph/opus
 commit_sha:  940d4e5af64351ca8ba8390df3f555484c567fbb
 license:     BSD 3-Clause (see COPYING)
-notes:       Same Opus commit pinned by peterbmarks/radae_nopy/cmake/BuildOpus.cmake
+notes:       Same Opus commit pinned by radae_c/cmake/BuildOpus.cmake (from peterbmarks/radae_nopy)
              and by FreeDV-GUI's cmake/BuildRADE.cmake. Provides FARGAN vocoder
              and LPCNet feature extractor required by librade (V1).
 

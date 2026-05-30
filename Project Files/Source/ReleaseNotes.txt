@@ -1,4 +1,7 @@
 ## v2.10.3.16 - Change Log (community FreeDV RADEV1 build, structural)
+- [chg] Replaced the vendored `radae_nopy` with the in-repo pure-C `radae_c` library under `Project Files/lib/radae_c/`;
+        `rade.lib` now builds from `lib/radae_c/msvc/radae_c.vcxproj`. radae_c is a fresh RADE V1 port made with
+        reference to peterbmarks/radae_nopy (both BSD-2-Clause, David Rowe).
 - [add] Built-in FreeDV RADEV1 digital voice infrastructure. New `chkRADAE` ("RADE enable/disable") checkbox in Setup -> Audio -> Options.
         When checked: engages the RADAE RX/TX splice points in pipe.c. RX audio is fed to the RADE decoder at the same stage where it would normally reach the speakers (after all WDSP RX-side demod / AGC / NR / NB / filter processing). Mic audio is fed to the RADE encoder after the WDSP TX-side audio enhancements (TXEQ / Compander / CFC / Phase Rotator / Leveler) which all REMAIN under user control. Mode and filter selection are NOT changed automatically.
         When unchecked: pure pass-through, behaviour identical to v2.10.3.15.

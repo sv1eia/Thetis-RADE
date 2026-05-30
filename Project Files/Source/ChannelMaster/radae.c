@@ -3,7 +3,7 @@
  *  RADE V1 (Radio AutoEncoder) digital-voice integration into Thetis.
  *
  *  Copyright (C) 2026  Christos Nikolaou (SV1EIA) <sv1eia@gmail.com>
- *  radae_nopy + Opus DNN + r8brain + FreeDV-GUI rade_text upstreams keep
+ *  radae_c + Opus DNN + r8brain + FreeDV-GUI rade_text upstreams keep
  *  their own licences (BSD-2-Clause / MIT / LGPL-2.1) -- see the
  *  commit_pin.txt file in each lib/<vendor> directory.
  *

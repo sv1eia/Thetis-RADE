@@ -5,7 +5,7 @@ Purpose
 -------
 Decode the EOO (end-of-over) callsign frame using the SAME wire format
 that FreeDV-GUI 2.3.0 stations transmit.  Replaces the simple 7-bit-MSB
-codec built into radae_nopy (rade_rx_get_eoo_callsign /
+codec built into radae_c (rade_rx_get_eoo_callsign /
 rade_tx_set_eoo_callsign) which is *not* the FreeDV-GUI on-air format.
 
 Wire format

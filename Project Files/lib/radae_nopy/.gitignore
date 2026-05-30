@@ -1,9 +1,0 @@
-# Build intermediates only. The hand-authored MSVC project file
-# build/radae_nopy.vcxproj IS committed - just the per-config output is not.
-build/x64/
-build/x86/
-build/Win32/
-build/Debug/
-build/Release/
-*.obj
-*.pdb
