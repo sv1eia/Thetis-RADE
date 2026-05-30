@@ -1739,6 +1739,7 @@ namespace Thetis
                 return HPSDRModel.FIRST;
         }
         private bool _gettingOptions = false;
+        private static bool _bootLogged = false;   // one-shot guard for the "Thetis Boot" marker
         private void getOptions(List<string> recoveryList = null)
         {
             _gettingOptions = true;
@@ -2360,7 +2361,18 @@ namespace Thetis
 
             chkLogEnable_CheckedChanged(this, e);
             chkReporterLogEnable_CheckedChanged(this, e);
+            chkRadaeLogEnable_CheckedChanged(this, e);
             udLogMaxLines_ValueChanged(this, e);
+
+            // [moved from Main] Log the boot marker now -- after the persisted
+            // "Log enabled" / "Max lines" state has been restored and synced to
+            // the Common gates -- so the entry honours the user's saved setting.
+            // One-shot so a later getOptions() (e.g. DB import) doesn't repeat it.
+            if (!_bootLogged)
+            {
+                _bootLogged = true;
+                try { Common.LogNetError("Thetis Boot"); } catch { }
+            }
 
             chkLinkMaster_CheckedChanged(this, e);
             chkLinkRX0AF_CheckedChanged(this, e);
@@ -22204,6 +22216,11 @@ namespace Thetis
                     if (console.RX1DSPMode != want) console.RX1DSPMode = want;
                 }
                 catch { }
+
+                // RADE needs clean audio: force NR/NB2/ANF off (UI first, then WDSP).
+                try { if (console != null) console.ForceRadaeRxCleanAudio(1); } catch { }
+                // RADE diagnostics: dump RX1 WDSP/DSP parameters to NetErrorLog.
+                try { if (console != null) console.LogRadaeRxDspSnapshot(1); } catch { }
             }
 
             // [v2.10.3.16] Mirror to the console-side chkRADE so both
@@ -22400,6 +22417,14 @@ namespace Thetis
         private void chkReporterLogEnable_CheckedChanged(object sender, EventArgs e)
         {
             Common.ReporterLogEnabled = chkReporterLogEnable.Checked;
+        }
+
+        // Subsystem gate for RADE WDSP/DSP logging.  The per-RX RADE-enable
+        // parameter snapshot goes to NetErrorLog.txt only when both this AND
+        // chkLogEnable are checked.
+        private void chkRadaeLogEnable_CheckedChanged(object sender, EventArgs e)
+        {
+            Common.RadaeLogEnabled = chkRadaeLogEnable.Checked;
         }
 
         private void udLogMaxLines_ValueChanged(object sender, EventArgs e)
@@ -22925,6 +22950,11 @@ namespace Thetis
                     }
                 }
                 catch { }
+
+                // RADE needs clean audio: force NR/NB2/ANF off (UI first, then WDSP).
+                try { if (console != null) console.ForceRadaeRxCleanAudio(2); } catch { }
+                // RADE diagnostics: dump RX2 WDSP/DSP parameters to NetErrorLog.
+                try { if (console != null) console.LogRadaeRxDspSnapshot(2); } catch { }
             }
 
             // Mirror to the console-side chkRADERX2.

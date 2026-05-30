@@ -2921,14 +2921,23 @@ namespace Thetis
             }
             else
             {
-                if (uc.MeterEnabled && !uc.Visible & !uc.HiddenByMacro)
+                if (uc.MeterEnabled && !uc.HiddenByMacro)
                 {
-                    if (uc.Floating)
-                        setMeterFloating(uc, _lstMeterDisplayForms[uc.ID]);
-                    else
-                        returnMeterFromFloating(uc, _lstMeterDisplayForms[uc.ID]);
+                    frmMeterDisplay frm = _lstMeterDisplayForms[uc.ID];
+                    // For a floating container, uc.Visible stays true while the
+                    // host form is hidden, so checking !uc.Visible would never
+                    // re-show it when its gate (e.g. RADE-enable) opens. Use the
+                    // host form's actual visibility for floating containers.
+                    bool currentlyShown = uc.Floating ? (frm != null && frm.Visible) : uc.Visible;
+                    if (!currentlyShown)
+                    {
+                        if (uc.Floating)
+                            setMeterFloating(uc, frm);
+                        else
+                            returnMeterFromFloating(uc, frm);
 
-                    containerVisible(uc.ID, true);
+                        containerVisible(uc.ID, true);
+                    }
                 }
             }
         }

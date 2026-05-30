@@ -1677,6 +1677,7 @@ namespace Thetis
             this.tpGeneralLog = new System.Windows.Forms.TabPage();
             this.chkLogEnable = new System.Windows.Forms.CheckBoxTS();
             this.chkReporterLogEnable = new System.Windows.Forms.CheckBoxTS();
+            this.chkRadaeLogEnable = new System.Windows.Forms.CheckBoxTS();
             this.btnLogClear = new System.Windows.Forms.ButtonTS();
             this.udLogMaxLines = new System.Windows.Forms.NumericUpDownTS();
             this.lblLogMaxLines = new System.Windows.Forms.LabelTS();
@@ -28188,6 +28189,7 @@ namespace Thetis
             this.tpGeneralLog.BackColor = System.Drawing.SystemColors.Control;
             this.tpGeneralLog.Controls.Add(this.chkLogEnable);
             this.tpGeneralLog.Controls.Add(this.chkReporterLogEnable);
+            this.tpGeneralLog.Controls.Add(this.chkRadaeLogEnable);
             this.tpGeneralLog.Controls.Add(this.btnLogClear);
             this.tpGeneralLog.Controls.Add(this.lblLogMaxLines);
             this.tpGeneralLog.Controls.Add(this.udLogMaxLines);
@@ -28204,8 +28206,8 @@ namespace Thetis
             // chkLogEnable
             //
             this.chkLogEnable.AutoSize = true;
-            this.chkLogEnable.Checked = true;
-            this.chkLogEnable.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkLogEnable.Checked = false;
+            this.chkLogEnable.CheckState = System.Windows.Forms.CheckState.Unchecked;
             this.chkLogEnable.Location = new System.Drawing.Point(16, 16);
             this.chkLogEnable.Name = "chkLogEnable";
             this.chkLogEnable.Size = new System.Drawing.Size(94, 17);
@@ -28218,8 +28220,8 @@ namespace Thetis
             // chkReporterLogEnable
             //
             this.chkReporterLogEnable.AutoSize = true;
-            this.chkReporterLogEnable.Checked = true;
-            this.chkReporterLogEnable.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkReporterLogEnable.Checked = false;
+            this.chkReporterLogEnable.CheckState = System.Windows.Forms.CheckState.Unchecked;
             this.chkReporterLogEnable.Location = new System.Drawing.Point(296, 16);
             this.chkReporterLogEnable.Name = "chkReporterLogEnable";
             this.chkReporterLogEnable.Size = new System.Drawing.Size(112, 17);
@@ -28228,6 +28230,20 @@ namespace Thetis
             this.toolTip1.SetToolTip(this.chkReporterLogEnable, "When ticked AND 'Log enabled' is also ticked, FreeDV Reporter events (login attempts, connection success/fail, communication lost, role transitions) are appended to NetErrorLog.txt.");
             this.chkReporterLogEnable.UseVisualStyleBackColor = true;
             this.chkReporterLogEnable.CheckedChanged += new System.EventHandler(this.chkReporterLogEnable_CheckedChanged);
+            //
+            // chkRadaeLogEnable
+            //
+            this.chkRadaeLogEnable.AutoSize = true;
+            this.chkRadaeLogEnable.Checked = false;
+            this.chkRadaeLogEnable.CheckState = System.Windows.Forms.CheckState.Unchecked;
+            this.chkRadaeLogEnable.Location = new System.Drawing.Point(296, 39);
+            this.chkRadaeLogEnable.Name = "chkRadaeLogEnable";
+            this.chkRadaeLogEnable.Size = new System.Drawing.Size(130, 17);
+            this.chkRadaeLogEnable.TabIndex = 2;
+            this.chkRadaeLogEnable.Text = "RADE WDSP logging";
+            this.toolTip1.SetToolTip(this.chkRadaeLogEnable, "When ticked AND 'Log enabled' is also ticked, the per-RX RADE-enable WDSP/DSP parameter snapshot (AGC, filter, offsets, actual WDSP threshold/gain) is appended to NetErrorLog.txt for RX1 and RX2 comparison.");
+            this.chkRadaeLogEnable.UseVisualStyleBackColor = true;
+            this.chkRadaeLogEnable.CheckedChanged += new System.EventHandler(this.chkRadaeLogEnable_CheckedChanged);
             //
             // btnLogClear
             //
@@ -74606,6 +74622,7 @@ namespace Thetis
         private System.Windows.Forms.TabPage tpGeneralLog;
         private CheckBoxTS chkLogEnable;
         private CheckBoxTS chkReporterLogEnable;
+        private CheckBoxTS chkRadaeLogEnable;
         private ButtonTS btnLogClear;
         private NumericUpDownTS udLogMaxLines;
         private LabelTS lblLogMaxLines;

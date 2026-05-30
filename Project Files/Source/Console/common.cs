@@ -653,7 +653,7 @@ namespace Thetis
          * cap) makes LogNetError refuse to append once the file already has
          * that many lines; instead it raises OnLogOverflow so the console
          * can flash a "Log overflow" yellow warning. */
-        public static volatile bool LogEnabled = true;
+        public static volatile bool LogEnabled = false;
         public static volatile int  LogMaxLines = -1;
 
         /* Subsystem gate for FreeDV Reporter logging (Setup -> General ->
@@ -662,7 +662,13 @@ namespace Thetis
          * ReporterLogEnabled are true.  Master defaults true, subsystem
          * gate defaults true so existing builds behave identically until
          * the user toggles either checkbox. */
-        public static volatile bool ReporterLogEnabled = true;
+        public static volatile bool ReporterLogEnabled = false;
+
+        /* Subsystem gate for RADE WDSP/DSP parameter logging (Setup -> General
+         * -> Log -> "RADE WDSP logging").  The per-RX RADE-enable DSP snapshot
+         * is written to NetErrorLog.txt only when BOTH LogEnabled (master) and
+         * RadaeLogEnabled are true.  Defaults true. */
+        public static volatile bool RadaeLogEnabled = false;
 
         /* Console wires this in Console_Load so common.cs stays UI-free. */
         public static Action OnLogOverflow = null;
@@ -698,12 +704,21 @@ namespace Thetis
                         catch { existing = 0; }
                         if (existing + 1 > LogMaxLines)
                         {
+                            // Rotate: the next line would exceed "Max lines".
+                            // Drop any previous NetErrorLogOld.txt, rename the
+                            // current log to NetErrorLogOld.txt, then start a
+                            // fresh empty NetErrorLog.txt (the append below
+                            // re-creates it). Keeps one generation of history.
+                            string oldpath = m_sLogPath + "\\NetErrorLogOld.txt";
+                            try { if (File.Exists(oldpath)) File.Delete(oldpath); } catch { }
+                            try { File.Move(path, oldpath); } catch { }
+
                             Action cb = OnLogOverflow;
                             if (cb != null)
                             {
                                 try { cb(); } catch { }
                             }
-                            return;
+                            // fall through: append to the new empty NetErrorLog.txt
                         }
                     }
 
