@@ -5222,6 +5222,7 @@ namespace Thetis
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "XVTRForm";
             this.Text = "XVTR Setup";
+            this.Activated += new System.EventHandler(this.XVTRForm_Activated);     // MI0BOT : HL2
             this.Closing += new System.ComponentModel.CancelEventHandler(this.XVTRForm_Closing);
             ((System.ComponentModel.ISupportInitialize)(this.udRXGain15)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.udRXGain14)).EndInit();
@@ -6051,6 +6052,54 @@ namespace Thetis
             {
                 console.RX1XVTRIndex = -1; // force reset
                 console.VFOAFreq = console.VFOAFreq;
+            }
+        }
+
+        private void XVTRForm_Activated(object sender, EventArgs e)
+        {
+            if (console.SetupForm.HL2IOBoardPresent == true)    // MI0BOT: Make Alt rx option available only for the HL2 with I/O Board
+            {
+                if (!comboAnt0.Items.Contains("Alt Rx"))
+                {
+                    comboAnt0.Items.Add("Alt Rx");
+                    comboAnt1.Items.Add("Alt Rx");
+                    comboAnt2.Items.Add("Alt Rx");
+                    comboAnt3.Items.Add("Alt Rx");
+                    comboAnt4.Items.Add("Alt Rx");
+                    comboAnt5.Items.Add("Alt Rx");
+                    comboAnt6.Items.Add("Alt Rx");
+                    comboAnt7.Items.Add("Alt Rx");
+                    comboAnt8.Items.Add("Alt Rx");
+                    comboAnt9.Items.Add("Alt Rx");
+                    comboAnt10.Items.Add("Alt Rx");
+                    comboAnt11.Items.Add("Alt Rx");
+                    comboAnt12.Items.Add("Alt Rx");
+                    comboAnt13.Items.Add("Alt Rx");
+                    comboAnt14.Items.Add("Alt Rx");
+                    comboAnt15.Items.Add("Alt Rx");
+                }
+            }
+            else
+            {
+                if (comboAnt0.Items.Contains("Alt Rx"))
+                {
+                    comboAnt0.Items.Remove("Alt Rx");
+                    comboAnt1.Items.Remove("Alt Rx");
+                    comboAnt2.Items.Remove("Alt Rx");
+                    comboAnt3.Items.Remove("Alt Rx");
+                    comboAnt4.Items.Remove("Alt Rx");
+                    comboAnt5.Items.Remove("Alt Rx");
+                    comboAnt6.Items.Remove("Alt Rx");
+                    comboAnt7.Items.Remove("Alt Rx");
+                    comboAnt8.Items.Remove("Alt Rx");
+                    comboAnt9.Items.Remove("Alt Rx");
+                    comboAnt10.Items.Remove("Alt Rx");
+                    comboAnt11.Items.Remove("Alt Rx");
+                    comboAnt12.Items.Remove("Alt Rx");
+                    comboAnt13.Items.Remove("Alt Rx");
+                    comboAnt14.Items.Remove("Alt Rx");
+                    comboAnt15.Items.Remove("Alt Rx");
+                }
             }
         }
     }

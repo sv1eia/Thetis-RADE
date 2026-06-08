@@ -15,6 +15,8 @@ Christos Nikolaou can be reached by email at : sv1eia@gmail.com
 
 using System;
 using System.ComponentModel;
+using System.Drawing;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -29,13 +31,169 @@ namespace Thetis
             ucIOPinsLedStripHF.Bits = (int)bits;
         }
 
-        // MI0BOT: Stub handlers wired by Setup.Designer.cs for the I2C panel and I/O-Board LED strips.
-        //         Phase 3 left the I2C-poke panel as a no-op; full implementation deferred.
-        private void ucOutPinsLedStripHF_Click(object sender, EventArgs e) { }
-        private void ucOutPinsLedStripHF_MouseDown(object sender, MouseEventArgs e) { }
-        private void chkI2CWriteEnable_CheckedChanged(object sender, EventArgs e) { }
-        private void btnI2CWrite_MouseDown(object sender, MouseEventArgs e) { }
-        private void btnI2CRead_MouseDown(object sender, MouseEventArgs e) { }
+        // MI0BOT: HL2 I/O-Board LED strip — read the output pins over I2C and show them
+        private void ucOutPinsLedStripHF_Click(object sender, EventArgs e)
+        {
+            byte[] read_data = new byte[4];
+            int status = 0;
+            int timeout = 0;
+
+            if (HL2IOBoardPresent == true)
+            {
+                console.SetI2CPollingPause(true);
+
+                while (0 != NetworkIO.I2CReadInitiate(1, 0x1d, 169))
+                {
+                    Thread.Sleep(1);
+                    if (timeout++ >= 20) break;
+                }
+
+                if (timeout < 20)
+                {
+                    do
+                    {
+                        Thread.Sleep(1);
+                        status = NetworkIO.I2CResponse(read_data);
+                        if (timeout++ >= 20) break;
+                    } while (1 == status);
+
+                    if (status == 0)
+                        ucOutPinsLedStripHF.Bits = read_data[3];
+                }
+
+                console.SetI2CPollingPause(false);
+            }
+        }
+
+        // MI0BOT: HL2 I/O-Board LED strip — toggle an output pin over I2C
+        private void ucOutPinsLedStripHF_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (HL2IOBoardPresent == true)
+            {
+                if (chkIOPinControl.Checked)
+                {
+                    int bit = e.Location.X / 16;
+                    byte mask = (byte)(1 << bit);
+
+                    console.SetI2CPollingPause(true);
+
+                    NetworkIO.I2CWrite(1, 0x1d, 169, ucOutPinsLedStripHF.Bits ^ mask);
+
+                    console.SetI2CPollingPause(false);
+
+                    ucOutPinsLedStripHF_Click(sender, e);
+                }
+            }
+        }
+
+        // MI0BOT: HL2 access to I2C bus
+        private void chkI2CWriteEnable_CheckedChanged(object sender, EventArgs e)
+        {
+            if (chkI2CWriteEnable.Checked)
+            {
+                btnI2CWrite.Enabled = true;
+                udI2CWriteData.Enabled = true;
+                labelI2CWriteData.Enabled = true;
+            }
+            else
+            {
+                btnI2CWrite.Enabled = false;
+                udI2CWriteData.Enabled = false;
+                labelI2CWriteData.Enabled = false;
+            }
+        }
+
+        // MI0BOT: HL2 access to I2C bus
+        private void btnI2CWrite_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (!console.PowerOn)
+            {
+                MessageBox.Show("Power must be on to access the I2C bus.",
+                    "Power is off",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Hand);
+                return;
+            }
+
+            console.SetI2CPollingPause(true);
+
+            int bus = radI2C1.Checked ? 0 : 1;
+
+            int controlReg = (int)((udI2CControl1.Value * 16) + udI2CControl0.Value);
+
+            NetworkIO.I2CWrite(bus, (int)udI2CAddress.Value, controlReg, (int)udI2CWriteData.Value);
+
+            if (controlReg == 169)
+            {
+                ucOutPinsLedStripHF_Click(sender, e);
+            }
+
+            console.SetI2CPollingPause(false);
+        }
+
+        // MI0BOT: HL2 access to I2C bus
+        private void btnI2CRead_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (!console.PowerOn)
+            {
+                MessageBox.Show("Power must be on to access the I2C bus.",
+                    "Power is off",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Hand);
+                return;
+            }
+
+            int bus = radI2C1.Checked ? 0 : 1;
+            byte[] read_data = new byte[4];
+            int status;
+            int timeout = 0;
+
+            console.SetI2CPollingPause(true);
+
+            while (0 != NetworkIO.I2CReadInitiate(bus, (int)udI2CAddress.Value, (int)((udI2CControl1.Value * 16) + udI2CControl0.Value)))
+            {
+                Thread.Sleep(1);
+            }
+
+            do
+            {
+                Thread.Sleep(1);
+                status = NetworkIO.I2CResponse(read_data);
+                if (timeout++ >= 20) break;
+            } while (1 == status);
+
+            if (-1 == status)
+            {
+                txtI2CByte0.Text = "or";
+                txtI2CByte1.Text = "Err";
+                txtI2CByte2.Text = "or";
+                txtI2CByte3.Text = "Err";
+                txtI2CByte0.ForeColor = Color.Red;
+                txtI2CByte1.ForeColor = Color.Red;
+                txtI2CByte2.ForeColor = Color.Red;
+                txtI2CByte3.ForeColor = Color.Red;
+            }
+            else
+            {
+                int byte0, byte1, byte2, byte3;
+
+                byte0 = read_data[3];
+                byte1 = read_data[2];
+                byte2 = read_data[1];
+                byte3 = read_data[0];
+
+                txtI2CByte0.ForeColor = Color.Black;
+                txtI2CByte1.ForeColor = Color.Black;
+                txtI2CByte2.ForeColor = Color.Black;
+                txtI2CByte3.ForeColor = Color.Black;
+                txtI2CByte0.Text = byte0.ToString("X2");
+                txtI2CByte1.Text = byte1.ToString("X2");
+                txtI2CByte2.Text = byte2.ToString("X2");
+                txtI2CByte3.Text = byte3.ToString("X2");
+            }
+
+            console.SetI2CPollingPause(false);
+        }
 
         // MI0BOT: Hide HL2-only ancillary controls AND restore every relabelled
         //         mainline control back to its Setup.Designer.cs default text /
@@ -97,6 +255,16 @@ namespace Thetis
             toolTip1.SetToolTip(chkApolloFilter, "Enables the LPF on Apollo");
             toolTip1.SetToolTip(chkApolloTuner, "Enables Apollo ATU");
             toolTip1.SetToolTip(chkHERCULES, "Preset pins for Hercules Amplifier");
+
+            // MI0BOT: revert HL2-only UI states the model arm sets that no other
+            //         model arm re-sets, so switching away from HL2 is clean.
+            chkRX2StepAtt.Visible = true;
+            udHermesStepAttenuatorDataRX2.Visible = true;
+            chkDisableRXOut.Enabled = true;
+            chkMercDither.Enabled = true;
+            chkMercRandom.Enabled = true;
+            tpPennyCtrl.Text = "Penny/Hermes Ctrl";
+            ucIOPinsLedStripHF.DisplayBits = 7;
         }
 
         // MI0BOT: Backing field for HL2IOBoardPresent

@@ -334,7 +334,7 @@ namespace Thetis.FreeDVReporter
             Log("EIO open packet: " + (open ?? "<null>"));
             if (open == null || !open.StartsWith("0"))
                 throw new Exception("expected EIO open, got: " + (open ?? "<null>"));
-            var openObj = JObject.Parse(open.Substring(1));
+            var openObj = (JObject)ParseJsonNoDates(open.Substring(1));
             _pingIntervalMs = openObj.Value<int?>("pingInterval") ?? 25000;
             _pingTimeoutMs  = openObj.Value<int?>("pingTimeout")  ?? 20000;
             Log("ping interval=" + _pingIntervalMs + "ms timeout=" + _pingTimeoutMs + "ms");
@@ -400,7 +400,7 @@ namespace Thetis.FreeDVReporter
             {
                 if (ack.Length > 2)
                 {
-                    var ackObj = JObject.Parse(ack.Substring(2));
+                    var ackObj = (JObject)ParseJsonNoDates(ack.Substring(2));
                     MySid = ackObj["sid"]?.ToString();
                     Log("MySid = " + (MySid ?? "<null>"));
                 }
@@ -452,7 +452,7 @@ namespace Thetis.FreeDVReporter
                     /* Socket.IO event: 42[name, payload, ...]. */
                     try
                     {
-                        var arr = JArray.Parse(packet.Substring(2));
+                        var arr = (JArray)ParseJsonNoDates(packet.Substring(2));
                         if (arr.Count >= 1)
                         {
                             string name = arr[0].ToString();
@@ -603,6 +603,19 @@ namespace Thetis.FreeDVReporter
                                   out dt))
                 return true;
             dt = DateTime.MinValue; return false;
+        }
+
+        /* Parse a Socket.IO JSON frame WITHOUT Newtonsoft's automatic ISO-8601 ->
+         * DateTime conversion.  The default DateParseHandling.DateTime rewrites
+         * timestamp strings (e.g. last_tx "...+00:00") into a zone-stripped local
+         * DateTime, which our own TryParseIso then re-assumes as UTC -- double-
+         * applying the local offset.  Keeping them as raw strings fixes that. */
+        private static JToken ParseJsonNoDates(string s)
+        {
+            using (var sr = new System.IO.StringReader(s))
+            using (var jr = new Newtonsoft.Json.JsonTextReader(sr)
+                            { DateParseHandling = Newtonsoft.Json.DateParseHandling.None })
+                return JToken.Load(jr);
         }
 
         /* ============================================================

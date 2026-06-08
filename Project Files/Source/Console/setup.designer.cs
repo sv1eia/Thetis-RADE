@@ -1880,6 +1880,7 @@ namespace Thetis
             this.chkRADAEReporter = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEReporting = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAEIgnoreQsy = new System.Windows.Forms.CheckBoxTS();
+            this.chkRADAEReporterUTC = new System.Windows.Forms.CheckBoxTS();
             // Dual-RX RADE additions -- RX2 column mirrors of the RX1 controls.
             this.chkRX1RadeControl = new System.Windows.Forms.CheckBoxTS();
             this.chkRX2RadeControl = new System.Windows.Forms.CheckBoxTS();
@@ -31257,6 +31258,23 @@ namespace Thetis
             this.chkRADAEIgnoreQsy.UseVisualStyleBackColor = true;
             this.chkRADAEIgnoreQsy.CheckedChanged += new System.EventHandler(this.chkRADAEIgnoreQsy_CheckedChanged);
             //
+            // chkRADAEReporterUTC  selects UTC vs local time for the reporter
+            // form's Last TX / Updated columns.  Sits next to "Ignore QSY
+            // request"; default ticked (UTC).
+            //
+            this.chkRADAEReporterUTC.AutoSize = true;
+            this.chkRADAEReporterUTC.Checked = true;
+            this.chkRADAEReporterUTC.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkRADAEReporterUTC.Image = null;
+            this.chkRADAEReporterUTC.Location = new System.Drawing.Point(282, 318);
+            this.chkRADAEReporterUTC.Name = "chkRADAEReporterUTC";
+            this.chkRADAEReporterUTC.Size = new System.Drawing.Size(48, 17);
+            this.chkRADAEReporterUTC.TabIndex = 25;
+            this.chkRADAEReporterUTC.Text = "UTC";
+            this.toolTip1.SetToolTip(this.chkRADAEReporterUTC, "Select UTC or local time for Reporter times");
+            this.chkRADAEReporterUTC.UseVisualStyleBackColor = true;
+            this.chkRADAEReporterUTC.CheckedChanged += new System.EventHandler(this.chkRADAEReporterUTC_CheckedChanged);
+            //
             // lblRadaeReporterCallsign
             //
             this.lblRadaeReporterCallsign.AutoSize = true;
@@ -45692,6 +45710,7 @@ namespace Thetis
             this.tpDSPRADE.Controls.Add(this.udRadaeMicEQVol);
             this.tpDSPRADE.Controls.Add(this.chkRADAEReporter);
             this.tpDSPRADE.Controls.Add(this.chkRADAEIgnoreQsy);
+            this.tpDSPRADE.Controls.Add(this.chkRADAEReporterUTC);
             this.tpDSPRADE.Controls.Add(this.chkRADAEReporting);
             this.tpDSPRADE.Controls.Add(this.lblRadaeReporterCallsign);
             this.tpDSPRADE.Controls.Add(this.txtRadaeReporterCallsign);
@@ -77280,6 +77299,7 @@ namespace Thetis
         private CheckBoxTS chkRADAEReporter;
         private CheckBoxTS chkRADAEReporting;
         private CheckBoxTS chkRADAEIgnoreQsy;
+        private CheckBoxTS chkRADAEReporterUTC;
         // Dual-RX RADE additions -- RX2 column mirrors.
         private CheckBoxTS chkRX1RadeControl;
         private CheckBoxTS chkRX2RadeControl;

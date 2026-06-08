@@ -28,7 +28,7 @@ Reporter client to the existing Thetis SDR application.
 
 ## Additional Libraries
 
-radae_c/ RADE V1 pure-C port, ported with reference to [peterbmarks/radae_nopy](https://github.com/peterbmarks/radae_nopy)
+radae_c/ RADE V1 pure-C port, ported with reference/inspiration of [peterbmarks/radae_nopy](https://github.com/peterbmarks/radae_nopy)
 opus_dnn/ [xiph/opus](https://gitlab.xiph.org/xiph/opus)
 r8brain/ [avaneev/r8brain-free-src](https://github.com/avaneev/r8brain-free-src)
 rade_text/ [drowe67/freedv-gui](https://github.com/drowe67/freedv-gui)

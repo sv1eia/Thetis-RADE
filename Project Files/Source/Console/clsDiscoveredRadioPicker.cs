@@ -301,6 +301,11 @@ namespace Thetis
                                     version += " p2app=" + radio.BetaVersion.ToString() + "";
                                 }
                                 break;
+                            case HPSDRHW.HermesLite:                                // MI0BOT: HL2 firmware version
+                                version = (radio.CodeVersion / 10.0f).ToString("F1");
+                                if (radio.BetaVersion > 0)
+                                    version += "." + radio.BetaVersion.ToString();
+                                break;
                             default:
                                 version = (radio.CodeVersion / 10.0f).ToString("F1");
                                 if(radio.Protocol == RadioDiscoveryRadioProtocol.P2 && radio.BetaVersion > 0)

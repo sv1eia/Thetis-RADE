@@ -1115,10 +1115,13 @@ namespace Thetis.FreeDVReporter
             if (!Equals(cell.Value, value)) cell.Value = value;
         }
 
-        private static string FmtTime(DateTime? utc)
+        private string FmtTime(DateTime? utc)
         {
             if (!utc.HasValue) return "";
-            return utc.Value.ToLocalTime().ToString("HH:mm:ss");
+            // "UTC" checkbox (Setup -> DSP -> RADE) selects UTC vs local for the
+            // Last TX / Updated columns. Default (no console) is UTC.
+            bool showUtc = _console == null || _console.RadeReporterTimesUtc;
+            return (showUtc ? utc.Value : utc.Value.ToLocalTime()).ToString("HH:mm:ss");
         }
 
         /* Canonical Maidenhead locator presentation: field (chars 1-2)

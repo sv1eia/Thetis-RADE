@@ -24,7 +24,7 @@ Credits of people whose code is used in this repository (please forgive me if I'
 
 - David Rowe (https://github.com/drowe67/codec2)
 - Mooneer Salem (https://github.com/drowe67/freedv-gui)
-- Peter B Marks (https://github.com/peterbmarks/radae_nopy) — C reference for the RADE V1 port (radae_c)
+- Peter B Marks (https://github.com/peterbmarks/radae_nopy) — reference/inspiration for the RADE V1 C port (radae_c)
 
 ## Other libraries
 
