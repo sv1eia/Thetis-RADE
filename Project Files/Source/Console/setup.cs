@@ -28,6 +28,9 @@
 //
 //=================================================================
 // Continual modifications Copyright (C) 2019-2026 Richard Samphire (MW0LGE)
+//
+// Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+// Christos Nikolaou can be reached by email at : sv1eia@gmail.com
 //=================================================================
 //
 //============================================================================================//
@@ -2328,6 +2331,7 @@ namespace Thetis
             // them as already off.
             chkRX1RadeControl_CheckedChanged(this, e);
             chkRADAE_CheckedChanged(this, e);
+            cmbRX1RADEVersion_SelectedIndexChanged(this, e);
             chkRADAELoopback_CheckedChanged(this, e);
             udRadaeMicLevel_ValueChanged(this, e);
             udRadaeRxLevel_ValueChanged(this, e);
@@ -2354,7 +2358,7 @@ namespace Thetis
             // makes the subsequent rehydrate handlers see them as already off.
             chkRX2RadeControl_CheckedChanged(this, e);
             chkRADAERX2_CheckedChanged(this, e);
-            chkRADAELoopbackRX2_CheckedChanged(this, e);
+            cmbRX2RADEVersion_SelectedIndexChanged(this, e);
             udRadaeRxLevelRX2_ValueChanged(this, e);
             txtRadaeReporterMsgRX2_TextChanged(this, e);
             chkRADAEReportingRX2_CheckedChanged(this, e);
@@ -22525,6 +22529,69 @@ namespace Thetis
             set { if (chkRADAEReporting.Checked != value) chkRADAEReporting.Checked = value; }
         }
 
+        // Per-RX RADE protocol version selectors (0 = V1, 1 = V2).  Always
+        // enabled; visibility tracks the per-RX master.  Persisted by name as
+        // ComboBoxTS .Text ("V1"/"V2").  Public properties let the console-side
+        // mirror combos read/write the canonical Setup selection.
+        public int RADAEVersionRX1
+        {
+            get { return cmbRX1RADEVersion == null ? 0 : cmbRX1RADEVersion.SelectedIndex; }
+            set
+            {
+                if (cmbRX1RADEVersion == null) return;
+                if (value < 0 || value >= cmbRX1RADEVersion.Items.Count) return;
+                if (cmbRX1RADEVersion.SelectedIndex != value) cmbRX1RADEVersion.SelectedIndex = value;
+            }
+        }
+        public int RADAEVersionRX2
+        {
+            get { return cmbRX2RADEVersion == null ? 0 : cmbRX2RADEVersion.SelectedIndex; }
+            set
+            {
+                if (cmbRX2RADEVersion == null) return;
+                if (value < 0 || value >= cmbRX2RADEVersion.Items.Count) return;
+                if (cmbRX2RADEVersion.SelectedIndex != value) cmbRX2RADEVersion.SelectedIndex = value;
+            }
+        }
+
+        // RX1/RX2 RADE Version combos -- push the per-RX V1/V2 selection to the
+        // C side (live-recycles only that RX's modem handle) and mirror to the
+        // console-face combo.  Guarded by `initializing` like the other RADE
+        // handlers so the DB restore / ForceAllEvents replay is the single push.
+        private void cmbRX1RADEVersion_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            int v2 = (cmbRX1RADEVersion != null && cmbRX1RADEVersion.SelectedIndex == 1) ? 1 : 0;
+            if (initializing) return;
+            try { cmaster.SetRadaeProtocolV2(0, v2); } catch { }
+            try
+            {
+                if (console != null && console.cmbRadeVersionRX1Mirror != null &&
+                    console.cmbRadeVersionRX1Mirror.SelectedIndex != cmbRX1RADEVersion.SelectedIndex)
+                    console.cmbRadeVersionRX1Mirror.SelectedIndex = cmbRX1RADEVersion.SelectedIndex;
+            }
+            catch { }
+            // Report the new RX1 protocol to qso.freedv.org immediately (and
+            // show it locally when reporting/VIS is on).
+            try { Thetis.FreeDVReporter.FreeDVReporterManager.NotifyProtocolChanged(0); } catch { }
+        }
+
+        private void cmbRX2RADEVersion_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            int v2 = (cmbRX2RADEVersion != null && cmbRX2RADEVersion.SelectedIndex == 1) ? 1 : 0;
+            if (initializing) return;
+            try { cmaster.SetRadaeProtocolV2(1, v2); } catch { }
+            try
+            {
+                if (console != null && console.cmbRadeVersionRX2Mirror != null &&
+                    console.cmbRadeVersionRX2Mirror.SelectedIndex != cmbRX2RADEVersion.SelectedIndex)
+                    console.cmbRadeVersionRX2Mirror.SelectedIndex = cmbRX2RADEVersion.SelectedIndex;
+            }
+            catch { }
+            // Report the new RX2 protocol to qso.freedv.org immediately (and
+            // show it locally when reporting/VIS is on).
+            try { Thetis.FreeDVReporter.FreeDVReporterManager.NotifyProtocolChanged(1); } catch { }
+        }
+
         // [v2.10.3.16] RADE Loopback Test enable/disable.
         // When this AND chkRADAE are both checked, the encoder's modem audio
         // (post-rmatchV) is diverted into the decoder's xresampleFV input on
@@ -22535,6 +22602,11 @@ namespace Thetis
             int active = chkRADAELoopback.Checked ? 1 : 0;
             if (initializing) return;
             cmaster.SetRadaeLoopbackEnabled(0, active);
+
+            // Loopback <-> MOX interlock: while Loopback is checked the radio
+            // must not key (the encoder->RX1 decode loop runs without MOX), so
+            // disable MOX; unchecking re-enables it.
+            try { if (console != null) console.SetMoxEnabled(!chkRADAELoopback.Checked); } catch { }
 
             // When loopback is enabled, also uncheck the
             // RADE reporting checkbox so nothing is sent to qso.freedv.org.
@@ -22998,6 +23070,9 @@ namespace Thetis
             // lockstep.
             if (chkRADAE != null)             { chkRADAE.Visible             = on; chkRADAE.Enabled             = on; }
             if (chkRADAELoopback != null)     { chkRADAELoopback.Visible     = on; chkRADAELoopback.Enabled     = on; }
+            // RX1 Version combo: visibility tracks the master, but it stays
+            // ENABLED regardless (per spec -- changeable even with RADE off).
+            if (cmbRX1RADEVersion != null)      cmbRX1RADEVersion.Visible      = on;
             if (lblRadaeMicLevel != null)       lblRadaeMicLevel.Visible       = on;
             if (udRadaeMicLevel != null)      { udRadaeMicLevel.Visible      = on; udRadaeMicLevel.Enabled      = on; }
             if (lblRadaeRxLevel != null)        lblRadaeRxLevel.Visible        = on;
@@ -23098,8 +23173,6 @@ namespace Thetis
             {
                 if (chkRADAEReportingRX2 != null && chkRADAEReportingRX2.Checked)
                     chkRADAEReportingRX2.Checked = false;
-                if (chkRADAELoopbackRX2 != null && chkRADAELoopbackRX2.Checked)
-                    chkRADAELoopbackRX2.Checked = false;
                 if (chkRADAERX2 != null && chkRADAERX2.Checked)
                     chkRADAERX2.Checked = false;
             }
@@ -23115,7 +23188,8 @@ namespace Thetis
 
             // Visibility + enabled for the Setup-side RX2 RADE controls.
             if (chkRADAERX2 != null)         { chkRADAERX2.Visible         = on; chkRADAERX2.Enabled         = on; }
-            if (chkRADAELoopbackRX2 != null) { chkRADAELoopbackRX2.Visible = on; chkRADAELoopbackRX2.Enabled = on; }
+            // RX2 Version combo: visibility tracks the master, always enabled.
+            if (cmbRX2RADEVersion != null)     cmbRX2RADEVersion.Visible     = on;
             // chkRADAEReporterRX2 (RX2 reporter) removed from the UI -- single RX1 reporter covers both RX.
             if (chkRADAEReportingRX2 != null){ chkRADAEReportingRX2.Visible= on; chkRADAEReportingRX2.Enabled= on; }
             if (lblRadaeRxLevelRX2 != null)   lblRadaeRxLevelRX2.Visible   = on;
@@ -23250,16 +23324,6 @@ namespace Thetis
             // not enabled" re-evaluate their visibility.
             try { if (console != null) console.NotifyRadaeEnabledChanged(2, chkRADAERX2.Checked); }
             catch { }
-        }
-
-        private void chkRADAELoopbackRX2_CheckedChanged(object sender, EventArgs e)
-        {
-            int active = chkRADAELoopbackRX2.Checked ? 1 : 0;
-            if (initializing) return;
-            cmaster.SetRadaeLoopbackEnabled(1, active);
-
-            if (chkRADAELoopbackRX2.Checked && chkRADAEReportingRX2.Checked)
-                chkRADAEReportingRX2.Checked = false;
         }
 
         private void udRadaeRxLevelRX2_ValueChanged(object sender, EventArgs e)

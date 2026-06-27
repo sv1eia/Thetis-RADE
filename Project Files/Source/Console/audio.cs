@@ -25,6 +25,9 @@
 //    8900 Marybank Dr.
 //    Austin, TX 78750
 //    USA
+//
+// Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+// Christos Nikolaou can be reached by email at : sv1eia@gmail.com
 //=================================================================
 //
 //============================================================================================//
@@ -417,6 +420,10 @@ namespace Thetis
                     radae_active_this_over = !tune_or_test &&
                         ((rade_rx1 && !rx2_overFlag) ||
                          (rade_rx2 &&  rx2_overFlag));
+                    // Tell the single RADE encoder which receiver this over
+                    // transmits on, so it uses that RX's handle + protocol
+                    // (V1/V2).  0 = RX1/VFO-A path, 1 = RX2/VFO-B path.
+                    try { cmaster.SetRadaeTxRx(rx2_overFlag ? 1 : 0); } catch { }
                     if (radae_active_this_over)
                     {
                         // Load the operator callsign into the encoder before this

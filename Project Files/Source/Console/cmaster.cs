@@ -25,6 +25,10 @@ The author can be reached by email at
 
 mw0lge@grange-lane.co.uk
 */
+//=================================================================
+// Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+// Christos Nikolaou can be reached by email at : sv1eia@gmail.com
+//=================================================================
 //
 //============================================================================================//
 // Dual-Licensing Statement (Applies Only to Author's Contributions, Richard Samphire MW0LGE) //
@@ -199,6 +203,19 @@ namespace Thetis
         public static extern void SetRadaeLoopbackEnabled(int rx, int enable);
         [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeLoopbackEnabled", CallingConvention = CallingConvention.Cdecl)]
         public static extern int GetRadaeLoopbackEnabled(int rx);
+
+        // Per-RX RADE protocol selection (0 = V1, 1 = V2).  Setting it while
+        // armed live-recycles only that RX's modem handle.  TX-source selector
+        // (SetRadaeTxRx) tells the single encoder which RX's handle/protocol to
+        // use; pushed at the MOX 0->1 edge.
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeProtocolV2", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeProtocolV2(int rx, int on);
+        [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeProtocolV2", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int GetRadaeProtocolV2(int rx);
+        [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeTxRx", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetRadaeTxRx(int rx);
+        [DllImport("ChannelMaster.dll", EntryPoint = "GetRadaeTxRx", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int GetRadaeTxRx();
 
         [DllImport("ChannelMaster.dll", EntryPoint = "SetRadaeMoxState", CallingConvention = CallingConvention.Cdecl)]
         public static extern void SetRadaeMoxState(int mox);

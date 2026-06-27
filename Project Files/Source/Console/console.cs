@@ -27,6 +27,8 @@
 //    Austin, TX 78750
 //    USA
 //
+// Modified by Christos Nikolaou (SV1EIA) 2026 -- thetis-rade fork.
+// Christos Nikolaou can be reached by email at : sv1eia@gmail.com
 //=================================================================
 // Modifications to support the Behringer Midi controllers
 // by Chris Codella, W2PA, May 2017.  Indicated by //-W2PA comment lines. 
@@ -1255,6 +1257,11 @@ namespace Thetis
         // Setup tab to push state back from the right-column controls.
         public System.Windows.Forms.CheckBoxTS chkRADERX2Mirror { get { return chkRADERX2; } }
         public System.Windows.Forms.CheckBoxTS chkVISRX2Mirror  { get { return chkVISRX2;  } }
+        // Console-side RX1/RX2 RADE Version combos.  Setup pushes the canonical
+        // V1/V2 selection here; the combos' own SelectedIndexChanged pushes back
+        // to Setup (set-to-same is a WinForms no-op so this can't recurse).
+        public System.Windows.Forms.ComboBoxTS cmbRadeVersionRX1Mirror { get { return cmbRadeVersionRX1; } }
+        public System.Windows.Forms.ComboBoxTS cmbRadeVersionRX2Mirror { get { return cmbRadeVersionRX2; } }
 
         /* Master experimental switch for the RX1 RADE feature, driven
          * by chkRX1RadeControl on Setup -> DSP -> RADE.  When OFF the
@@ -1267,6 +1274,8 @@ namespace Thetis
                 if (chkRADE != null) { chkRADE.Visible = visible; chkRADE.Enabled = visible; }
                 if (chkREPR != null) { chkREPR.Visible = visible; chkREPR.Enabled = visible; }
                 if (chkVIS  != null) { chkVIS.Visible  = visible; chkVIS.Enabled  = visible; }
+                // Version combo: visibility follows the master; always enabled.
+                if (cmbRadeVersionRX1 != null) cmbRadeVersionRX1.Visible = visible;
             }
             catch { }
         }
@@ -1288,6 +1297,22 @@ namespace Thetis
                 // chkREPRRX2 (RX2 reporter) removed from the UI -- a single RX1 reporter covers both RX.
                 // RX2 VIS is shown with the RX2 master but enabled only when the RX1 reporter (chkREPR) is on.
                 if (chkVISRX2  != null) { chkVISRX2.Visible  = visible; chkVISRX2.Enabled  = visible && chkREPR != null && chkREPR.Checked; }
+                // Version combo: visibility follows the master; always enabled.
+                if (cmbRadeVersionRX2 != null) cmbRadeVersionRX2.Visible = visible;
+            }
+            catch { }
+        }
+
+        // Loopback <-> MOX interlock helper (called from Setup's RX1 Loopback
+        // handler).  While loopback is on the radio must not key, so drop any
+        // active MOX and disable the button; re-enable when loopback clears.
+        public void SetMoxEnabled(bool enabled)
+        {
+            try
+            {
+                if (chkMOX == null) return;
+                if (!enabled && chkMOX.Checked) chkMOX.Checked = false;
+                chkMOX.Enabled = enabled;
             }
             catch { }
         }
@@ -1345,6 +1370,24 @@ namespace Thetis
             {
                 if (!IsSetupFormNull && SetupForm.RADAEReportingRX2 != chkVISRX2.Checked)
                     SetupForm.RADAEReportingRX2 = chkVISRX2.Checked;
+            }
+            catch { }
+        }
+        private void cmbRadeVersionRX1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (!IsSetupFormNull && SetupForm.RADAEVersionRX1 != cmbRadeVersionRX1.SelectedIndex)
+                    SetupForm.RADAEVersionRX1 = cmbRadeVersionRX1.SelectedIndex;
+            }
+            catch { }
+        }
+        private void cmbRadeVersionRX2_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (!IsSetupFormNull && SetupForm.RADAEVersionRX2 != cmbRadeVersionRX2.SelectedIndex)
+                    SetupForm.RADAEVersionRX2 = cmbRadeVersionRX2.SelectedIndex;
             }
             catch { }
         }
@@ -26153,7 +26196,6 @@ namespace Thetis
         // chkMOX.Checked, then on release keeps the radio keyed while the EOO is emitted and
         // flushed (C-side handshake: SetRadaeTxSilenceHold / RadaeNotifyEndOfOver /
         // GetRadaeEooFlushed) before un-keying, so the End-Of-Over frame actually radiates.
-        // See /mnt/i/Thetis/rade-ptt-real-sequencing-plan.md.
         private enum RadePttState { Idle, Transmitting, EmitEOO, Flushing, Releasing }
         private volatile RadePttState _rade_ptt_state = RadePttState.Idle;
         private volatile bool _rade_ptt_request = false;   // set by checkbox (request only)

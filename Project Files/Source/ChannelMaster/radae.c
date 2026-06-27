@@ -1,6 +1,6 @@
 /*  radae.c
  *
- *  RADE V1 (Radio AutoEncoder) digital-voice integration into Thetis.
+ *  RADE V1/V2 (Radio AutoEncoder) digital-voice integration into Thetis.
  *
  *  Copyright (C) 2026  Christos Nikolaou (SV1EIA) <sv1eia@gmail.com>
  *  radae_c + Opus DNN + r8brain + FreeDV-GUI rade_text upstreams keep
@@ -84,9 +84,19 @@ static volatile long g_radae_box_pending      = 0;   /* RX->MOX edge flag */
 /* Per-RX RX-side master enable. */
 static volatile long g_radae_rx_enabled[RADAE_NRX]       = { 0 };
 
-/* Per-RX loopback enable.  When set, the TX-side modem audio is pushed
- * into that RX's loopback bridge in addition to (in place of) mic_io. */
+/* Loopback enable.  RX1-only (index 0): the TX-side modem audio is pushed
+ * into RX1's loopback bridge instead of mic_io.  The array stays dimensioned
+ * [RADAE_NRX] for the existing per-rx call shape but only index 0 is used, so
+ * no cross-protocol loopback can occur. */
 static volatile long g_radae_loopback_enabled[RADAE_NRX] = { 0 };
+
+/* Per-RX RADE protocol: 0 = V1, 1 = V2.  Captured at rade_open time and
+ * live-recycled by SetRadaeProtocolV2 while armed. */
+static volatile long g_radae_protocol_v2[RADAE_NRX] = { 0 };
+
+/* Which receiver the single TX encoder follows (0 = RX1, 1 = RX2).  Set by
+ * SetRadaeTxRx from audio.cs at the MOX 0->1 edge. */
+static volatile long g_radae_tx_rx = 0;
 
 /* CPU-utilisation gate.  Global -- only one half of the pipeline runs
  * at a time outside of loopback. */
@@ -120,6 +130,10 @@ static float         g_rx_in_peak[RADAE_NRX]              = { 0.0f };
 static volatile long g_rx_in_level_dbfs_q[RADAE_NRX]      = { -120, -120 };
 static volatile long g_rx_in_clip_last_tick[RADAE_NRX]    = { 0, 0 };
 #define RADAE_CLIP_HOLD_MS 500
+/* RX decoder-input clip threshold (linear, full-scale = 1.0).  Used by both the
+ * live clip latch and the periodic diagnostic.  Per-RX and shared by V1 and V2
+ * -- the check is on the RX audio input level, before the modem decode. */
+#define RADAE_RX_CLIP_THRESHOLD 0.9f
 
 /* Per-RX most-recent decoded remote callsign.  Written by the
  * rade_text codec callback (rx-indexed via the user-state arg). */
@@ -168,13 +182,34 @@ static int              g_radae_cs_inited = 0;
 static CRITICAL_SECTION g_radae_tx_cs;
 static int              g_radae_tx_cs_inited = 0;
 
+/* Per-RX handle-swap lock.  Held by xradae_rx around its use of g_rade[rx]
+ * (the rade_nin/rade_rx/rade_sync span) and by SetRadaeProtocolV2 while it
+ * closes+reopens that handle, so a live protocol recycle never races an
+ * in-flight decode.  One lock per RX keeps RX1/RX2 decode concurrent. */
+static CRITICAL_SECTION g_radae_rx_swap_cs[RADAE_NRX];
+static int              g_radae_rx_swap_cs_inited = 0;
+
 /* Per-RX radae library context. */
 static struct rade*    g_rade[RADAE_NRX]                = { NULL };
-static int             g_rade_n_tx_out                  = 0;
-static int             g_rade_n_tx_eoo_out              = 0;
-static int             g_rade_nin_max                   = 0;
-static int             g_rade_n_features                = 0;
-static int             g_rade_n_eoo_bits                = 0;
+
+/* Per-RX modem geometry constants, re-queried after every rade_open for that
+ * RX.  These differ between V1 and V2 (V1: 960/1152/.../432/180,
+ * V2: 320/960/.../144/0), so with independent per-RX protocols they cannot be
+ * shared globals -- each receiver carries its own. */
+static int             g_rade_n_tx_out[RADAE_NRX]       = { 0 };
+static int             g_rade_n_tx_eoo_out[RADAE_NRX]   = { 0 };
+static int             g_rade_nin_max[RADAE_NRX]        = { 0 };
+static int             g_rade_n_features[RADAE_NRX]     = { 0 };
+static int             g_rade_n_eoo_bits[RADAE_NRX]     = { 0 };
+
+/* Allocation maxima = max(V1, V2) per dimension.  Every geometry-dependent
+ * buffer is sized from these so a per-RX protocol switch never re-allocates;
+ * only the per-RX counts above change. */
+static int             g_geom_max_tx_out      = 0;
+static int             g_geom_max_tx_eoo_out  = 0;
+static int             g_geom_max_nin_max     = 0;
+static int             g_geom_max_n_features  = 0;
+static int             g_geom_max_n_eoo_bits  = 0;
 
 /* Opus DNN states.  FARGAN is per-RX (each decoder has its own
  * vocoder hidden state).  LPCNet encoder is TX-side single. */
@@ -379,6 +414,32 @@ static void on_radae_text_rx(rade_text_t rt, const char* txt_ptr, int length, vo
  * Lifecycle (called from create_pipe / destroy_pipe)
  * ============================================================ */
 
+/* Probe RADE V1 (the larger geometry in every dimension) once so that all
+ * geometry-dependent buffers can be sized at the max of both protocols.
+ * Sizing at the max lets a per-RX live protocol switch reopen a handle
+ * without re-allocating any buffer.  Real handle geometry is folded in by
+ * the caller afterwards as a safety net in case this probe fails. */
+static void radae_compute_geom_maxima(void)
+{
+    const int flags_base = RADE_USE_C_ENCODER | RADE_USE_C_DECODER | RADE_VERBOSE_0;
+    struct rade* probe;
+    g_geom_max_tx_out     = 0;
+    g_geom_max_tx_eoo_out = 0;
+    g_geom_max_nin_max    = 0;
+    g_geom_max_n_features = 0;
+    g_geom_max_n_eoo_bits = 0;
+    probe = rade_open("", flags_base);
+    if (probe != NULL)
+    {
+        g_geom_max_tx_out     = rade_n_tx_out(probe);
+        g_geom_max_tx_eoo_out = rade_n_tx_eoo_out(probe);
+        g_geom_max_nin_max    = rade_nin_max(probe);
+        g_geom_max_n_features = rade_n_features_in_out(probe);
+        g_geom_max_n_eoo_bits = rade_n_eoo_bits(probe);
+        rade_close(probe);
+    }
+}
+
 void create_radae(void)
 {
     if (g_initialized) return;
@@ -393,14 +454,28 @@ void create_radae(void)
         InitializeCriticalSectionAndSpinCount(&g_radae_tx_cs, 4000);
         g_radae_tx_cs_inited = 1;
     }
+    if (!g_radae_rx_swap_cs_inited)
+    {
+        int i;
+        for (i = 0; i < RADAE_NRX; i++)
+            InitializeCriticalSectionAndSpinCount(&g_radae_rx_swap_cs[i], 4000);
+        g_radae_rx_swap_cs_inited = 1;
+    }
 
     rade_initialize();
+
+    /* Size every geometry-dependent buffer at max(V1,V2) so a per-RX protocol
+     * switch never re-allocates. */
+    radae_compute_geom_maxima();
 
     int rx;
     int any_ok = 0;
     for (rx = 0; rx < RADAE_NRX; rx++)
     {
-        g_rade[rx] = rade_open("", RADE_USE_C_ENCODER | RADE_USE_C_DECODER | RADE_VERBOSE_0);
+        const int v2 = (int)_InterlockedAnd(&g_radae_protocol_v2[rx], 1);
+        const int proto_flag = v2 ? RADE_PROTOCOL_V2 : 0;
+        g_rade[rx] = rade_open("", RADE_USE_C_ENCODER | RADE_USE_C_DECODER |
+                                   RADE_VERBOSE_0 | proto_flag);
         if (g_rade[rx] == NULL)
         {
             char msg[80];
@@ -412,24 +487,24 @@ void create_radae(void)
         else
         {
             any_ok = 1;
+            /* Per-RX geometry for whichever protocol this handle was opened with. */
+            g_rade_n_tx_out[rx]     = rade_n_tx_out(g_rade[rx]);
+            g_rade_n_tx_eoo_out[rx] = rade_n_tx_eoo_out(g_rade[rx]);
+            g_rade_nin_max[rx]      = rade_nin_max(g_rade[rx]);
+            g_rade_n_features[rx]   = rade_n_features_in_out(g_rade[rx]);
+            g_rade_n_eoo_bits[rx]   = rade_n_eoo_bits(g_rade[rx]);
+            /* Safety net if the V1 probe failed: grow maxima to fit. */
+            if (g_rade_n_tx_out[rx]     > g_geom_max_tx_out)     g_geom_max_tx_out     = g_rade_n_tx_out[rx];
+            if (g_rade_n_tx_eoo_out[rx] > g_geom_max_tx_eoo_out) g_geom_max_tx_eoo_out = g_rade_n_tx_eoo_out[rx];
+            if (g_rade_nin_max[rx]      > g_geom_max_nin_max)    g_geom_max_nin_max    = g_rade_nin_max[rx];
+            if (g_rade_n_features[rx]   > g_geom_max_n_features) g_geom_max_n_features = g_rade_n_features[rx];
+            if (g_rade_n_eoo_bits[rx]   > g_geom_max_n_eoo_bits) g_geom_max_n_eoo_bits = g_rade_n_eoo_bits[rx];
         }
     }
     if (!any_ok) return;
 
-    /* All instances share the same geometry constants; query from the
-     * first non-NULL context. */
-    for (rx = 0; rx < RADAE_NRX; rx++)
-    {
-        if (g_rade[rx] != NULL)
-        {
-            g_rade_n_tx_out      = rade_n_tx_out(g_rade[rx]);
-            g_rade_n_tx_eoo_out  = rade_n_tx_eoo_out(g_rade[rx]);
-            g_rade_nin_max       = rade_nin_max(g_rade[rx]);
-            g_rade_n_features    = rade_n_features_in_out(g_rade[rx]);
-            g_rade_n_eoo_bits    = rade_n_eoo_bits(g_rade[rx]);
-            break;
-        }
-    }
+    /* Guard zero-length allocations (V2 reports n_eoo_bits == 0). */
+    if (g_geom_max_n_eoo_bits < 1) g_geom_max_n_eoo_bits = 1;
 
     g_opus_arch  = opus_select_arch();
     {
@@ -457,7 +532,7 @@ void create_radae(void)
             g_rx_speech_16k[rx]     = (float*)_aligned_malloc(sizeof(float) * LPCNET_FRAME_SIZE * 8, 16);
             g_rx_speech_outrate[rx] = (float*)_aligned_malloc(sizeof(float) * MAX_RESAMP_OUT,   16);
 
-            g_rx_modem_fifo_cap[rx]  = g_rade_nin_max * 4 + 2048;
+            g_rx_modem_fifo_cap[rx]  = g_geom_max_nin_max * 4 + 2048;
             g_rx_speech_fifo_cap[rx] = MAX_RESAMP_OUT * 2 + LPCNET_FRAME_SIZE * 8;
             g_rx_modem_fifo[rx]      = (float*)_aligned_malloc(sizeof(float) * g_rx_modem_fifo_cap[rx],  16);
             g_rx_speech_fifo[rx]     = (float*)_aligned_malloc(sizeof(float) * g_rx_speech_fifo_cap[rx], 16);
@@ -465,9 +540,9 @@ void create_radae(void)
             g_rx_outrate_fifo_cap[rx] = 32768;
             g_rx_outrate_fifo[rx]     = (float*)_aligned_malloc(sizeof(float) * g_rx_outrate_fifo_cap[rx], 16);
 
-            g_rade_rx_in[rx]       = (RADE_COMP*)_aligned_malloc(sizeof(RADE_COMP) * g_rade_nin_max,    16);
-            g_rade_rx_features[rx] = (float*)    _aligned_malloc(sizeof(float)     * g_rade_n_features, 16);
-            g_rade_eoo_bits_rx[rx] = (float*)    _aligned_malloc(sizeof(float)     * g_rade_n_eoo_bits, 16);
+            g_rade_rx_in[rx]       = (RADE_COMP*)_aligned_malloc(sizeof(RADE_COMP) * g_geom_max_nin_max,    16);
+            g_rade_rx_features[rx] = (float*)    _aligned_malloc(sizeof(float)     * g_geom_max_n_features, 16);
+            g_rade_eoo_bits_rx[rx] = (float*)    _aligned_malloc(sizeof(float)     * g_geom_max_n_eoo_bits, 16);
 
             g_rx_modem_fifo_n[rx]       = 0;
             g_rx_speech_fifo_n[rx]      = 0;
@@ -479,18 +554,18 @@ void create_radae(void)
 
         g_tx_in_mono        = (float*)_aligned_malloc(sizeof(float) * MAX_BLOCK,        16);
         g_tx_speech_16k     = (float*)_aligned_malloc(sizeof(float) * MAX_RESAMP_OUT,   16);
-        g_tx_modem_8k       = (float*)_aligned_malloc(sizeof(float) * (g_rade_n_tx_out + g_rade_n_tx_eoo_out + 8000), 16);
+        g_tx_modem_8k       = (float*)_aligned_malloc(sizeof(float) * (g_geom_max_tx_out + g_geom_max_tx_eoo_out + 8000), 16);
         g_tx_modem_outrate  = (float*)_aligned_malloc(sizeof(float) * MAX_RESAMP_OUT,   16);
 
         g_tx_speech_fifo_cap = MAX_RESAMP_OUT * 2 + LPCNET_FRAME_SIZE * 8;
-        g_tx_modem_fifo_cap  = (g_rade_n_tx_out * 4) + g_rade_n_tx_eoo_out + 8000;
+        g_tx_modem_fifo_cap  = (g_geom_max_tx_out * 4) + g_geom_max_tx_eoo_out + 8000;
         g_tx_speech_fifo     = (float*)_aligned_malloc(sizeof(float) * g_tx_speech_fifo_cap, 16);
         g_tx_modem_fifo      = (float*)_aligned_malloc(sizeof(float) * g_tx_modem_fifo_cap,  16);
 
         g_tx_outrate_fifo_cap = 65536;
         g_tx_outrate_fifo     = (float*)_aligned_malloc(sizeof(float) * g_tx_outrate_fifo_cap, 16);
 
-        g_tx_features_buf    = (float*)_aligned_malloc(sizeof(float) * g_rade_n_features,    16);
+        g_tx_features_buf    = (float*)_aligned_malloc(sizeof(float) * g_geom_max_n_features,    16);
         g_tx_features_buf_n  = 0;
 
         g_tx_rmatch_in   = (double*)_aligned_malloc(sizeof(double) * 2 * MAX_BLOCK, 16);
@@ -498,9 +573,9 @@ void create_radae(void)
     }
 
     /* TX-side rade library scratch (single). */
-    g_rade_tx_out      = (RADE_COMP*)_aligned_malloc(sizeof(RADE_COMP) * g_rade_n_tx_out,     16);
-    g_rade_tx_eoo_out  = (RADE_COMP*)_aligned_malloc(sizeof(RADE_COMP) * g_rade_n_tx_eoo_out, 16);
-    g_rade_eoo_bits    = (float*)    _aligned_malloc(sizeof(float)     * g_rade_n_eoo_bits,   16);
+    g_rade_tx_out      = (RADE_COMP*)_aligned_malloc(sizeof(RADE_COMP) * g_geom_max_tx_out,     16);
+    g_rade_tx_eoo_out  = (RADE_COMP*)_aligned_malloc(sizeof(RADE_COMP) * g_geom_max_tx_eoo_out, 16);
+    g_rade_eoo_bits    = (float*)    _aligned_malloc(sizeof(float)     * g_geom_max_n_eoo_bits,   16);
 
     g_tx_speech_fifo_n = 0;
     g_tx_modem_fifo_n  = 0;
@@ -599,6 +674,12 @@ void destroy_radae(void)
     {
         DeleteCriticalSection(&g_radae_tx_cs);
         g_radae_tx_cs_inited = 0;
+    }
+    if (g_radae_rx_swap_cs_inited)
+    {
+        for (rx = 0; rx < RADAE_NRX; rx++)
+            DeleteCriticalSection(&g_radae_rx_swap_cs[rx]);
+        g_radae_rx_swap_cs_inited = 0;
     }
 }
 
@@ -751,7 +832,8 @@ PORT void SetRadaeTxSilenceHold(int on)
 
 PORT void SetRadaeLoopbackEnabled(int rx, int enable)
 {
-    if (!radae_rx_valid(rx)) return;
+    /* Loopback is RX1-only -- no cross-protocol loopback can occur. */
+    if (rx != 0) return;
     long prev = _InterlockedExchange(&g_radae_loopback_enabled[rx], enable ? 1 : 0);
     if (!enable)
     {
@@ -776,6 +858,107 @@ PORT int GetRadaeLoopbackEnabled(int rx)
 {
     if (!radae_rx_valid(rx)) return 0;
     return (int)_InterlockedAnd(&g_radae_loopback_enabled[rx], 0xffffffff);
+}
+
+/* ============================================================
+ * Per-RX RADE protocol (V1/V2) + TX-source selector.
+ * ============================================================ */
+
+PORT void SetRadaeProtocolV2(int rx, int on)
+{
+    if (!radae_rx_valid(rx)) return;
+    const long want = on ? 1 : 0;
+    if (_InterlockedExchange(&g_radae_protocol_v2[rx], want) == want)
+        return;                 /* no change */
+    if (!g_initialized)
+        return;                 /* flag captured; create_radae() opens with it */
+
+    /* Live per-RX recycle: close+reopen ONLY this RX's handle with the new
+     * protocol flag and re-query its geometry (buffers are already max-sized,
+     * so nothing re-allocates), then reset this RX's runtime state.  Held under
+     * the per-RX swap lock (vs the decode); if this RX is the current TX
+     * source, also under the TX lock (the encoder shares this handle). */
+    EnterCriticalSection(&g_radae_rx_swap_cs[rx]);
+    {
+        const int tx_affected = ((int)_InterlockedAnd(&g_radae_tx_rx, 1) == rx);
+        if (tx_affected && g_radae_tx_cs_inited) EnterCriticalSection(&g_radae_tx_cs);
+
+        if (g_rade[rx] != NULL)
+        {
+            rade_close(g_rade[rx]);
+            g_rade[rx] = rade_open("", RADE_USE_C_ENCODER | RADE_USE_C_DECODER |
+                                       RADE_VERBOSE_0 | (want ? RADE_PROTOCOL_V2 : 0));
+        }
+        if (g_rade[rx] != NULL)
+        {
+            g_rade_n_tx_out[rx]     = rade_n_tx_out(g_rade[rx]);
+            g_rade_n_tx_eoo_out[rx] = rade_n_tx_eoo_out(g_rade[rx]);
+            g_rade_nin_max[rx]      = rade_nin_max(g_rade[rx]);
+            g_rade_n_features[rx]   = rade_n_features_in_out(g_rade[rx]);
+            g_rade_n_eoo_bits[rx]   = rade_n_eoo_bits(g_rade[rx]);
+        }
+
+        /* Reset this RX's runtime state so no V1/V2 boundary survives. */
+        g_rx_modem_fifo_n[rx]       = 0;
+        g_rx_speech_fifo_n[rx]      = 0;
+        g_rx_outrate_fifo_n[rx]     = 0;
+        g_rx_pending_features_n[rx] = 0;
+        g_loop_bridge_n[rx]         = 0;
+        _InterlockedExchange(&g_radae_sync[rx],      0);
+        _InterlockedExchange(&g_radae_sync_prev[rx], 0);
+        _InterlockedExchange(&g_radae_snr_db[rx],    0);
+        {
+            float zp[LPCNET_FRAME_SIZE];
+            float zf[NB_TOTAL_FEATURES];
+            int i;
+            for (i = 0; i < LPCNET_FRAME_SIZE; i++) zp[i] = 0.0f;
+            for (i = 0; i < NB_TOTAL_FEATURES; i++) zf[i] = 0.0f;
+            fargan_init(&g_fargan[rx]);
+            fargan_cont(&g_fargan[rx], zp, zf);
+        }
+        if (g_radae_cs_inited)
+        {
+            EnterCriticalSection(&g_radae_cs);
+            g_rx_remote_callsign[rx][0] = '\0';
+            LeaveCriticalSection(&g_radae_cs);
+        }
+        if (tx_affected)
+        {
+            /* TX shares g_rade[rx]; flush its FIFOs so the encoder restarts
+             * cleanly on the new geometry. */
+            g_tx_speech_fifo_n  = 0;
+            g_tx_modem_fifo_n   = 0;
+            g_tx_outrate_fifo_n = 0;
+            g_tx_features_buf_n = 0;
+        }
+
+        if (tx_affected && g_radae_tx_cs_inited) LeaveCriticalSection(&g_radae_tx_cs);
+    }
+    LeaveCriticalSection(&g_radae_rx_swap_cs[rx]);
+
+    {
+        char log[80];
+        sprintf_s(log, sizeof(log), "[RADAE] RX%d protocol -> %s (live reinit)\n",
+                  rx + 1, want ? "V2" : "V1");
+        OutputDebugStringA(log);
+    }
+}
+
+PORT int GetRadaeProtocolV2(int rx)
+{
+    if (!radae_rx_valid(rx)) return 0;
+    return (int)_InterlockedAnd(&g_radae_protocol_v2[rx], 1);
+}
+
+PORT void SetRadaeTxRx(int rx)
+{
+    if (!radae_rx_valid(rx)) return;
+    _InterlockedExchange(&g_radae_tx_rx, rx);
+}
+
+PORT int GetRadaeTxRx(void)
+{
+    return (int)_InterlockedAnd(&g_radae_tx_rx, 0xffffffff);
 }
 
 PORT void SetRadaeMoxState(int mox)
@@ -952,7 +1135,7 @@ void xradae_rx(int rx, double* rbuff_io)
             if (db > 0)    db = 0;
             _InterlockedExchange(&g_rx_in_level_dbfs_q[rx], db);
         }
-        if (blk_peak >= 0.8f)
+        if (blk_peak >= RADAE_RX_CLIP_THRESHOLD)
             _InterlockedExchange(&g_rx_in_clip_last_tick[rx], (long)GetTickCount());
     }
 
@@ -965,7 +1148,11 @@ void xradae_rx(int rx, double* rbuff_io)
                             g_rx_modem_8k[rx], n8, &g_rx_ovrun_count[rx], "rx.modem_fifo");
     }
 
-    /* 3) drain modem FIFO through rade_rx -> features -> FARGAN -> 16k speech FIFO */
+    /* 3) drain modem FIFO through rade_rx -> features -> FARGAN -> 16k speech FIFO.
+     *    Held under the per-RX swap lock so a live SetRadaeProtocolV2 recycle of
+     *    this handle cannot run concurrently with the decode. */
+    if (g_radae_rx_swap_cs_inited) EnterCriticalSection(&g_radae_rx_swap_cs[rx]);
+    if (g_rade[rx] != NULL)
     {
         int nin = rade_nin(g_rade[rx]);
         while (nin > 0 && nin <= g_rx_modem_fifo_n[rx])
@@ -985,8 +1172,8 @@ void xradae_rx(int rx, double* rbuff_io)
                            g_rade_rx_in[rx]);
             if (has_eoo)
             {
-                if (g_rade_text_rx[rx] != NULL && g_rade_n_eoo_bits > 0)
-                    rade_text_rx(g_rade_text_rx[rx], g_rade_eoo_bits_rx[rx], g_rade_n_eoo_bits / 2);
+                if (g_rade_text_rx[rx] != NULL && g_rade_n_eoo_bits[rx] > 0)
+                    rade_text_rx(g_rade_text_rx[rx], g_rade_eoo_bits_rx[rx], g_rade_n_eoo_bits[rx] / 2);
                 g_rx_pending_features_n[rx] = 0;
             }
             else if (nout > 0)
@@ -1027,6 +1214,7 @@ void xradae_rx(int rx, double* rbuff_io)
             nin = rade_nin(g_rade[rx]);
         }
     }
+    if (g_radae_rx_swap_cs_inited) LeaveCriticalSection(&g_radae_rx_swap_cs[rx]);
 
     /* 4) drain 16k speech FIFO -> upsample to outrate -> outrate FIFO */
     {
@@ -1072,7 +1260,7 @@ void xradae_rx(int rx, double* rbuff_io)
         int snr  = (int)_InterlockedAnd(&g_radae_snr_db[rx], 0xffffffff);
         float peak = g_rx_in_peak[rx];
         float lvl_db;
-        int clip = (peak >= 0.8f) ? 1 : 0;
+        int clip = (peak >= RADAE_RX_CLIP_THRESHOLD) ? 1 : 0;
         if (peak < 1e-9f) peak = 1e-9f;
         lvl_db = 20.0f * (float)log10((double)peak);
         sprintf_s(buf, sizeof(buf),
@@ -1089,7 +1277,13 @@ void xradae_rx(int rx, double* rbuff_io)
  * checkbox behaviour and the rationale behind the MOX-state gate.
  * ============================================================ */
 
-#define RADE_TX_SCALE  0.5f
+/* Per-protocol modem-output scale into the WDSP TX modulator.  V1's library
+ * output is tanh-saturated to ~full scale; V2's is the un-gained raw IDFT, a
+ * little lower (measured modem-RMS ratio V1/V2 ~= 1.32, about 2.4 dB).  V2's
+ * scale is set so its average modem power matches V1's (0.66 ~= 0.5 * 1.32).
+ * Tune these two numbers if the on-air levels need rebalancing. */
+#define RADE_TX_SCALE_V1  0.5f
+#define RADE_TX_SCALE_V2  0.66f
 
 void xradae_tx(double* mic_io)
 {
@@ -1099,24 +1293,36 @@ void xradae_tx(double* mic_io)
 
     long en = _InterlockedAnd(&g_radae_tx_enabled, 1);
     if (!en) return;
-    if (!g_initialized || g_rade[0] == NULL) return;
+    if (!g_initialized) return;
     if (outrate <= 0 || outsize <= 0) return;
 
     if (_InterlockedAnd(&g_radae_bypass_all, 1)) return;
 
-    /* MOX-state gating.  Mirror of the RX-side gate.  Loopback override
-     * passes through if EITHER RX has loopback enabled. */
+    /* Loopback is RX1-only; otherwise the encoder follows the transmitting RX
+     * (set by SetRadaeTxRx at the MOX edge).  tx_rx selects both the handle and
+     * its per-RX geometry, so transmitting on an RX running V2 encodes V2. */
+    const long lpb0 = _InterlockedAnd(&g_radae_loopback_enabled[0], 1);
+    int tx_rx = lpb0 ? 0 : (int)_InterlockedAnd(&g_radae_tx_rx, 1);
+    if (tx_rx < 0 || tx_rx >= RADAE_NRX) tx_rx = 0;
+    if (g_rade[tx_rx] == NULL) return;
+
+    /* Per-protocol modem-output scale -- V1 and V2 present very different
+     * amplitudes to the modulator (see the RADE_TX_SCALE_* comment).  Follows
+     * the transmitting RX's protocol; during loopback tx_rx is forced to RX1. */
+    const float tx_scale = ((int)_InterlockedAnd(&g_radae_protocol_v2[tx_rx], 1))
+                           ? RADE_TX_SCALE_V2 : RADE_TX_SCALE_V1;
+
+    /* MOX-state gating.  Mirror of the RX-side gate.  Loopback (RX1-only)
+     * passes the gate so the encoder->bridge->RX1 path runs without MOX. */
     {
         const long mox  = _InterlockedAnd(&g_radae_mox_state,                 1);
-        const long lpb0 = _InterlockedAnd(&g_radae_loopback_enabled[0],       1);
-        const long lpb1 = _InterlockedAnd(&g_radae_loopback_enabled[1],       1);
         const long eoo  = _InterlockedAnd(&g_radae_eoo_pending,               1);
         const long hold = _InterlockedAnd(&g_radae_tx_silence_hold,           1);
         /* hold keeps the gate passing so step 6 writes silence (or remaining
          * modem samples) into mic_io for the whole keyed flush window -- the
          * arbiter keeps the radio keyed until the EOO has flushed, and live
          * mic must never leak on-air. */
-        if (!mox && !lpb0 && !lpb1 && !eoo && !hold)
+        if (!mox && !lpb0 && !eoo && !hold)
         {
             const long drain = _InterlockedAnd(&g_radae_drain_blocks, 0xffffffff);
             if (drain <= 0) return;
@@ -1228,18 +1434,18 @@ void xradae_tx(double* mic_io)
         for (i = 0; i < NB_TOTAL_FEATURES; i++)
         {
             g_tx_features_buf[g_tx_features_buf_n++] = feats[i];
-            if (g_tx_features_buf_n == g_rade_n_features)
+            if (g_tx_features_buf_n == g_rade_n_features[tx_rx])
             {
                 g_tx_features_buf_n = 0;
                 if (!bypass_core)
                 {
-                    int n_modem = rade_tx(g_rade[0], g_rade_tx_out, g_tx_features_buf);
+                    int n_modem = rade_tx(g_rade[tx_rx], g_rade_tx_out, g_tx_features_buf);
                     int j;
                     if (n_modem > 0)
                     {
-                        int avail = (g_rade_n_tx_out > n_modem) ? n_modem : g_rade_n_tx_out;
+                        int avail = (g_rade_n_tx_out[tx_rx] > n_modem) ? n_modem : g_rade_n_tx_out[tx_rx];
                         for (j = 0; j < avail; j++)
-                            g_tx_modem_8k[j] = g_rade_tx_out[j].real * RADE_TX_SCALE;
+                            g_tx_modem_8k[j] = g_rade_tx_out[j].real * tx_scale;
                         fifo_push_check(g_tx_modem_fifo, &g_tx_modem_fifo_n, g_tx_modem_fifo_cap,
                                         g_tx_modem_8k, avail,
                                         &g_tx_modem_ovrun_count, "tx.modem_fifo");
@@ -1247,7 +1453,7 @@ void xradae_tx(double* mic_io)
                 }
                 else
                 {
-                    int silence_n = g_rade_n_tx_out;
+                    int silence_n = g_rade_n_tx_out[tx_rx];
                     memset(g_tx_modem_8k, 0, (size_t)silence_n * sizeof(float));
                     fifo_push_check(g_tx_modem_fifo, &g_tx_modem_fifo_n, g_tx_modem_fifo_cap,
                                     g_tx_modem_8k, silence_n,
@@ -1264,15 +1470,15 @@ void xradae_tx(double* mic_io)
     if (_InterlockedExchange(&g_radae_eoo_pending, 0))
     {
         if (g_rade_text_tx != NULL && g_tx_own_callsign[0] != '\0' &&
-            g_rade_eoo_bits != NULL && g_rade_n_eoo_bits > 0)
+            g_rade_eoo_bits != NULL && g_rade_n_eoo_bits[tx_rx] > 0)
         {
             if (g_radae_cs_inited) EnterCriticalSection(&g_radae_cs);
             rade_text_generate_tx_string(g_rade_text_tx,
                                          g_tx_own_callsign,
                                          (int)strlen(g_tx_own_callsign),
                                          g_rade_eoo_bits,
-                                         g_rade_n_eoo_bits / 2);
-            rade_tx_set_eoo_bits(g_rade[0], g_rade_eoo_bits);
+                                         g_rade_n_eoo_bits[tx_rx] / 2);
+            rade_tx_set_eoo_bits(g_rade[tx_rx], g_rade_eoo_bits);
             if (g_radae_cs_inited) LeaveCriticalSection(&g_radae_cs);
         }
         _InterlockedExchange(&g_radae_eoo_repeats_left, 2);   /* double EOO */
@@ -1288,7 +1494,7 @@ void xradae_tx(double* mic_io)
     if (_InterlockedAnd(&g_radae_eoo_repeats_left, 0xffffffff) > 0 &&
         g_tx_modem_fifo_n == 0 && g_tx_outrate_fifo_n < (outsize * 2))
     {
-        int n_eoo = rade_tx_eoo(g_rade[0], g_rade_tx_eoo_out);
+        int n_eoo = rade_tx_eoo(g_rade[tx_rx], g_rade_tx_eoo_out);
         {
             char log[160];
             sprintf_s(log, sizeof(log), "[RADAE] EOO emit: call='%s' n_eoo=%d left=%ld\n",
@@ -1300,7 +1506,7 @@ void xradae_tx(double* mic_io)
         if (n_eoo > 0)
         {
             for (j = 0; j < n_eoo; j++)
-                g_tx_modem_8k[j] = g_rade_tx_eoo_out[j].real * RADE_TX_SCALE;
+                g_tx_modem_8k[j] = g_rade_tx_eoo_out[j].real * tx_scale;
             fifo_push_check(g_tx_modem_fifo, &g_tx_modem_fifo_n, g_tx_modem_fifo_cap,
                             g_tx_modem_8k, n_eoo,
                             &g_tx_modem_ovrun_count, "tx.modem_fifo");
@@ -1333,10 +1539,9 @@ void xradae_tx(double* mic_io)
         }
     }
 
-    /* 6) FIFO-drain into mic_io.  Loopback is per-RX -- when any RX
-     *    has loopback enabled, push the modem audio into that RX's
-     *    bridge; mic_io stays silent if either is on so the radio
-     *    does not transmit during loopback. */
+    /* 6) FIFO-drain into mic_io.  Loopback is RX1-only -- when RX1 loopback is
+     *    enabled, push the modem audio into RX1's bridge and keep mic_io silent
+     *    so the radio does not transmit during loopback. */
     {
         float scratch[RADAE_MAX_BLOCK];
         int have = 0;
@@ -1359,35 +1564,26 @@ void xradae_tx(double* mic_io)
             }
         }
 
-        const long lpb0 = _InterlockedAnd(&g_radae_loopback_enabled[0], 0xffffffff);
-        const long lpb1 = _InterlockedAnd(&g_radae_loopback_enabled[1], 0xffffffff);
-
-        if (lpb0 || lpb1)
+        if (lpb0)
         {
-            int r;
-            for (r = 0; r < RADAE_NRX; r++)
+            int avail = RADAE_LOOP_BRIDGE_CAP - g_loop_bridge_n[0];
+            int take  = (have < avail) ? have : avail;
+            if (take > 0)
             {
-                long lpb = (r == 0) ? lpb0 : lpb1;
-                if (!lpb) continue;
-                int avail = RADAE_LOOP_BRIDGE_CAP - g_loop_bridge_n[r];
-                int take  = (have < avail) ? have : avail;
-                if (take > 0)
+                memcpy(g_loop_bridge[0] + g_loop_bridge_n[0], scratch,
+                       (size_t)take * sizeof(float));
+                g_loop_bridge_n[0] += take;
+            }
+            if (take < have)
+            {
+                long c = ++g_loop_bridge_ovrun_count[0];
+                if (c == 1 || (c % 50) == 0)
                 {
-                    memcpy(g_loop_bridge[r] + g_loop_bridge_n[r], scratch,
-                           (size_t)take * sizeof(float));
-                    g_loop_bridge_n[r] += take;
-                }
-                if (take < have)
-                {
-                    long c = ++g_loop_bridge_ovrun_count[r];
-                    if (c == 1 || (c % 50) == 0)
-                    {
-                        char log[140];
-                        sprintf_s(log, sizeof(log),
-                            "[RADAE] RX%d loop_bridge OVRUN dropped=%d total=%ld\n",
-                            r + 1, have - take, c);
-                        OutputDebugStringA(log);
-                    }
+                    char log[140];
+                    sprintf_s(log, sizeof(log),
+                        "[RADAE] RX1 loop_bridge OVRUN dropped=%d total=%ld\n",
+                        have - take, c);
+                    OutputDebugStringA(log);
                 }
             }
             for (i = 0; i < outsize; i++)

@@ -74,7 +74,15 @@ namespace Thetis.FreeDVReporter
         private static int    _lastCallsignSeq   = 0;
         private static string _lastDecodedCall   = "";
 
-        private const string MODE_TAG = "RADEV1";
+        /* On-air mode tag, per receiver: RX1 (_client) and RX2 (_clientRx2)
+         * each report their own RADE protocol -- "RADEV1" or "RADEV2" -- read
+         * live from the C side so a V1/V2 change is reflected on the next
+         * emitted report. */
+        private static string ModeTag(int rx)
+        {
+            try { return cmaster.GetRadaeProtocolV2(rx) == 1 ? "RADEV2" : "RADEV1"; }
+            catch { return "RADEV1"; }
+        }
 
         /* Reported "version" / client-name string, e.g. "Thetis-RADE
          * 2.10.3.16".  Pulled once from the entry assembly so an
@@ -167,7 +175,7 @@ namespace Thetis.FreeDVReporter
                 _currentFrequencyRx2Hz = (ulong)Math.Round(console.VFOBFreq * 1e6);
                 _clientRx2?.EmitFreqChange(_currentFrequencyRx2Hz);
                 _lastReportedTransmitting = ComputeRealTx(console);
-                _client.EmitTxReport(MODE_TAG, _lastReportedTransmitting);
+                _client.EmitTxReport(ModeTag(0), _lastReportedTransmitting);
                 if (!string.IsNullOrEmpty(msg)) _client.EmitMessageUpdate(msg);
             }
             catch { }
@@ -272,7 +280,7 @@ namespace Thetis.FreeDVReporter
                     {
                         _client.EmitFreqChange(CurrentFrequencyHz);
                         _lastReportedTransmitting = ComputeRealTx(_console);
-                        _client.EmitTxReport(MODE_TAG, _lastReportedTransmitting);
+                        _client.EmitTxReport(ModeTag(0), _lastReportedTransmitting);
                     }
                     catch { }
                 }
@@ -320,7 +328,7 @@ namespace Thetis.FreeDVReporter
                     /* Always call EmitTxReport so the client's cached
                      * _lastTransmitting is current; client suppresses
                      * the wire send when role=="view". */
-                    _client?.EmitTxReport(MODE_TAG, now);
+                    _client?.EmitTxReport(ModeTag(0), now);
                 }
 
                 /* RX2 client: independent predicate, independent debounce.
@@ -332,7 +340,39 @@ namespace Thetis.FreeDVReporter
                     if (rx2Now != _lastReportedTransmittingRx2)
                     {
                         _lastReportedTransmittingRx2 = rx2Now;
-                        _clientRx2.EmitTxReport(MODE_TAG, rx2Now);
+                        _clientRx2.EmitTxReport(ModeTag(1), rx2Now);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        /* The user changed the RX1/RX2 RADE protocol (V1/V2).  Re-emit the
+         * current tx_report with the new mode tag so qso.freedv.org updates the
+         * station's mode immediately -- and the local self-row reflects it --
+         * instead of waiting for the next PTT or a REPR/VIS toggle.  When
+         * reporting is off (role "view") the client caches the mode but
+         * suppresses the wire send, so nothing is reported/shown until VIS is
+         * re-enabled.  rx: 0 = RX1 (_client), 1 = RX2 (_clientRx2). */
+        public static void NotifyProtocolChanged(int rx)
+        {
+            try
+            {
+                if (_console == null) return;
+                if (rx == 1)
+                {
+                    if (_clientRx2 != null)
+                    {
+                        _lastReportedTransmittingRx2 = ComputeRealTxRx2(_console);
+                        _clientRx2.EmitTxReport(ModeTag(1), _lastReportedTransmittingRx2);
+                    }
+                }
+                else
+                {
+                    if (_client != null)
+                    {
+                        _lastReportedTransmitting = ComputeRealTx(_console);
+                        _client.EmitTxReport(ModeTag(0), _lastReportedTransmitting);
                     }
                 }
             }
@@ -439,7 +479,7 @@ namespace Thetis.FreeDVReporter
                         _currentFrequencyRx2Hz = (ulong)Math.Round(_console.VFOBFreq * 1e6);
                         _clientRx2.EmitFreqChange(_currentFrequencyRx2Hz);
                         _lastReportedTransmittingRx2 = ComputeRealTxRx2(_console);
-                        _clientRx2.EmitTxReport(MODE_TAG, _lastReportedTransmittingRx2);
+                        _clientRx2.EmitTxReport(ModeTag(1), _lastReportedTransmittingRx2);
                         if (!string.IsNullOrEmpty(_rx2Message))
                             _clientRx2.EmitMessageUpdate(_rx2Message);
                     }
@@ -599,9 +639,9 @@ namespace Thetis.FreeDVReporter
                  * reporting is enabled. */
                 if (sync != 0 || freshDecode)
                 {
-                    _client.EmitRxReport(_lastDecodedCall, MODE_TAG, snr);
+                    _client.EmitRxReport(_lastDecodedCall, ModeTag(0), snr);
                     if (_reportingEnabled)
-                        _client.LocalMirrorRxReport(_lastDecodedCall, MODE_TAG, snr);
+                        _client.LocalMirrorRxReport(_lastDecodedCall, ModeTag(0), snr);
                 }
 
                 /* Dual-RX: when the RX2 client is up, poll RX2's sync/SNR/
@@ -625,7 +665,7 @@ namespace Thetis.FreeDVReporter
                     _lastSyncRx2 = sync2;
                     if (sync2 != 0 || fresh2)
                     {
-                        _clientRx2.EmitRxReport(_lastDecodedCallRx2, MODE_TAG, snr2);
+                        _clientRx2.EmitRxReport(_lastDecodedCallRx2, ModeTag(1), snr2);
                     }
                 }
             }

@@ -184,7 +184,7 @@ namespace Thetis
         RADAE_SYNC = 80,        // 0 or 1
         RADAE_SNR_DB,           // dB SNR estimate, typically -10..30
         RADAE_RX_LEVEL_DB,      // dBFS of decoder input peak, -120..0
-        RADAE_CLIP,             // 1 if any block crossed 0.8 fullscale within ~500 ms
+        RADAE_CLIP,             // 1 if any block crossed 0.9 fullscale within ~500 ms
         RADAE_EOO_DECODE,       // pulses to 1 for ~500 ms after each successful EOO callsign decode
         RADAE_TX_MIC_LEVEL_DB,  // dBFS of post-TXGain mic input peak, -120..0 (TX side)
         RADAE_TX_MIC_CLIP,      // 1 if TX mic peak crossed 0.8 fullscale within ~500 ms (TX side)

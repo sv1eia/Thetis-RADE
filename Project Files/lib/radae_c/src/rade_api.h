@@ -68,8 +68,8 @@ typedef struct {
 } RADE_COMP;
 #endif
 
-#include "rade_tx.h"
-#include "rade_rx.h"
+/* struct rade is opaque; its internal layout (incl. tx/rx state) lives in
+ * radc_internal.h, kept out of this public header. */
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,6 +84,7 @@ extern "C" {
 #define RADE_USE_C_DECODER 0x2
 #define RADE_FOFF_TEST     0x4                // test mode used only by developers
 #define RADE_VERBOSE_0     0x8                // reduce verbosity to "quiet"
+#define RADE_PROTOCOL_V2   0x10               // select RADE V2 protocol (absent = V1; user-selectable)
 
 // Must be called BEFORE any other RADE functions as this
 // initializes internal library state.
@@ -92,17 +93,10 @@ RADE_EXPORT void rade_initialize(void);
 // Should be called when done with RADE.
 RADE_EXPORT void rade_finalize(void);
 
-struct rade {
-    int flags;
-    int auxdata;
-    int bottleneck;
-
-    /* Transmitter state */
-    rade_tx_state tx;
-
-    /* Receiver state */
-    rade_rx_state rx;
-};
+/* Opaque handle: the layout is private (defined in radc_internal.h) so the RADE
+ * V1 and V2 protocols can carry different internal state behind one type.
+ * Callers only ever hold a 'struct rade *'. */
+struct rade;
 
 // note single context only in this version, one context has one Tx, and one Rx
 RADE_EXPORT struct rade *rade_open(char model_file[], int flags);
@@ -110,6 +104,10 @@ RADE_EXPORT void rade_close(struct rade *r);
 
 // Allows API users to determine if the API has changed
 RADE_EXPORT int rade_version(void);
+
+// Returns the RADE protocol this handle was opened with: 1 = V1, 2 = V2.
+// (Distinct from rade_version(), which is the C API version.)
+RADE_EXPORT int rade_protocol(struct rade *r);
 
 // helpers to set up arrays
 RADE_EXPORT int rade_n_tx_out(struct rade *r);

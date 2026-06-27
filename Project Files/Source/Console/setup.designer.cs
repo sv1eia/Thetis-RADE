@@ -1888,7 +1888,8 @@ namespace Thetis
             this.chkTXMeasure = new System.Windows.Forms.CheckBoxTS();
             this.chkRX2Measure = new System.Windows.Forms.CheckBoxTS();
             this.chkRADAERX2 = new System.Windows.Forms.CheckBoxTS();
-            this.chkRADAELoopbackRX2 = new System.Windows.Forms.CheckBoxTS();
+            this.cmbRX1RADEVersion = new System.Windows.Forms.ComboBoxTS();
+            this.cmbRX2RADEVersion = new System.Windows.Forms.ComboBoxTS();
             this.chkRADAEReportingRX2 = new System.Windows.Forms.CheckBoxTS();
             this.lblRadaeRxLevelRX2 = new System.Windows.Forms.LabelTS();
             this.udRadaeRxLevelRX2 = new System.Windows.Forms.NumericUpDownTS();
@@ -30966,9 +30967,9 @@ namespace Thetis
             this.chkRADAE.Image = null;
             this.chkRADAE.Location = new System.Drawing.Point(10, 33);
             this.chkRADAE.Name = "chkRADAE";
-            this.chkRADAE.Size = new System.Drawing.Size(140, 17);
+            this.chkRADAE.Size = new System.Drawing.Size(92, 17);
             this.chkRADAE.TabIndex = 0;
-            this.chkRADAE.Text = "RX1RADE enable/disable";
+            this.chkRADAE.Text = "RX1RADE enable";
             this.toolTip1.SetToolTip(this.chkRADAE, "Enable built-in FreeDV RADEV1 digital voice. RX audio is fed to the RADE decoder before reaching the speakers; mic audio is fed to the RADE encoder after the WDSP audio enhancements (TXEQ / Compander / CFC / Phase / Leveler) which remain under user control. Mode/filter selection are not changed automatically.");
             this.chkRADAE.UseVisualStyleBackColor = true;
             this.chkRADAE.CheckedChanged += new System.EventHandler(this.chkRADAE_CheckedChanged);
@@ -31516,25 +31517,38 @@ namespace Thetis
             this.chkRADAERX2.Image = null;
             this.chkRADAERX2.Location = new System.Drawing.Point(370, 33);
             this.chkRADAERX2.Name = "chkRADAERX2";
-            this.chkRADAERX2.Size = new System.Drawing.Size(140, 17);
+            this.chkRADAERX2.Size = new System.Drawing.Size(92, 17);
             this.chkRADAERX2.TabIndex = 60;
-            this.chkRADAERX2.Text = "RX2RADE enable/disable";
+            this.chkRADAERX2.Text = "RX2RADE enable";
             this.toolTip1.SetToolTip(this.chkRADAERX2, "Enable built-in FreeDV RADEV1 digital voice on RX2.  Concurrent with RX1 RADE.");
             this.chkRADAERX2.UseVisualStyleBackColor = true;
             this.chkRADAERX2.CheckedChanged += new System.EventHandler(this.chkRADAERX2_CheckedChanged);
             //
-            // chkRADAELoopbackRX2
+            // cmbRX1RADEVersion  RX1 RADE protocol version (V1/V2).  Always
+            // enabled; visibility tracks chkRX1RadeControl.
             //
-            this.chkRADAELoopbackRX2.AutoSize = true;
-            this.chkRADAELoopbackRX2.Image = null;
-            this.chkRADAELoopbackRX2.Location = new System.Drawing.Point(370, 56);
-            this.chkRADAELoopbackRX2.Name = "chkRADAELoopbackRX2";
-            this.chkRADAELoopbackRX2.Size = new System.Drawing.Size(210, 17);
-            this.chkRADAELoopbackRX2.TabIndex = 61;
-            this.chkRADAELoopbackRX2.Text = "RX2RADE Loopback Test enable/disable";
-            this.toolTip1.SetToolTip(this.chkRADAELoopbackRX2, "Diagnostic loopback on RX2.  Same semantics as the RX1 Loopback Test.");
-            this.chkRADAELoopbackRX2.UseVisualStyleBackColor = true;
-            this.chkRADAELoopbackRX2.CheckedChanged += new System.EventHandler(this.chkRADAELoopbackRX2_CheckedChanged);
+            this.cmbRX1RADEVersion.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbRX1RADEVersion.Items.AddRange(new object[] { "V1", "V2" });
+            this.cmbRX1RADEVersion.Location = new System.Drawing.Point(155, 31);
+            this.cmbRX1RADEVersion.Name = "cmbRX1RADEVersion";
+            this.cmbRX1RADEVersion.Size = new System.Drawing.Size(55, 21);
+            this.cmbRX1RADEVersion.TabIndex = 61;
+            this.cmbRX1RADEVersion.Text = "V1";
+            this.toolTip1.SetToolTip(this.cmbRX1RADEVersion, "Select the RADE version");
+            this.cmbRX1RADEVersion.SelectedIndexChanged += new System.EventHandler(this.cmbRX1RADEVersion_SelectedIndexChanged);
+            //
+            // cmbRX2RADEVersion  RX2 RADE protocol version (V1/V2).  Always
+            // enabled; visibility tracks chkRX2RadeControl.
+            //
+            this.cmbRX2RADEVersion.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbRX2RADEVersion.Items.AddRange(new object[] { "V1", "V2" });
+            this.cmbRX2RADEVersion.Location = new System.Drawing.Point(515, 31);
+            this.cmbRX2RADEVersion.Name = "cmbRX2RADEVersion";
+            this.cmbRX2RADEVersion.Size = new System.Drawing.Size(55, 21);
+            this.cmbRX2RADEVersion.TabIndex = 62;
+            this.cmbRX2RADEVersion.Text = "V1";
+            this.toolTip1.SetToolTip(this.cmbRX2RADEVersion, "Select the RADE version");
+            this.cmbRX2RADEVersion.SelectedIndexChanged += new System.EventHandler(this.cmbRX2RADEVersion_SelectedIndexChanged);
             //
             // lblRadaeRxLevelRX2
             //
@@ -45726,7 +45740,8 @@ namespace Thetis
             this.tpDSPRADE.Controls.Add(this.chkTXMeasure);
             this.tpDSPRADE.Controls.Add(this.chkRX2Measure);
             this.tpDSPRADE.Controls.Add(this.chkRADAERX2);
-            this.tpDSPRADE.Controls.Add(this.chkRADAELoopbackRX2);
+            this.tpDSPRADE.Controls.Add(this.cmbRX1RADEVersion);
+            this.tpDSPRADE.Controls.Add(this.cmbRX2RADEVersion);
             this.tpDSPRADE.Controls.Add(this.chkRADAEReportingRX2);
             this.tpDSPRADE.Controls.Add(this.lblRadaeRxLevelRX2);
             this.tpDSPRADE.Controls.Add(this.udRadaeRxLevelRX2);
@@ -77307,7 +77322,8 @@ namespace Thetis
         private CheckBoxTS chkTXMeasure;
         private CheckBoxTS chkRX2Measure;
         private CheckBoxTS chkRADAERX2;
-        private CheckBoxTS chkRADAELoopbackRX2;
+        private ComboBoxTS cmbRX1RADEVersion;
+        private ComboBoxTS cmbRX2RADEVersion;
         private CheckBoxTS chkRADAEReportingRX2;
         private LabelTS    lblRadaeRxLevelRX2;
         private NumericUpDownTS udRadaeRxLevelRX2;

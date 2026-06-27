@@ -11,6 +11,7 @@
 */
 
 #include "rade_rx.h"
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 

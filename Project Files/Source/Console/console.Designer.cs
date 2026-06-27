@@ -229,9 +229,11 @@ namespace Thetis
         private System.Windows.Forms.CheckBoxTS chkRADE;
         private System.Windows.Forms.CheckBoxTS chkREPR;
         private System.Windows.Forms.CheckBoxTS chkVIS;
+        private System.Windows.Forms.ComboBoxTS cmbRadeVersionRX1;
         // Dual-RX RADE additions -- RX2 console mirrors on panelRX2Display.
         private System.Windows.Forms.CheckBoxTS chkRADERX2;
         private System.Windows.Forms.CheckBoxTS chkVISRX2;
+        private System.Windows.Forms.ComboBoxTS cmbRadeVersionRX2;
         private RadioButtonTS radBand160;
         private RadioButtonTS radBand80;
         private RadioButtonTS radBand60;
@@ -1079,8 +1081,10 @@ namespace Thetis
             this.chkRADE = new System.Windows.Forms.CheckBoxTS();
             this.chkREPR = new System.Windows.Forms.CheckBoxTS();
             this.chkVIS = new System.Windows.Forms.CheckBoxTS();
+            this.cmbRadeVersionRX1 = new System.Windows.Forms.ComboBoxTS();
             this.chkRADERX2 = new System.Windows.Forms.CheckBoxTS();
             this.chkVISRX2 = new System.Windows.Forms.CheckBoxTS();
+            this.cmbRadeVersionRX2 = new System.Windows.Forms.ComboBoxTS();
             this.lblVACTXIndicator = new System.Windows.Forms.LabelTS();
             this.lblDigTXProfile = new System.Windows.Forms.LabelTS();
             this.lblVACRXIndicator = new System.Windows.Forms.LabelTS();
@@ -6611,6 +6615,7 @@ namespace Thetis
             // Dual-RX RADE additions -- RADE/REPR/VIS triplet around chkX2TR.
             this.panelRX2Display.Controls.Add(this.chkRADERX2);
             this.panelRX2Display.Controls.Add(this.chkVISRX2);
+            this.panelRX2Display.Controls.Add(this.cmbRadeVersionRX2);
             this.panelRX2Display.Name = "panelRX2Display";
             // 
             // panelRX2Mixer
@@ -6819,6 +6824,7 @@ namespace Thetis
             this.panelModeSpecificDigital.Controls.Add(this.chkRADE);
             this.panelModeSpecificDigital.Controls.Add(this.chkREPR);
             this.panelModeSpecificDigital.Controls.Add(this.chkVIS);
+            this.panelModeSpecificDigital.Controls.Add(this.cmbRadeVersionRX1);
             this.panelModeSpecificDigital.Controls.Add(this.chkPTTRADE);
             this.panelModeSpecificDigital.Controls.Add(this.lblVACTXIndicator);
             this.panelModeSpecificDigital.Controls.Add(this.lblDigTXProfile);
@@ -6841,7 +6847,7 @@ namespace Thetis
             this.chkRADE.BackColor = System.Drawing.Color.Transparent;
             this.chkRADE.ForeColor = System.Drawing.Color.White;
             this.chkRADE.Image = null;
-            this.chkRADE.Location = new System.Drawing.Point(15, 115);
+            this.chkRADE.Location = new System.Drawing.Point(150, 55);
             this.chkRADE.Name = "chkRADE";
             this.chkRADE.Size = new System.Drawing.Size(56, 17);
             this.chkRADE.TabIndex = 200;
@@ -6856,7 +6862,7 @@ namespace Thetis
             this.chkREPR.BackColor = System.Drawing.Color.Transparent;
             this.chkREPR.ForeColor = System.Drawing.Color.White;
             this.chkREPR.Image = null;
-            this.chkREPR.Location = new System.Drawing.Point(75, 115);
+            this.chkREPR.Location = new System.Drawing.Point(150, 79);
             this.chkREPR.Name = "chkREPR";
             this.chkREPR.Size = new System.Drawing.Size(56, 17);
             this.chkREPR.TabIndex = 201;
@@ -6871,7 +6877,7 @@ namespace Thetis
             this.chkVIS.BackColor = System.Drawing.Color.Transparent;
             this.chkVIS.ForeColor = System.Drawing.Color.White;
             this.chkVIS.Image = null;
-            this.chkVIS.Location = new System.Drawing.Point(135, 115);
+            this.chkVIS.Location = new System.Drawing.Point(150, 103);
             this.chkVIS.Name = "chkVIS";
             this.chkVIS.Size = new System.Drawing.Size(48, 17);
             this.chkVIS.TabIndex = 202;
@@ -6879,6 +6885,19 @@ namespace Thetis
             this.toolTip1.SetToolTip(this.chkVIS, "Mirror of Setup -> Audio -> Options -> 'RADE enable reporting'.  When ticked, Thetis publishes its data to qso.freedv.org as a 'report' client; when unticked the reporter window still shows the live station list (read-only 'view' role) but no own data is sent.  Greyed when REPR is unchecked.");
             this.chkVIS.UseVisualStyleBackColor = false;
             this.chkVIS.CheckedChanged += new System.EventHandler(this.chkVIS_CheckedChanged);
+            //
+            // cmbRadeVersionRX1  console-side RX1 RADE version (V1/V2) mirror.
+            // Vertical RX1 RADE stack: combo on top, then RADE / REPR / VIS.
+            //
+            this.cmbRadeVersionRX1.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbRadeVersionRX1.Items.AddRange(new object[] { "V1", "V2" });
+            this.cmbRadeVersionRX1.Location = new System.Drawing.Point(150, 30);
+            this.cmbRadeVersionRX1.Name = "cmbRadeVersionRX1";
+            this.cmbRadeVersionRX1.Size = new System.Drawing.Size(55, 21);
+            this.cmbRadeVersionRX1.TabIndex = 199;
+            this.cmbRadeVersionRX1.Text = "V1";
+            this.toolTip1.SetToolTip(this.cmbRadeVersionRX1, "Select the RADE version");
+            this.cmbRadeVersionRX1.SelectedIndexChanged += new System.EventHandler(this.cmbRadeVersionRX1_SelectedIndexChanged);
             //
             // chkPTTRADE  POC: RADE PTT request - drives the EOO-safe un-key state machine
             //
@@ -6905,7 +6924,7 @@ namespace Thetis
             this.chkRADERX2.BackColor = System.Drawing.Color.Transparent;
             this.chkRADERX2.ForeColor = System.Drawing.Color.White;
             this.chkRADERX2.Image = null;
-            this.chkRADERX2.Location = new System.Drawing.Point(54, 53);
+            this.chkRADERX2.Location = new System.Drawing.Point(1, 80);
             this.chkRADERX2.Name = "chkRADERX2";
             this.chkRADERX2.Size = new System.Drawing.Size(56, 17);
             this.chkRADERX2.TabIndex = 210;
@@ -6928,7 +6947,20 @@ namespace Thetis
             this.toolTip1.SetToolTip(this.chkVISRX2, "RX2 reporting enable.  When ticked, a second connection to qso.freedv.org opens for RX2 frequency + SNR reports.  Greyed when REPR is unchecked.");
             this.chkVISRX2.UseVisualStyleBackColor = false;
             this.chkVISRX2.CheckedChanged += new System.EventHandler(this.chkVISRX2_CheckedChanged);
-            // 
+            //
+            // cmbRadeVersionRX2  console-side RX2 RADE version (V1/V2) mirror.
+            // Sits in the CTUN row's right slot; RADE moves to the bottom-left.
+            //
+            this.cmbRadeVersionRX2.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbRadeVersionRX2.Items.AddRange(new object[] { "V1", "V2" });
+            this.cmbRadeVersionRX2.Location = new System.Drawing.Point(54, 50);
+            this.cmbRadeVersionRX2.Name = "cmbRadeVersionRX2";
+            this.cmbRadeVersionRX2.Size = new System.Drawing.Size(48, 21);
+            this.cmbRadeVersionRX2.TabIndex = 211;
+            this.cmbRadeVersionRX2.Text = "V1";
+            this.toolTip1.SetToolTip(this.cmbRadeVersionRX2, "Select the RADE version");
+            this.cmbRadeVersionRX2.SelectedIndexChanged += new System.EventHandler(this.cmbRadeVersionRX2_SelectedIndexChanged);
+            //
             // lblVACTXIndicator
             // 
             this.lblVACTXIndicator.ForeColor = System.Drawing.Color.White;

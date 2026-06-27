@@ -88,6 +88,19 @@
     <ClCompile Include="..\src\radc_tx.c" />
     <ClCompile Include="..\src\radc_rx.c" />
     <ClCompile Include="..\src\radc_api.c" />
+    <!-- RADE V2 (co-existing with V1 in the same rade.lib) -->
+    <ClCompile Include="..\src\radc_modem_v2.c" />
+    <ClCompile Include="..\src\radc_mod_v2.c" />
+    <ClCompile Include="..\src\radc_demod_v2.c" />
+    <ClCompile Include="..\src\radc_acq_v2.c" />
+    <ClCompile Include="..\src\radc_enc_v2.c" />
+    <ClCompile Include="..\src\radc_dec_v2.c" />
+    <ClCompile Include="..\src\radc_sync_v2.c" />
+    <ClCompile Include="..\src\radc_tx_v2.c" />
+    <ClCompile Include="..\src\radc_rx_v2.c" />
+    <ClCompile Include="..\src\rade_enc_v2_data.c" />
+    <ClCompile Include="..\src\rade_dec_v2_data.c" />
+    <ClCompile Include="..\src\rade_sync_data.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rade_api.h" />
@@ -106,6 +119,23 @@
     <ClInclude Include="..\src\rade_constants.h" />
     <ClInclude Include="..\src\rade_tx.h" />
     <ClInclude Include="..\src\rade_rx.h" />
+    <!-- RADE V2 headers -->
+    <ClInclude Include="..\src\radc_internal.h" />
+    <ClInclude Include="..\src\radc_const_v2.h" />
+    <ClInclude Include="..\src\rade_v2_core.h" />
+    <ClInclude Include="..\src\rade_v2_constants.h" />
+    <ClInclude Include="..\src\radc_modem_v2.h" />
+    <ClInclude Include="..\src\radc_mod_v2.h" />
+    <ClInclude Include="..\src\radc_demod_v2.h" />
+    <ClInclude Include="..\src\radc_acq_v2.h" />
+    <ClInclude Include="..\src\radc_enc_v2.h" />
+    <ClInclude Include="..\src\radc_dec_v2.h" />
+    <ClInclude Include="..\src\radc_sync_v2.h" />
+    <ClInclude Include="..\src\radc_tx_v2.h" />
+    <ClInclude Include="..\src\radc_rx_v2.h" />
+    <ClInclude Include="..\src\rade_enc_v2_data.h" />
+    <ClInclude Include="..\src\rade_dec_v2_data.h" />
+    <ClInclude Include="..\src\rade_sync_data.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

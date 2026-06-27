@@ -97,6 +97,20 @@ PORT void  SetRadaeEooCallsign(const char* callsign);
 PORT void  SetRadaeLoopbackEnabled(int rx, int enable);
 PORT int   GetRadaeLoopbackEnabled(int rx);
 
+/* Per-RX RADE protocol selection (0 = V1, 1 = V2).  Apply-on-change: setting
+ * this while RADE is armed live-recycles ONLY that RX's modem handle
+ * (rade_close + rade_open with the new flag, re-query geometry, reset that
+ * RX's FIFOs / FARGAN / sync).  Buffers are sized at max(V1,V2) so no
+ * re-allocation occurs.  Reads return 0 for V1, 1 for V2. */
+PORT void  SetRadaeProtocolV2(int rx, int on);
+PORT int   GetRadaeProtocolV2(int rx);
+
+/* Which receiver the single TX encoder follows (0 = RX1/g_rade[0],
+ * 1 = RX2/g_rade[1]).  Pushed by audio.cs at the MOX 0->1 edge so the
+ * encoder uses the transmitting receiver's handle and protocol. */
+PORT void  SetRadaeTxRx(int rx);
+PORT int   GetRadaeTxRx(void);
+
 /* MOX-state mirror, pushed by audio.cs on every MOX edge (global). */
 PORT void  SetRadaeMoxState(int mox);
 
